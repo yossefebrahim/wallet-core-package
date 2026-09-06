@@ -1,0 +1,11 @@
+file	.gitignore
+file	CHANGELOG.md
+file	README.md
+file	analysis_options.yaml
+dir	bin
+file	config.yaml
+symlink	include
+dir	lib
+file	pubspec.lock
+file	pubspec.yaml
+dir	test

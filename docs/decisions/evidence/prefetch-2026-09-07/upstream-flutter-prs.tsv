@@ -1,0 +1,8 @@
+pr	4854	OPEN	2026-08-28	nikotw	ci: harden workflows, Dockerfiles, and Android manifests
+pr	4634	OPEN	2026-01-23	Toby1009	docs: update Flutter binding repository reference
+pr	4637	OPEN	2026-01-29	sergei-boiko-trustwallet	chore(actions): Use TW actions proxy
+pr	4832	OPEN	2026-07-28	Toby1009	feat(sui): accept the TypeScript SDK v2 transaction JSON
+pr	4597	MERGED	2025-12-30	sergei-boiko-trustwallet	fix(ethereum-abi): Fix Ethereum ABI type parsing recursion + chore actions and toolchain
+pr	4489	CLOSED	2025-09-03	memtopia	Update README.md
+pr	4412	MERGED	2025-06-04	gupnik	Adds flutter bindings
+pr	2033	MERGED	2022-02-20	hnord-vdx	Added __attribute__((visibility("default"))) to methods in TWString.h

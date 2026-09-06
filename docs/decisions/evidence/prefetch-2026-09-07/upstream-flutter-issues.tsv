@@ -1,0 +1,15 @@
+issue	4638	OPEN	2026-01-29	Flutter : FFI Symbol Lookup Failure with Wallet Core v4.5.0 .aar
+issue	4652	OPEN	2026-02-13	How can i clear HDWallet & StoredKey mnemonic string in memory?
+issue	2086	CLOSED	2022-03-18	Functions are not exposed to dart.ffi
+issue	3942	CLOSED	2024-07-12	[ADA] Current Ada support coin selector?
+issue	3852	CLOSED	2024-05-23	[ADA Private Formate] How can i convert ada privateKey to Ed25519KholawPrivateKey or Ed25519PrivateKey?
+issue	3290	CLOSED	2023-07-06	[Build Error] Build Android Error on M2 about cMake.
+issue	2338	CLOSED	2022-06-22	walletconnect doesn't work for trust wallet ios app
+issue	961	CLOSED	2020-05-18	JNI crash in wallet.core.jni.HDWallet.mnemonic()
+issue	2219	CLOSED	2022-05-17	TrustWalletCore had not exported spec256k1Extended & nistp256Extended interface.
+issue	2139	CLOSED	2022-04-09	Solana sign tokenTransfer crash with error: Invalid address string
+issue	2013	CLOSED	2022-02-11	[Android]  change set(CMAKE_CXX_VISIBILITY_PRESET hidden) to set(CMAKE_CXX_VISIBILITY_PRESET default)
+issue	2034	CLOSED	2022-02-20	## Description
+issue	1866	CLOSED	2021-12-22	Mnemonic phrase is invalid, but it is real Trust Wallet test wallet.
+issue	1797	CLOSED	2021-11-23	[Readme] Add other non official platform / bindings
+issue	1791	CLOSED	2021-11-19	Dart FFI support

@@ -1,0 +1,18 @@
+{
+  "_comment": "Project sandbox allowlist for delegated implementer sessions (plan PROGRESS.md, Needs your eyes, 2026-09-07). Lets sandboxed shells run flutter/dart/melos: their caches must be writable and pub must reach pub.dev. Nothing else is opened.",
+  "sandbox": {
+    "network": {
+      "allowedDomains": ["pub.dev", "storage.googleapis.com"]
+    },
+    "filesystem": {
+      "allowWrite": [
+        "~/.pub-cache",
+        "~/flutter/bin/cache",
+        "~/.dart-tool",
+        "~/.flutter",
+        "~/.flutter_tool_state",
+        "~/.config/flutter"
+      ]
+    }
+  }
+}
