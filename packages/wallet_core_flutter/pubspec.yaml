@@ -1,0 +1,25 @@
+name: wallet_core_flutter
+description: >-
+  Public SDK layer of the wallet_core_flutter workspace: the stable, typed
+  wallet, account, address, request, and signing surface. Placeholder scaffold;
+  see the library doc comment for the project disclaimer.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Exact pins, never ranges: the three packages release as one verified set
+  # (PRD §15.4).
+  wallet_core_flutter_bindings: 0.0.1
+  wallet_core_flutter_native: 0.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.0.0

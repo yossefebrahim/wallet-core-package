@@ -1,0 +1,42 @@
+name: wallet_core_flutter_workspace
+description: >-
+  Private workspace root for the wallet_core_flutter monorepo. Holds the pub
+  workspace membership and the canonical melos gate scripts; ships nothing.
+publish_to: none
+version: 0.0.1
+
+environment:
+  # Placeholder constraint; DECISION-6 sets the supported floor.
+  sdk: ^3.12.0
+
+workspace:
+  - packages/wallet_core_flutter
+  - packages/wallet_core_flutter_bindings
+  - packages/wallet_core_flutter_native
+
+dev_dependencies:
+  lints: ^6.0.0
+  melos: 8.6.0
+
+melos:
+  # `melos bootstrap` otherwise writes IntelliJ project files into the checkout
+  # on every run; nothing in this repository depends on them.
+  ide:
+    intellij: false
+
+  scripts:
+    analyze:
+      description: dart analyze --fatal-infos in every package.
+      exec: dart analyze --fatal-infos .
+
+    format:check:
+      description: dart format --set-exit-if-changed over the whole repository.
+      run: dart format --output=none --set-exit-if-changed .
+
+    test:
+      description: >-
+        Unit tests in every package: flutter test in Flutter packages,
+        dart test in pure-Dart packages.
+      steps:
+        - melos exec --flutter --dir-exists=test -- flutter test
+        - melos exec --no-flutter --dir-exists=test -- dart test

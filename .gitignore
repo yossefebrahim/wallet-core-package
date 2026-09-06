@@ -1,0 +1,25 @@
+# Dart / Flutter tooling
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+doc/api/
+
+# The workspace pubspec.lock at the repository root IS committed; in a pub
+# workspace the member packages never carry their own lock file.
+packages/*/pubspec.lock
+
+# Upstream checkout at the pinned commit, and packaging-evaluation builds
+third_party/
+eval/**/build/
+
+# Editors
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS
+.DS_Store

@@ -1,0 +1,22 @@
+name: wallet_core_flutter_native
+description: >-
+  Native distribution layer of the wallet_core_flutter workspace: artifact
+  acquisition and checksum verification at build time, build integration, and
+  library loading. Placeholder scaffold; see the library doc comment for the
+  project disclaimer.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.0.0
