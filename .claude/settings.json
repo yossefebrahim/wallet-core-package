@@ -1,8 +1,10 @@
 {
-  "_comment": "Project sandbox allowlist for delegated implementer sessions (plan PROGRESS.md, Needs your eyes, 2026-09-07). Lets sandboxed shells run flutter/dart/melos: their caches must be writable and pub must reach pub.dev. Nothing else is opened.",
+  "_comment": "Project sandbox allowlist for delegated implementer sessions (plan PROGRESS.md, Needs your eyes, 2026-09-07). Lets sandboxed shells run flutter/dart/melos: their caches must be writable, pub must reach pub.dev with a trusted TLS chain, and `flutter test` must bind a loopback socket. Nothing else is opened.",
   "sandbox": {
+    "enableWeakerNetworkIsolation": true,
     "network": {
-      "allowedDomains": ["pub.dev", "storage.googleapis.com"]
+      "allowedDomains": ["pub.dev", "storage.googleapis.com"],
+      "allowLocalBinding": true
     },
     "filesystem": {
       "allowWrite": [
