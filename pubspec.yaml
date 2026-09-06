@@ -13,6 +13,7 @@ workspace:
   - packages/wallet_core_flutter
   - packages/wallet_core_flutter_bindings
   - packages/wallet_core_flutter_native
+  - tools/manifest
 
 dev_dependencies:
   lints: ^6.0.0
@@ -40,3 +41,4 @@ melos:
       steps:
         - melos exec --flutter --dir-exists=test -- flutter test
         - melos exec --no-flutter --dir-exists=test -- dart test
+    manifest:validate: dart run tools/manifest/bin/validate.dart compat_manifest.json
