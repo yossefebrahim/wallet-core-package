@@ -144,9 +144,9 @@ Until a script exists (Phase 0), briefs name the underlying `dart`/`flutter` com
 
 | Lane | Skill | Typical flags | Notes |
 |---|---|---|---|
-| Implementer, L / security-relevant | `claude-delegate` | `--effort high --timeout 2h --max-turns 80` | add `--max-budget-usd` if the human sets a cap |
-| Implementer, M | `claude-delegate` | `--timeout 90m` | CLI default model and effort |
-| Implementer, S | `agy-delegate` | `--effort high --timeout 45m` | default `agy` model (`gemini-3.1-pro`, efforts `low`/`high` only); pass `--model gemini-3.1-pro-high` when the S task still contains logic; flash labels are fine for pure data/doc files |
+| Implementer, L / security-relevant | `claude-delegate` | `--effort high --timeout 2h --max-turns 120` | add `--max-budget-usd` if the human sets a cap; T0.1 exhausted 80 turns partly on sandbox workarounds, hence 120 |
+| Implementer, M | `claude-delegate` | `--effort high --timeout 90m --max-turns 120` | the repo's `.claude/settings.json` sandbox allowlist (pub caches, pub.dev) applies to every claude-delegate run |
+| Implementer, S | `agy-delegate` | `--effort high --timeout 45m --dangerously-skip-permissions` | default `agy` model (`gemini-3.1-pro`, efforts `low`/`high` only); pass `--model gemini-3.1-pro-high` when the S task still contains logic; flash labels are fine for pure data/doc files. The flag is required for any headless agy run that executes commands (INIT attempt 2 proved that without it nothing runs); recorded in PROGRESS.md → Needs your eyes on 2026-09-07 |
 | Commit brief | `agy-delegate` | `--effort high --timeout 20m --dangerously-skip-permissions` | git mechanics only (plan §2.9); the flag is the human's standing decision for commit briefs; `--add-dir <worktree>` when landing a task |
 | Read-only audit / research | `claude-delegate --read-only` | `--timeout 45m` | output is the final message; deliverable doc is then written by an S task or the orchestrator |
 | Phase debate | `codex-delegate --read-only` | `--effort high --timeout 1h` | verify `readOnlyViolation == false` |

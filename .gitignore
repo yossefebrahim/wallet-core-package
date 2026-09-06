@@ -23,3 +23,6 @@ eval/**/build/
 
 # OS
 .DS_Store
+
+# Claude Code runtime lock (orchestrator session)
+.claude/scheduled_tasks.lock
