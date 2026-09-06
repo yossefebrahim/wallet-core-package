@@ -25,7 +25,8 @@ PRD sections that govern this task: [§ numbers] in docs/wallet_core_flutter_prd
 </repo_constraints>
 
 <verification_loop>
-Dependencies are already fetched by the orchestrator; run pub commands with --offline if the network is unavailable.
+Dependencies are already fetched by the orchestrator (`melos bootstrap` ran in this worktree); pub.dev is reachable from your shell, other hosts are not. `melos` is on PATH (`~/.pub-cache/bin`); if a nested `melos` call reports "command not found", say so in the report instead of installing anything.
+Shell ergonomics (measured by T0.3): run one command per shell call — compound lines such as `cmd && echo $?` and inline prefixes such as `VAR=x cmd` are rejected by the command guard; put multi-step sequences in a script file under your scratch directory.
 Run these exact commands and make them green before finishing; fix failures caused by your change:
   melos run analyze
   melos run format:check
