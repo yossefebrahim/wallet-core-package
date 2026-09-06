@@ -1,0 +1,73 @@
+name: CI
+
+# The `gates` job runs the four canonical gates of AGENTS.md ("Canonical gates")
+# with the same commands a developer runs locally, in the same order, so that a
+# green local run and a green CI run mean the same thing (PRD §15.2).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# One run per ref: a new push supersedes the run it interrupted.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Gates (analyze, format, test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+
+      - name: Put the pub global bin directory on PATH
+        run: echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Activate melos
+        run: dart pub global activate melos 8.6.0
+
+      - name: melos bootstrap
+        run: melos bootstrap
+
+      - name: melos run analyze
+        run: melos run analyze
+
+      - name: melos run format:check
+        run: melos run format:check
+
+      - name: melos run test
+        run: melos run test
+
+      # The lockfile is committed; bootstrap must not change the resolution.
+      - name: Check pubspec.lock is unchanged
+        run: git diff --exit-code pubspec.lock
+
+  # placeholder — device jobs are implemented by task T1.17
+  android-emulator:
+    name: Android emulator
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Placeholder
+        run: echo "placeholder — device jobs are implemented by task T1.17"
+
+  # placeholder — device jobs are implemented by task T1.17
+  ios-simulator:
+    name: iOS simulator
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Placeholder
+        run: echo "placeholder — device jobs are implemented by task T1.17"
