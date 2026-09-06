@@ -1,0 +1,22 @@
+vectors:
+  - id: ethereum-address-n/a-1
+    coin: ethereum
+    operation: address
+    variant: n/a
+    source:
+      kind: upstream_test
+      path: tests/ethereum/address.cpp
+      commit: 0123456789abcdef0123456789abcdef01234567
+    input: {}
+    expected: {}
+    platforms_verified: [android, ios]
+  - id: ethereum-sign-eip1559-1
+    coin: ethereum
+    operation: sign
+    variant: eip1559
+    source:
+      kind: standard
+      reference: eip1559-test
+    input: {}
+    expected: {}
+    platforms_verified: [host]

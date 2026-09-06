@@ -1,0 +1,11 @@
+vectors:
+  - id: bitcoin-sign-p2wpkh-1
+    coin: bitcoin
+    operation: sign
+    variant: p2wpkh
+    source:
+      kind: published_tx
+      reference: some-tx-hash
+    input: {}
+    expected: {}
+    platforms_verified: []

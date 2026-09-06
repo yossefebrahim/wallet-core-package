@@ -1,0 +1,12 @@
+vectors:
+  - id: valid-vector-1
+    coin: ethereum
+    operation: address
+    variant: n/a
+    source:
+      kind: published_tx
+      reference: ref
+    input: {}
+    expected: {}
+    platforms_verified: []
+  - just a string instead of map

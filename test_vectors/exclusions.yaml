@@ -1,0 +1,7 @@
+# Exclusions list for coins, operations, or variants intentionally not tested.
+# Entry shape:
+# - coin: (string) the upstream registry id
+#   operation: (string) the operation to exclude
+#   variant: (string, optional) the specific variant to exclude, if not excluding the whole operation
+#   reason: (string) rationale for the exclusion
+exclusions: []

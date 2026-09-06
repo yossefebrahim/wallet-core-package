@@ -1,0 +1,5 @@
+exclusions:
+  - coin: somecoin
+    operation: sign
+    variant: legacy
+    reason: Not supported anymore

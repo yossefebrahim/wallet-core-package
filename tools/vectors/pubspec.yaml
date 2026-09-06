@@ -1,0 +1,12 @@
+name: wcf_tool_vectors
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  yaml: ^3.1.4
+
+dev_dependencies:
+  test: ^1.31.0
