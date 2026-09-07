@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Decision** | [DECISION-11](../decisions/DECISION-11.md) — public coin / network / account model |
 | **Binding on** | T1.11 (SDK core), T1.12 (EVM path), T2.5 (UTXO family), T2.8 (capability matrix), T3.6 / T3.8 (family helpers) |
-| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording. |
+| **Status** | sketch: signatures and doc comments only, no bodies. Its record was **recorded 2026-09-07** (see the linked DECISION file); binding on the tasks named there. |
 
 Everything below belongs to `package:wallet_core_flutter/wallet_core_flutter.dart`. Per AGENTS.md rule 4 and rule 12, no signature here names a foreign-function type, a generated type, or a serialization type; the mapping to upstream's coin identifiers happens one layer down, inside the bindings package, and is described in DECISION-11 §4.2. `Uint8List` (`dart:typed_data`) is a plain Dart value type and is used freely.
 

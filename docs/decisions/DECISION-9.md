@@ -7,7 +7,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Question** | Where does this project's native libraries come from, given that PRD §12.3 requires every artifact set to carry a build-identity symbol `wcf_build_info()` that upstream does not provide? |
 | **Governing PRD sections** | §12.1–12.4, §15.3, §22 DECISION-9 and DECISION-14 |
 | **Evidence** | [`evidence/release-assets-4.8.0.md`](evidence/release-assets-4.8.0.md) (T0.5, 2026-09-07), built on `evidence/prefetch-2026-09-07/` |
-| **Status** | **Recommended by T0.5. Adjudicated at D0.** DECISION-14 (distribution contract) depends on this; DECISION-2 (packaging mechanism) consumes finding F2. |
+| **Status** | **Recorded 2026-09-07 - Option C adopted** (section 7). Recommended by T0.5, adjudicated at D0, contested there, and decided against that contest for the reasons stated. DECISION-14 (distribution contract) depends on this; DECISION-2 (packaging mechanism) consumes finding F2. |
 | **Recommendation** | **Option C**, in the specific shape of §5 below: relink upstream's release-asset static archives on Apple platforms, build from source in CI on Android, one identity symbol linked into both. |
 
 ---
@@ -142,3 +142,40 @@ Re-open this decision when any of the following occurs:
 4. **The Android from-source build reproduces issue #4638** after `-fvisibility=default` and version-script fixes — Option B's Android leg would then be blocked and the decision becomes "no Android support at 4.8.0", which is a product decision, not a packaging one.
 5. **PRD §12.4's Demonstrated reproducibility [REQ] reaches its M3 milestone** — at that point every artifact must come from a pinned-toolchain build we control, i.e. Apple moves from A′ to B and this record's step 3 is executed.
 6. **The Apple from-source pipeline lands** (planned M3) — retire A′ or keep it as a cross-check, and record which.
+
+---
+
+## 7. Decision
+
+**Option C is adopted, in the exact shape of section 4**: Android built from source at the pinned commit, Apple
+relinked from the release-asset static archives (A') with our identity object, one `wcf_build_info.c`, one release-set
+id, one manifest, and a per-artifact `provenance` field. Apple moving to a from-source build stays the declared **M3**
+target, not an aspiration - section 4 step 3 and revisit trigger 5 are the commitment.
+
+**Why C over the B-only position D0 defended.** Four reasons, in the order they carry weight:
+
+1. **Android decides nothing here.** Upstream ships no Android artifact and its Packages coordinate is token-gated, so
+   a from-source Android build exists in this project under every option. The real question is only what Apple does in
+   Phase 1.
+2. **A' buys a real macOS host library now.** It is what lets `melos run test:native` exercise `TWData`/`TWString`
+   lifetimes, double-dispose, and finalizer behaviour against the actual library at **T1.6**, the task that writes the
+   PRD section 11.2 disposal contract. Testing that contract against a fake, and finding the difference in Phase 2, is
+   a worse failure than non-uniform provenance.
+3. **The provenance objection is answered structurally, not waived.** Every relinked row is labelled
+   `relinked_from_upstream_release_asset` in the manifest; the record states that six of eight upstream assets carry no
+   upstream checksum and that ours are therefore first-seen values; and PRD section 12.4's Demonstrated reproducibility
+   [REQ] is *not* claimed for A' rows - AGENTS.md rule 8 forbids the word until the M3 demonstration exists. Nothing on
+   this path lets the project assert more than it can show.
+4. **T1.2 is on the critical path.** It gates T1.7, T1.8, T1.9 and T1.19, two of which are the DECISION-2 packaging
+   evaluations that M0 turns on. Making a full Rust + CMake + Xcode pipeline the long pole of Phase 1 risks the
+   milestone for a property M3 delivers anyway.
+
+**Condition attached.** A' breaks silently if the tarball layout moves, so revisit trigger 2 is not optional
+bookkeeping: **T4.3 must watch the layout of `TrustWalletCore-*.tar.xz`**, not only the tag. If that watch is not
+built, this decision loses its safety net and B-only becomes the right answer.
+
+**What would reverse this.** The M3 Apple-from-source move slipping past M3 without a recorded reason, or a measured
+finding in T1.2 that the relinked Apple artifacts differ observably from a from-source build. Either turns section 4
+step 3 from a schedule into a defect.
+
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.

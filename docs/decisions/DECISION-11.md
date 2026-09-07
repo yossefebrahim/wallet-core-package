@@ -9,7 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Evidence** | `docs/decisions/evidence/prefetch-2026-09-07/upstream-src/registry.json`, `.../TWCoinType.h`, `.../TWDerivation.h`, `.../TWAnyAddress.h`, `.../TWHDWallet.h`, all at commit `d692ac27749d0c615e17c751b70ab4f0aa75c59b` (tag 4.8.0) |
 | **Interface sketch** | [`docs/architecture/public_model.md`](../architecture/public_model.md) |
 | **Recommendation** | **Option A — thin stable facade**, in the exact shape of §4 |
-| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
+| **Status** | **Recorded 2026-09-07** - recommendation adopted as written, with the T0.R2/T0.R4 fixes. See the Decision section. Recorded by the orchestrator under the owner's standing authorization; subject to their ratification. |
 
 ---
 
@@ -183,3 +183,20 @@ Re-open this record when any of the following occurs:
 3. **A `chainId` appears on an `"blockchain": "Ethereum"` entry that is not numeric**, or an EVM coin appears without `chainId` — `Coin.evmChainId`'s `int` type stops being safe.
 4. **An application need for `Asset` arrives with a source of truth** (a token list we are willing to ship or a caller-supplied registry) — Option B's asset half becomes evaluable on evidence instead of speculation.
 5. **DECISION-7 splits families into separate packages** — `ChainFamily` stops being a value type in one package and becomes a package boundary.
+
+---
+
+## Decision
+
+**Option A - the thin stable facade of section 4 - is adopted**, with the two conditions D0 attached: the
+alias/removal gate must be operational as a pin-PR merge check *before* the first upstream pin lands, and
+`ChainFamily.other` / `hasRequestBuilders` are documented as unstable and are never a support claim.
+
+Binding on **T1.11** (public model), **T1.12**, **T2.0**, and every later task that names a chain in a public
+signature. AGENTS.md rule 12 already forbids the generated `CoinType` in the default surface; this record is what the
+rule points at.
+
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+
+Contrary case, for the record: nothing at D0 defended exposing `CoinType`. The contest was over section 4.4's
+availability rule, which stands.

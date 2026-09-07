@@ -9,7 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Evidence** | `docs/decisions/evidence/prefetch-2026-09-07/upstream-src/proto/{Bitcoin,BitcoinV2,Solana,Ethereum,Common}.proto` and `.../TWTransactionCompiler.h`, at commit `d692ac27749d0c615e17c751b70ab4f0aa75c59b` (tag 4.8.0) |
 | **Interface sketch** | [`docs/architecture/signing.md`](../architecture/signing.md) |
 | **Recommendation** | **`Signer.sign(request, Set<KeyLocator>)` returning a sealed `SignResult`**, in the shape of §4 |
-| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
+| **Status** | **Recorded 2026-09-07** - recommendation adopted as written, with the T0.R2/T0.R4 fixes. See the Decision section. Recorded by the orchestrator under the owner's standing authorization; subject to their ratification. |
 
 ---
 
@@ -262,3 +262,19 @@ Re-open this record when any of the following occurs:
 4. **T2.9's compiler probe shows broad per-coin availability** — the external-signature path becomes cheap enough that `ExternalSigner` could land before M5, and §6 Q6's deferral shortens.
 5. **DECISION-1 selects Approach B** — §4.4's injection step moves into C, and the key-field check must be re-established on the adapter side as well as in Dart (threat model §6, D0 question 9).
 6. **Upstream's Bitcoin V2 protocol replaces V1 for the coins we support** — §4.6's `transactionId` normalisation and §3.1's field numbers change, and `UtxoSignResult` gains the V2-only fields as non-null.
+
+---
+
+## Decision
+
+**`Signer.sign(request, Set<KeyLocator>)` returning a sealed `SignResult` is adopted**, in the shape of section 4,
+together with the single-key convenience `signWithKey(request, KeyLocator)` that replaced `signWithAccount` at D0, and
+the rule that an unused locator is an error rather than a silent no-op.
+
+Binding on **T2.0** (family boundary) and **T2.2**-**T2.8** (family encoders and signers), and it is what AGENTS.md
+rule 6 points at: family code encodes key-less inputs and parses results, and only the signer injects keys.
+
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+
+Deferred by this record, not decided against: `ExternalSigner` (section 6 Q6, milestone M5) and the `UtxoInput.script`
+construction helper (T3.7).

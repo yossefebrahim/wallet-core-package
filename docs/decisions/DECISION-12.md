@@ -9,7 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Evidence** | `docs/security/threat_model.md` §1.4, TM-01, TM-23, TM-25, TM-26; `docs/decisions/evidence/prefetch-2026-09-07/upstream-src/TWHDWallet.h` (handle-returning constructors, all `_Nullable`, all requiring `TWHDWalletDelete`) |
 | **Interface sketch** | [`docs/architecture/lifecycle.md`](../architecture/lifecycle.md) |
 | **Recommendation** | **Protocol as specified below** (PRD §14.3 written out in full); per-call isolates rejected here, and the residual worker-vs-pool question left to DECISION-3 |
-| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
+| **Status** | **Recorded 2026-09-07** - recommendation adopted as written, with the T0.R2/T0.R4 fixes. See the Decision section. Recorded by the orchestrator under the owner's standing authorization; subject to their ratification. |
 
 ---
 
@@ -354,3 +354,21 @@ Re-open this record when any of the following occurs:
 4. **Dart gains a way to observe a native crash from a surviving isolate** — §3.10's answer to Q3 changes and `WorkerTerminationKind` grows a member.
 5. **Approach B (PRD §11.4) is selected at D1a** — §3.9's `finally` block moves partly into C, and the "parse, release, reply" ordering must be re-established for the adapter's own buffers.
 6. **A message that carries key material in either direction is added to §3.2** — the enumerated secret-bearing set is closed at four payloads, so a fifth is a change to what crosses the isolate boundary and needs the same scrutiny the first four got (TM-04, TM-06). Returning a mnemonic from `WalletCreated` again, rather than through `ExportMnemonic`, is exactly such a change and is not an implementation detail.
+
+---
+
+## Decision
+
+**The protocol of section 3 is adopted in full**, including the four rulings that were contested at D0 and then
+conceded: only the session isolate calls native (so address validation is asynchronous, with a pure-Dart
+`looksWellFormed` for keystroke-rate checks); the secret-bearing payload set is **closed at four** (section 3.2); the
+explicit-close acknowledgement is **non-expiring** (section 3.5); and `WorkerTerminationKind` has **no `nativeCrash`
+member** (section 3.10).
+
+Binding on **T1.11**, **T2.1** (state machine), and **T2.12** (fault tests). The residual worker-versus-pool question
+stays with DECISION-3 at D2; adopting this record does not pre-judge it.
+
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+
+Read before ratifying: section 3.2 (the four payloads) and section 3.5 (why no dispose deadline exists). Section 3.4's
+reserved control capacity is the implementer's number, not a fixed part of this record.

@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Decision** | [DECISION-12](../decisions/DECISION-12.md) — session lifecycle and worker protocol |
 | **Binding on** | T1.11 (session, proxies, errors), T2.1 (worker), T1.6 (internal handles), T1.7 (loader), T2.12 (fault suite) |
-| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording. |
+| **Status** | sketch: signatures and doc comments only, no bodies. Its record was **recorded 2026-09-07** (see the linked DECISION file); binding on the tasks named there. |
 
 Sections 1–4 are the public surface (`package:wallet_core_flutter/wallet_core_flutter.dart`) and contain no foreign-function, generated, or serialization types. Sections 5–7 are internal to the SDK and the bindings package and are labelled as such.
 

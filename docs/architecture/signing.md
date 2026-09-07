@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Decision** | [DECISION-13](../decisions/DECISION-13.md) — signing model |
 | **Binding on** | T1.12 (EVM path), T2.0 (signing model in code), T2.5 (UTXO), T2.6 (Solana), T2.7 (EVM messages), T2.12 (hostile-input suite) |
-| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording. |
+| **Status** | sketch: signatures and doc comments only, no bodies. Its record was **recorded 2026-09-07** (see the linked DECISION file); binding on the tasks named there. |
 
 Sections 1–5 are the public surface (`package:wallet_core_flutter/wallet_core_flutter.dart`) and name no foreign-function, generated, or serialization type. Section 6 is internal to the SDK's family code and is labelled as such.
 

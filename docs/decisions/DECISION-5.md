@@ -51,6 +51,30 @@ PRD §8 establishes a three-package architecture (`SDK`, `bindings`, `native`). 
 *Deciding consideration:* The `wallet_core_flutter*` family are the current repository placeholders and effectively tokenize for search engines while clearly appending `_flutter` to avoid direct collision with the taken `wallet_core` package. 
 
 ## Status
-Recommended by T0.6; decided by the human (PRD §22); applied by T0.10 only if the names change from the placeholders.
+**Recorded 2026-09-07 - the `wallet_core_flutter*` family is kept** (Decision section below); T0.10 is therefore skipped. Recommended by T0.6, contested at D0, recorded by the orchestrator under the owner's standing authorization and subject to their ratification.
 
 **Note:** Publishing reserves nothing until T3.12. Availability must be re-checked immediately before the first publish.
+
+---
+
+## Decision
+
+**Keep the placeholder family:** `wallet_core_flutter`, `wallet_core_flutter_bindings`, `wallet_core_flutter_native`.
+All three were free on pub.dev on 2026-09-07. **T0.10 (rename) is skipped.**
+
+**Why, against the contrary case.** D0 preferred `flutter_wallet_core*` on one real argument: a `wallet_core*` prefix
+sits beside the taken competitor `wallet_core_bindings` in pub.dev search results, and our own
+`wallet_core_flutter_bindings` is its closest neighbour of all. That argument is not dismissed, it is not yet
+actionable. Search adjacency can only be measured once both package sets exist and are ranked, and acting on it today
+costs a repo-wide rename of paths, imports, and every document that names them, paid before a single consumer exists.
+
+The deciding fact is **when the name becomes permanent**: not now, but at the first publish (T3.12). Until then a
+rename is a mechanical task the plan already holds ready. Keeping the placeholders costs nothing a later rename cannot
+recover; renaming now spends the work up front for an unmeasured benefit.
+
+**Revisit trigger, mandatory.** Availability must be re-checked immediately before the first publish, and **T3.12 must
+re-open this record at that moment**, with whatever pub.dev search then shows for "wallet core". That is the last point
+at which `flutter_wallet_core*` costs only a rename. After the first publish, pub.dev names are permanent and this
+decision cannot be revisited at any price.
+
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.

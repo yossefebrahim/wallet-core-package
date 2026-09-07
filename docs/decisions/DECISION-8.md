@@ -1,6 +1,6 @@
 # DECISION-8 — Status and intent of upstream's in-tree `flutter/` directory
 
-**Status:** recommended by T0.4, adjudicated at D0.
+**Status:** **Recorded 2026-09-07 - "sample (dormant)"** (Decision section at the end). Recommended by T0.4, adjudicated at D0, uncontested.
 **Options considered (PRD §22):** sample · abandoned · planned official SDK.
 **Evidence:** [`evidence/upstream-flutter-dir.md`](evidence/upstream-flutter-dir.md), from the orchestrator's
 2026-09-07 pre-fetch of `trustwallet/wallet-core` at tag `4.8.0` (= `d692ac27749d0c615e17c751b70ab4f0aa75c59b`,
@@ -256,3 +256,23 @@ Reopen DECISION-8 if any of the following is observed upstream (each is mechanic
 
 Triggers 1–4 and the deletion half of 6 are diffable between two upstream tags and belong in the upstream watcher; the
 CI-status half of 6 needs the runs API; 5 and 7 need a human look at the issue/PR feed.
+
+---
+
+## Decision
+
+**Upstream's in-tree `flutter/` directory is a sample, dormant.** T0.4's evidence and the D0 debate agree, and no
+contrary position was argued.
+
+Consequences, now settled facts for later tasks:
+
+- The README and PRD section 4 describe upstream as having **"an in-tree `flutter/` directory that is not published as
+  a package"** - the one-sentence wording of section 4.2, which both the record and the debate preferred. No stronger
+  claim about upstream's intent is made anywhere, because the "no plans" reading is weak and was deliberately not
+  asserted.
+- Revisit triggers 1-4 and the deletion half of 6 belong to **T4.3**'s upstream watcher. The CI-status half of 6 needs
+  the runs API; 5 and 7 need a human look at the issue and PR feed.
+- **PR #4634**, if merged, repoints upstream's Flutter users at the `wallet_core_bindings` competitor. That is a live
+  input to PRD section 3's competitor tracking, not to this record.
+
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.

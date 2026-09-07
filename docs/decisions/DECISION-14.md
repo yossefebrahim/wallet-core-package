@@ -8,7 +8,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Governing PRD sections** | §12.3 (artifact acquisition, identity, durability), §12.4 (the two separate integrity requirements), §15.3 (manifest), §15.4 (versioning, publication order, recovery release), §16 S3, §22 DECISION-14 |
 | **Depends on** | [`DECISION-9`](DECISION-9.md) (T0.5) and [`evidence/release-assets-4.8.0.md`](evidence/release-assets-4.8.0.md) |
 | **Fills manifest fields** | `identity`, `release_set`, `retention`, `sbom`, and the full per-artifact record of §5.1 (PRD §12.3's durability list plus DECISION-9's `provenance`) |
-| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
+| **Status** | **Recorded 2026-09-07** - recommendation adopted as written, with the T0.R2/T0.R4 fixes. See the Decision section. Recorded by the orchestrator under the owner's standing authorization; subject to their ratification. |
 
 ---
 
@@ -341,3 +341,25 @@ Re-open this record when any of the following occurs:
 4. **pub.dev gains a retraction mechanism that affects existing resolutions** — §4.4's "fix forward only" premise changes.
 5. **DECISION-2 selects build hooks (Option 1)** — the fetch happens inside `hook/build.dart` and §3.1's URL consumer changes, though the scheme itself does not.
 6. **An adopting organisation requires a signed SBOM or a specific attestation format** — §4.5 moves from [REC] to [REQ] with a named format, and T4.5's scope grows.
+
+---
+
+## Decision
+
+**The distribution contract of sections 2-5 is adopted**, including the three shapes that changed at D0: the
+per-artifact manifest record of section 5.1 with a **per-artifact** `toolchain` (the top-level block becomes a
+set-wide summary), the primary asset name `<artifact_set_id>__<sha256>__<flat_name>` carrying the **full 64-hex
+digest** (section 3.1), and the retention wording of section 3.2, which promises only **our own conduct** and
+disclaims the availability of third-party infrastructure. The 24-month window stays a **proposal** until T3.13 prices
+it.
+
+Binding on **T1.2** (which produces every field), **T1.7** (which verifies `wcf_build_info` against
+`compat_manifest.json`), and T0.7's validator, which T1.2 extends to the per-artifact record.
+
+This record consumes DECISION-9, recorded the same day as **Option C**; the `provenance` field exists precisely
+because two build paths feed one manifest.
+
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+
+Conditional, per D0: promoting the SBOM to the first alpha depends on the quality of T1.2's CycloneDX output. If it is
+not usable the SBOM slips and this record is amended, not quietly ignored.
