@@ -91,23 +91,27 @@ A missing `wcf_build_info` symbol is `NativeLoadError`, not a mismatch: it means
 
 ### 3.1 Content-addressed immutable URLs — two layouts, one identity
 
-A GitHub Release asset is a **flat file**: it is served from `https://github.com/<org>/<repo>/releases/download/<tag>/<asset-name>` and has no path component under the tag. A nested `{artifact_set_id}/{sha256}/{filename}` route cannot exist there, so the set id and the checksum have to live in the *name* on the primary, and in the *path* only on the object-store mirror. Both layouts carry the same three facts; they differ in where the separators go.
+A GitHub Release asset is a **flat file**: it is served from `https://github.com/<org>/<repo>/releases/download/<tag>/<asset-name>` and has no path component under the tag. A nested `{artifact_set_id}/{sha256}/{filename}` route cannot exist there, so the set id and the checksum have to live in the *name* on the primary, and in the *path* only on the object-store mirror. Both layouts carry the same three facts and both are content-addressed as PRD §12.3 requires; they differ only in where the separators go.
 
 **Primary — GitHub Releases, flat asset name.** The exact pattern, and it is a pattern the validator checks (§5.1):
 
 ```
-<artifact_set_id>__<sha256[0:12]>__<flat_name>
+<artifact_set_id>__<sha256>__<flat_name>
 ```
 
-where `<flat_name>` is the artifact's `logical_name` — its path in the manifest — with `/` replaced by `-` (`android/arm64-v8a/libTrustWalletCore.so` → `android-arm64-v8a-libTrustWalletCore.so`), `<sha256[0:12]>` is the first 12 lowercase hex characters of the artifact's sha256, and `__` (two underscores) is the field separator — it cannot occur inside a set id, a hex prefix, or a logical name, so the name parses unambiguously in either direction. Assembled:
+where `<sha256>` is the artifact's **full 64-character lowercase hex digest** — not a prefix — `<flat_name>` is the artifact's `logical_name` (its path in the manifest) with `/` replaced by `-` (`android/arm64-v8a/libTrustWalletCore.so` → `android-arm64-v8a-libTrustWalletCore.so`), and `__` (two underscores) is the field separator: it cannot occur inside a set id, a hex digest, or a logical name, so the name parses unambiguously in either direction. Assembled:
 
 ```
-{retention.primary}/{artifact_set_id}__{sha256[0:12]}__{flat_name}
+{retention.primary}/{artifact_set_id}__{sha256}__{flat_name}
 ```
 
 ```
-https://github.com/<org>/<repo>/releases/download/native-4.8.0-001/as_4.8.0_001__9f2c1ab34de5__android-arm64-v8a-libTrustWalletCore.so
+https://github.com/<org>/<repo>/releases/download/native-4.8.0-001/as_4.8.0_001__9f2c1ab34de5f70e8a3b1c4d6e2079bd85fa1c3e97d024b658ea7c319f40db26__android-arm64-v8a-libTrustWalletCore.so
 ```
+
+**The whole digest, because a prefix is not content addressing.** An earlier draft embedded only the first twelve hex characters of the digest and called it a human aid. That is not what PRD §12.3 asks for: a content-addressed URL is one whose identifier *is* the content's digest, so that the name commits to the bytes on its own. A 12-hex prefix commits to 48 bits, which is enough to read in a log and not enough to be the address. The full digest costs characters and nothing else — verification still compares the manifest's `sha256` against the downloaded bytes, but the URL now names its own content on the primary exactly as it does on the mirror.
+
+**It fits.** A GitHub release asset name may be up to **255 characters**. The longest name this scheme can produce is bounded by: an `artifact_set_id` of `as_<tag>_<nnn>` (19 characters even for a 12-character upstream tag) + `__` + 64 + `__` + the longest `flat_name` we ship. The longest flat name at 4.8.0 is an Apple simulator debug bundle, `ios-simulator-arm64_x86_64-libTrustWalletCore.dylib.dSYM.zip`, at 59 characters; allowing 80 for headroom gives **19 + 2 + 64 + 2 + 80 = 167 characters**, leaving 88 in reserve. T1.2's validator enforces the 255 limit explicitly so a future artifact with a long path fails at build time rather than at upload time.
 
 **Mirror — object store, hierarchical.** The nested layout is kept where it is expressible, because a bucket prefix per set is what makes listing, lifecycle rules, and a per-set delete tractable:
 
@@ -126,13 +130,14 @@ https://<bucket>.<host>/wcf-artifacts/as_4.8.0_001/<64 hex>/android/arm64-v8a/li
 | Points at | one GitHub Release, tag `native-<upstreamTag>-<seq>` | a bucket prefix that holds every set |
 | Template | `base + "/" + asset_name` (one segment) | `base + "/" + artifact_set_id + "/" + sha256 + "/" + logical_name` |
 | Set id appears in | the asset name, and in the release tag | the path |
+| Full sha256 appears in | the asset name, between the two `__` separators | the path, as its own segment |
 | Changes per artifact set | yes — a new set is a new release tag, so a new base URL | no — one base serves every set |
 
 That asymmetry is why the manifest records both `asset_name` and `logical_name` per artifact (§5.1) instead of letting a fetcher guess: `asset_name` is the primary's whole path segment, `logical_name` is the mirror's tail and the manifest's own artifact key.
 
 Rules, all enforced by the build workflow (T1.2):
 
-- The checksum in the primary's name is a **prefix**, not the whole digest, and it is an aid to a human reading a log, not the check. Full verification is always the manifest's 64-hex `sha256` against the downloaded bytes, on both locations, with no "continue anyway" path. The mirror's path carries the full digest, so on that side the URL names its own content exactly.
+- **Both locations are content-addressed with the full digest**, so either URL names its own content on its own. That is a property of the name, not a substitute for checking: verification is always the manifest's 64-hex `sha256` recomputed over the downloaded bytes, on both locations, with no "continue anyway" path. What the embedded digest buys is that a substitution is visible in a log line and detectable before a byte is read, and that a downloaded file carries its own address in its name.
 - A release tag `native-<upstreamTag>-<seq>` is created once and never re-uploaded to; an asset name is never reused. Correcting an artifact means a new set id and a new tag, never a replacement under an existing URL. The set id inside the asset name means a stray file cannot be mistaken for a member of another set even after it is downloaded and renamed.
 - A mirror is a base-URL swap plus the mirror template; nothing else changes, and the manifest is unchanged by which location served the bytes.
 - The fetch is build-time only (PRD §16 S4). Nothing in this scheme is reachable at runtime.
@@ -276,7 +281,7 @@ The manifest key stays the artifact's logical path (`android/arm64-v8a/libTrustW
 | `signature` | detached-signature asset name, or `null` | `null` | nullable | signature |
 | `attestation` | object identifying the attestation over these bytes — `{ "subject_digest": "sha256:…", "workflow_identity": "…", "bundle": "<asset name>" }` — or `null` until T4.5 | `null` | nullable | attestation identity |
 | `provenance` | `built_from_source` \| `relinked_from_upstream_release_asset` | `relinked_from_upstream_release_asset` | always | — (DECISION-9 §4.4) |
-| `asset_name` | the flat primary asset name of §3.1 | `as_4.8.0_001__9f2c1ab34de5__android-arm64-v8a-libTrustWalletCore.so` | always | — (§3.1) |
+| `asset_name` | the flat primary asset name of §3.1, carrying the full digest | `as_4.8.0_001__9f2c1ab34de5f70e8a3b1c4d6e2079bd85fa1c3e97d024b658ea7c319f40db26__android-arm64-v8a-libTrustWalletCore.so` | always | — (§3.1) |
 | `logical_name` | the manifest key repeated inside the record, so a record is self-describing once detached from the map | `android/arm64-v8a/libTrustWalletCore.so` | always | — (§3.1) |
 
 Four notes on the modelling, each of which is a choice a reader could reasonably have made differently:
@@ -286,7 +291,7 @@ Four notes on the modelling, each of which is a choice a reader could reasonably
 3. **`signature` and `attestation` are nullable, and nullable is not optional.** The keys are present and explicitly `null` before T4.5 lands, so the absence of an attestation is a recorded fact rather than a missing field, and a validator can distinguish "not yet attested" from "the producer forgot".
 4. **`min_os` is a string in the platform's own vocabulary**, not a normalised number. An Android API level and an iOS deployment target are not the same kind of value, and coercing them into one would lose which is which.
 
-**Who produces and who validates.** Production is **T1.2**'s: it is the only place that knows the toolchain versions, the link mode, the deployment target, and the workflow run, because it is the job that ran them. Validation is the manifest tool's, and **T1.2 extends `tools/manifest`** to do it in the same change that starts producing the values: presence of every required field, domain checks on `linkage` / `target_os` / `abi` / `provenance`, 64-hex `sha256` and 40-hex `source_commit`, `size > 0`, `asset_name` matching the §3.1 pattern *and* its embedded set id and checksum prefix agreeing with `identity.artifact_set_id` and this record's `sha256`, `logical_name` equal to the map key, and `signature`/`attestation` present-but-nullable. `melos run manifest:validate` is the gate.
+**Who produces and who validates.** Production is **T1.2**'s: it is the only place that knows the toolchain versions, the link mode, the deployment target, and the workflow run, because it is the job that ran them. Validation is the manifest tool's, and **T1.2 extends `tools/manifest`** to do it in the same change that starts producing the values: presence of every required field, domain checks on `linkage` / `target_os` / `abi` / `provenance`, 64-hex `sha256` and 40-hex `source_commit`, `size > 0`, `asset_name` matching the §3.1 pattern, no longer than 255 characters, and **its embedded 64-hex digest equal — character for character, not by prefix — to this record's `sha256`** with its embedded set id equal to `identity.artifact_set_id`, `logical_name` equal to the map key and its `/`-to-`-` flattening equal to the `asset_name`'s tail, and `signature`/`attestation` present-but-nullable. `melos run manifest:validate` is the gate.
 
 Three of these are schema changes to files this task does not own: `identity.build_workflow`, the per-artifact `provenance`, and the rest of the §5.1 record. `compat_manifest.json` and `tools/manifest/lib/manifest.dart` belong to T0.7; the changes are requested here and applied by **T1.2** (which produces the values) with the validator extended in the same change. Until then `manifest:validate` neither requires nor rejects the new fields.
 
@@ -321,7 +326,7 @@ Nothing in this record needs rewriting under B-only; §5.1's `provenance` field 
 
 Questions 1–3 of `docs/security/threat_model.md` §6 are addressed to DECISION-12 and 4–6 to DECISION-13; none is addressed to this record. Four threat rows are answered by it, and they are recorded here so T5.7 can check them against the built system:
 
-- **TM-14 (artifact substitution in transit).** §3.1's immutable URLs — checksum-prefixed on the primary, fully content-addressed on the mirror — plus verification of the manifest's full sha256 on both, with no "continue anyway" path in the fetcher (T1.7).
+- **TM-14 (artifact substitution in transit).** §3.1's immutable URLs, content-addressed with the full sha256 on the primary *and* the mirror, so a URL commits to its bytes in either location; plus recomputation of that digest over what was downloaded, with no "continue anyway" path in the fetcher (T1.7).
 - **TM-15 (compromised CI or artifact host).** §3.3's separate-provider mirror, §2.1's `build_workflow` field binding a binary to a workflow run, and T4.5's attestation over the same `artifact_set_id`. The residual is unchanged: a compromise that lands both the artifact and its committed checksum in an approved PR defeats all of it, and human review of the pin PR is the remaining control.
 - **TM-16 (manifest tampering).** §2.3's comparisons 1 and 2 — the three packages must agree on a release-set id *and* on a manifest hash, and `_native`'s shipped copy must hash to it.
 - **TM-29 (no emergency-update path).** §4.4 is that path, written before the first publish, with the explicit statement that no runtime channel exists or will be built.

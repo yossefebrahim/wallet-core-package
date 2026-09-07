@@ -74,15 +74,17 @@ enum SessionState { initializing, ready, closing, closed, failed }
 /// mechanism to do that. The operation runs to completion, its key material and
 /// temporaries are released as usual, and its result is discarded.
 ///
-/// [dispose] is the one deadline that is **not** measured from submission and
-/// that never expires a caller's future: see its own comment.
+/// There is deliberately **no** deadline for releasing a resource. [Wallet.close]
+/// waits without one, because no bound on it could be enforced: an isolate
+/// blocked inside a native delete runs no timer of its own, and no other isolate
+/// can tell that case apart from any other slow native call (DECISION-12 §3.5).
+/// [shutdownGrace] is the only bound on teardown, and the only recovery.
 final class OperationTimeouts {
   const OperationTimeouts({
     this.initialize = const Duration(seconds: 30),
     this.walletOperation = const Duration(seconds: 20),
     this.derivation = const Duration(seconds: 5),
     this.signing = const Duration(seconds: 15),
-    this.dispose = const Duration(seconds: 5),
     this.shutdownGrace = const Duration(seconds: 10),
   });
 
@@ -91,20 +93,10 @@ final class OperationTimeouts {
   final Duration derivation;
   final Duration signing;
 
-  /// Bounds the owner's **own** dispose step — the native delete and the
-  /// bookkeeping around it — measured from the moment that step begins, which
-  /// is after any operation already in flight has finished.
-  ///
-  /// It is not a deadline on [Wallet.close]: the acknowledgement of an explicit
-  /// close does not expire, because waiting behind an uninterruptible native
-  /// operation is not a fault and must not be reported as one. Exceeding this
-  /// bound means the owning isolate has stopped making progress, which surfaces
-  /// as [WorkerTerminatedError], not as [OperationTimeoutError].
-  final Duration dispose;
-
   /// Bounds teardown as a whole. This one **does** expire: on expiry the owning
   /// isolate is killed and the session moves to [SessionState.closed], which is
-  /// recorded, because the alternative is a session that never closes.
+  /// recorded, because the alternative is a session that never closes. A kill
+  /// does not wipe what that isolate owned.
   final Duration shutdownGrace;
 }
 ```
@@ -115,9 +107,11 @@ final class OperationTimeouts {
 abstract interface class WalletFacade {
   /// Creates a wallet with a new random mnemonic of [strength] bits.
   ///
-  /// Carries a secret in **both** directions: [passphrase] crosses to the
-  /// owning isolate, and the generated mnemonic crosses back when the caller
-  /// asks for it. See the enumeration in [Wallet.exportMnemonic] and
+  /// [passphrase] crosses to the owning isolate and is key material. **The new
+  /// mnemonic does not come back from this call**: it is obtained the same way
+  /// any other wallet's is, by calling [Wallet.exportMnemonic] on the result,
+  /// so that a mnemonic crosses the boundary by exactly one path. See the
+  /// enumeration in [Wallet.exportMnemonic] and
   /// `docs/security/memory_contract.md`.
   Future<Wallet> create({int strength = 128, String passphrase = ''});
 
@@ -167,12 +161,14 @@ abstract interface class Wallet {
   /// string lives until it is collected and cannot be erased. Display it once
   /// and drop the reference.
   ///
-  /// This is one of the five payloads that carry key material across the
-  /// isolate boundary, and one of the two that carry it *back*: the request
-  /// names only this wallet, the reply is the mnemonic. The others are
-  /// [WalletFacade.create] (passphrase out, mnemonic back), [importMnemonic]
-  /// and [importEntropy] (secret out), and keystore import (blob and password
-  /// out). Nothing else crosses in either direction (DECISION-12 §3.2).
+  /// This is the **only** payload that carries key material *back* across the
+  /// isolate boundary, and one of four that carry it in either direction: the
+  /// request names only this wallet, the reply is the mnemonic. The other three
+  /// all go outward — [WalletFacade.create] (a passphrase), [importMnemonic]
+  /// and [importEntropy] (a mnemonic or entropy, and a passphrase), and
+  /// keystore import (a blob and its password). Nothing else crosses in either
+  /// direction (DECISION-12 §3.2). A wallet made by [WalletFacade.create]
+  /// surrenders its mnemonic here too, and nowhere else.
   Future<String> exportMnemonic();
 
   /// Releases this wallet in the owning isolate and awaits the acknowledgement.
@@ -182,13 +178,17 @@ abstract interface class Wallet {
   /// then throws [ClosedError] — and the underlying handle is freed after any
   /// operation already in flight on it has finished.
   ///
-  /// **This wait does not expire.** An operation already running in native code
-  /// cannot be interrupted, so the acknowledgement can legitimately take longer
-  /// than [OperationTimeouts.dispose], which bounds only the owner's own
-  /// dispose step once that step begins. The returned future completes when the
-  /// acknowledgement arrives, or with [WorkerTerminatedError] if the session's
-  /// isolate ends first — never with [OperationTimeoutError]. A caller that must
-  /// bound its wait uses [WalletCore.shutdown], whose grace period does expire.
+  /// **This wait has no deadline**, and there is no timeout setting for it. An
+  /// operation already running in native code cannot be interrupted, so the
+  /// acknowledgement can legitimately take arbitrarily long, and a deadline on
+  /// it could not be enforced anyway: an isolate blocked inside a native delete
+  /// runs no timer, and from outside it looks like any other slow native call
+  /// (DECISION-12 §3.5). The returned future completes when the acknowledgement
+  /// arrives, or with [WorkerTerminatedError] if the session's isolate ends
+  /// first — never with [OperationTimeoutError]. A caller that must bound its
+  /// wait uses [WalletCore.shutdown], whose [OperationTimeouts.shutdownGrace]
+  /// does expire and kills the isolate; that kill does not wipe what the
+  /// isolate owned.
   Future<void> close();
 }
 
@@ -356,7 +356,7 @@ abstract interface class ResourceScope {
 
 These types cross the isolate boundary: **13 requests and 14 replies**. Every one of them is a plain immutable value with no native address and no reference to anything unsendable except the one reply port in `Init`.
 
-Five of the 27 carry key material, and they are enumerated rather than counted loosely (DECISION-12 §3.2): the requests `CreateWallet` (a passphrase), `ImportWallet` (a mnemonic or entropy, and a passphrase) and `ImportKey` (a keystore blob and its password, or raw key bytes under `advanced.dart`); and the replies `WalletCreated` (the generated mnemonic, only when the caller asked for it) and `MnemonicExported` (the wallet's mnemonic). Every other request and reply is key-less by construction. A secret-bearing payload is never logged, never put into an error, and never retained by the worker after it has crossed; the SDK drops its own references, and cannot erase the caller's.
+Four of the 27 carry key material, and they are enumerated rather than counted loosely (DECISION-12 §3.2): the requests `CreateWallet` (a passphrase), `ImportWallet` (a mnemonic or entropy, and a passphrase) and `ImportKey` (a keystore blob and its password, or raw key bytes under `advanced.dart`); and one reply, `MnemonicExported` (the wallet's mnemonic). `WalletCreated` carries a reference and nothing else — a newly created wallet's mnemonic comes back through `ExportMnemonic` like any other, so a mnemonic crosses the boundary by exactly one reply type. Every other request and reply is key-less by construction. A secret-bearing payload is never logged, never put into an error, and never retained by the worker after it has crossed; the SDK drops its own references, and cannot erase the caller's.
 
 ```dart
 sealed class WorkerRequest {
@@ -383,8 +383,7 @@ sealed class WorkerReply {
 }
 
 final class InitOk extends WorkerReply { … }             // resolved symbol count
-final class WalletCreated extends WorkerReply { … }      // walletRef, optional mnemonic — carries a secret
-                                                         //   when the caller asked CreateWallet for one
+final class WalletCreated extends WorkerReply { … }      // walletRef only — no mnemonic, no secret
 final class KeyImported extends WorkerReply { … }        // keyRef
 final class MnemonicExported extends WorkerReply { … }   // mnemonic — carries a secret
 final class AddressDerived extends WorkerReply { … }     // address, public key, path
