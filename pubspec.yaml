@@ -43,4 +43,21 @@ melos:
         - melos exec --flutter --dir-exists=test -- flutter test
         - melos exec --no-flutter --dir-exists=test -- dart test
     manifest:validate: dart run tools/manifest/bin/validate.dart compat_manifest.json
+
+    native:host-lib:
+      description: >-
+        Relink upstream's macOS static archive into the host library that
+        `melos run test:native` loads (DECISION-9 Option A', T1.6). Build-time
+        tooling only; the output goes outside the repository. Needs the cached
+        upstream release asset under $WCF_UPSTREAM_CACHE (default
+        ~/.cache/wcf-upstream) and the commit pin T1.1 writes into
+        compat_manifest.json; until that pin exists, call
+        tools/native_build/build_apple.sh directly with --commit.
+      run: >-
+        tools/native_build/build_apple.sh
+        --cache-dir "${WCF_UPSTREAM_CACHE:-$HOME/.cache/wcf-upstream}"
+        --from-manifest compat_manifest.json
+        --slices macos-arm64_x86_64
+        --out-dir "${WCF_NATIVE_OUT:-${TMPDIR:-/tmp}/wcf-native}"
+        --expect-symbol-count 464
     vectors:validate: dart run tools/vectors/bin/validate.dart test_vectors
