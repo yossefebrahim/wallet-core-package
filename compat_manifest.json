@@ -2,7 +2,7 @@
   "upstream": {
     "repo": "trustwallet/wallet-core",
     "tag": "4.8.0",
-    "commit": "TBD-T1.1"
+    "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
   },
   "generators": {
     "ffigen": "TBD-T1.3",
@@ -11,9 +11,9 @@
     "registry_transform": "TBD-T1.5"
   },
   "schemas": {
-    "proto_dir_sha": "TBD-T1.1",
-    "registry_json_sha": "TBD-T1.1",
-    "headers_sha": "TBD-T1.1"
+    "proto_dir_sha": "a488593adb2d9b5622018a19b22748bf00781ee885fdaa6c4b145b12fd8447f0",
+    "registry_json_sha": "efc954c95e1105b8359534bd60a8e670bbd91adbeaee789b1d47cfeed81df780",
+    "headers_sha": "e716ad9bab5eae74e6e5d97965c12a6aac09c72d296a7726a91d9c620b0285fe"
   },
   "artifacts": {
     "android/arm64-v8a/libTrustWalletCore.so": {
@@ -48,7 +48,7 @@
   "identity": {
     "symbol": "wcf_build_info",
     "artifact_set_id": "TBD-T1.2",
-    "upstream_commit": "TBD-T1.1"
+    "upstream_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
   },
   "retention": {
     "primary": "TBD-T0.11",

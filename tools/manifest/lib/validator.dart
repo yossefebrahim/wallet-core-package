@@ -64,6 +64,58 @@ List<String> validateManifest(Map<String, Object?> raw, {bool strict = false}) {
     }
   }
 
+  // Semantic checks for the fields T1.1 resolves (D0 finding F15). Each one
+  // only fires once the placeholder is gone, so a Phase 0 manifest full of
+  // `TBD-` values still validates in the non-strict path.
+  final hexShaRegExp = RegExp(r'^[a-f0-9]{64}$');
+  final commitShaRegExp = RegExp(r'^[a-f0-9]{40}$');
+
+  /// A resolved upstream commit is 40 lowercase hex characters. Under
+  /// `--strict` an unresolved placeholder is itself an error; without it a
+  /// placeholder is accepted and anything else must still be a real sha.
+  void validateCommitSha(Object? value, String path) {
+    if (!checkType<String>(value, path)) return;
+    final text = value as String;
+    if (placeholderRegExp.hasMatch(text)) {
+      if (strict) {
+        errors.add('Placeholder found in strict mode at $path: $text');
+      }
+      return;
+    }
+    if (!commitShaRegExp.hasMatch(text)) {
+      errors.add(
+        'Invalid commit sha at $path: expected 40 lowercase hex characters, '
+        'got "$text"',
+      );
+    }
+  }
+
+  /// A schema digest is 64 lowercase hex characters once it is filled in.
+  void validateSchemaSha(Object? value, String path) {
+    if (!checkType<String>(value, path)) return;
+    final text = value as String;
+    if (placeholderRegExp.hasMatch(text)) {
+      if (strict) {
+        errors.add('Placeholder found in strict mode at $path: $text');
+      }
+      return;
+    }
+    if (!hexShaRegExp.hasMatch(text)) {
+      errors.add(
+        'Invalid sha256 at $path: expected 64 lowercase hex characters, '
+        'got "$text"',
+      );
+    }
+  }
+
+  /// Fields that are never legitimately blank, placeholder or not.
+  void validateNonEmpty(Object? value, String path) {
+    if (!checkType<String>(value, path)) return;
+    if ((value as String).trim().isEmpty) {
+      errors.add('Empty value at $path: expected a non-empty string');
+    }
+  }
+
   void validateSemver(Object? value, String path) {
     if (value is String) {
       if (placeholderRegExp.hasMatch(value)) {
@@ -87,13 +139,13 @@ List<String> validateManifest(Map<String, Object?> raw, {bool strict = false}) {
     checkKeys(map, 'upstream', {'repo', 'tag', 'commit'});
     if (checkType<String>(map['repo'], 'upstream.repo')) {
       validateValue(map['repo'], 'upstream.repo');
+      validateNonEmpty(map['repo'], 'upstream.repo');
     }
     if (checkType<String>(map['tag'], 'upstream.tag')) {
       validateValue(map['tag'], 'upstream.tag');
+      validateNonEmpty(map['tag'], 'upstream.tag');
     }
-    if (checkType<String>(map['commit'], 'upstream.commit')) {
-      validateValue(map['commit'], 'upstream.commit');
-    }
+    validateCommitSha(map['commit'], 'upstream.commit');
   } else if (raw.containsKey('upstream')) {
     errors.add(
       'Wrong type at upstream: expected Map, got ${raw['upstream'].runtimeType}',
@@ -135,9 +187,7 @@ List<String> validateManifest(Map<String, Object?> raw, {bool strict = false}) {
     });
     for (final k in ['proto_dir_sha', 'registry_json_sha', 'headers_sha']) {
       if (map.containsKey(k)) {
-        if (checkType<String>(map[k], 'schemas.$k')) {
-          validateValue(map[k], 'schemas.$k');
-        }
+        validateSchemaSha(map[k], 'schemas.$k');
       }
     }
   } else if (raw.containsKey('schemas')) {
@@ -229,11 +279,22 @@ List<String> validateManifest(Map<String, Object?> raw, {bool strict = false}) {
       'upstream_commit',
     });
     for (final k in map.keys) {
-      if (map.containsKey(k)) {
-        if (checkType<String>(map[k], 'identity.$k')) {
-          validateValue(map[k], 'identity.$k');
-        }
+      if (k == 'upstream_commit') {
+        // Same field as upstream.commit (PRD §15.3), same rule.
+        validateCommitSha(map[k], 'identity.upstream_commit');
+      } else if (checkType<String>(map[k], 'identity.$k')) {
+        validateValue(map[k], 'identity.$k');
       }
+    }
+    final upstreamBlock = raw['upstream'];
+    if (upstreamBlock is Map<String, Object?> &&
+        map['upstream_commit'] is String &&
+        upstreamBlock['commit'] is String &&
+        map['upstream_commit'] != upstreamBlock['commit']) {
+      errors.add(
+        'identity.upstream_commit (${map['upstream_commit']}) does not match '
+        'upstream.commit (${upstreamBlock['commit']})',
+      );
     }
   } else if (raw.containsKey('identity')) {
     errors.add(
