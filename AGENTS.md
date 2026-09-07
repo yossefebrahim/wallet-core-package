@@ -4,18 +4,18 @@ This file is the single source of the rules that govern every change made in thi
 
 ## Rules
 
-1. Generated directories (`**/lib/src/generated/**`, `docs/capability_matrix.*`) are never hand-edited. Regenerate with the `melos run gen:*` scripts. CI fails on a clean-regeneration diff.
-2. No cryptography, key derivation, hashing, or signed-transaction serialization is implemented in this repository. Every such operation calls upstream through the generated bindings. Encoding upstream's *signing-input* protobuf in Dart is allowed; producing the signed transaction bytes is not.
+1. Generated directories (`**/lib/src/generated/**`, `docs/capability_matrix.*`) are never hand-edited. Regenerate with the `melos run gen:*` scripts. CI fails on a clean-regeneration diff once `gen:check` exists (T1.3); until then this rule is enforced by review.
+2. No cryptography, key derivation, or signed-transaction serialization is implemented in this repository. Every such operation calls upstream through the generated bindings. Encoding upstream's *signing-input* protobuf in Dart is allowed; producing the signed transaction bytes is not. Standard integrity hashing — SHA-256 of artifacts, manifests, and generated inputs, as PRD §12.3 requires — is allowed; it is verification, not wallet cryptography.
 3. No network access at runtime in SDK, bindings, or native-loader code. Artifact download happens only in the native package's build-time tooling.
-4. `package:wallet_core_flutter/wallet_core_flutter.dart` exports no `dart:ffi` type, no generated `TW*` class, and no protobuf class in any public signature. `advanced.dart` is the only place they may appear.
+4. `package:wallet_core_flutter/wallet_core_flutter.dart` exports no `dart:ffi` type, no generated `TW*` class, and no protobuf class in any public signature. Within the SDK package, `advanced.dart` is the only file that may export them; a consumer who accepts the ownership responsibilities of PRD §11 may also import the bindings package directly.
 5. Every native-backed object implements the disposal contract of PRD §11.2: explicit `dispose()`, finalizer detach, double-dispose no-op, `DisposedError` after disposal, `finally`-released temporaries.
 6. Requests (`*TransactionRequest`, message requests) never contain key material. Family code encodes key-less inputs and parses results; only the signer injects keys (PRD §11.4 family boundary). Raw protobuf signing exists only under `advanced.dart`.
 7. Every test vector entry cites its provenance: upstream file path and commit, a standard (BIP/SLIP) reference, or a published transaction hash.
-8. Docs and README never use the words "zeroization", "secret-free", "reproducible", or "audited" about this SDK, and never make a legal claim about AGPL. Package names never contain "trust". The disclaimer "Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet." appears wherever the project is described.
+8. Docs and README never use the words "zeroization", "secret-free", or "audited" about this SDK; never use "reproducible" about its artifacts until PRD §12.4's independent-rebuild demonstration is recorded (M3, T4.4); and never make a legal claim about AGPL. Package names never contain "trust". The disclaimer "Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet." appears wherever the project is described.
 9. Do not add a dependency without listing it, with version, in the final report.
 10. Do not run `git add`, `git commit`, or `git push`. Do not start another agent session. Leave all work uncommitted for the orchestrator.
 11. Touch only the owned paths named in the brief. No unrelated cleanup, renames, or formatting sweeps.
-12. The public SDK never exposes the generated `CoinType`; use the stable coin/network facade (PRD §8, DECISION-11). Public resources close asynchronously; only internal wrappers have synchronous `dispose()` (PRD §11.2, §14.3). Signers take a set of `KeyLocator`s and return sealed `SignResult`s (PRD §10.2, DECISION-13).
+12. The default public SDK surface never exposes the generated `CoinType`; use the stable coin/network facade (PRD §8, DECISION-11). Public resources of the default surface close asynchronously; synchronous `dispose()` exists only on internal wrappers and on the same-isolate objects of `advanced.dart`, which follow the internal ownership contract (PRD §11.2, §14.3). Signers take a set of `KeyLocator`s and return sealed `SignResult`s (PRD §10.2, DECISION-13).
 
 ## Canonical gates
 
