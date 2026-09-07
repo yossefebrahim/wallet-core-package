@@ -1,0 +1,2 @@
+a8ae6746	2025-12-31	Sergei Boiko	fix(ethereum-abi): Fix Ethereum ABI type parsing recursion + chore actions and toolchain (#4597)
+11bd2fba	2025-06-09	gupnik	Adds flutter bindings (#4412)
