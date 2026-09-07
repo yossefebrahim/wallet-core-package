@@ -1,0 +1,93 @@
+vectors:
+  - id: ethereum-invalid_input-n/a-1
+    coin: ethereum
+    operation: invalid_input
+    variant: n/a
+    source:
+      kind: standard
+      reference: BIP-39
+    input:
+      mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon"
+    expected:
+      error: "invalid_mnemonic"
+    platforms_verified: []
+
+  - id: ethereum-invalid_input-n/a-2
+    coin: ethereum
+    operation: invalid_input
+    variant: n/a
+    source:
+      kind: standard
+      reference: EIP-55
+    input:
+      address: "0xZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+    expected:
+      error: "invalid_address"
+    platforms_verified: []
+
+  - id: ethereum-invalid_input-n/a-3
+    coin: ethereum
+    operation: invalid_input
+    variant: n/a
+    source:
+      kind: standard
+      reference: BIP-44
+    input:
+      derivation_path: "m/44/60/invalid"
+    expected:
+      error: "invalid_derivation_path"
+    platforms_verified: []
+
+  - id: ethereum-address-n/a-1
+    coin: ethereum
+    operation: address
+    variant: n/a
+    source:
+      kind: upstream_test
+      path: swift/Tests/Blockchains/EthereumTests.swift
+      commit: d692ac27749d0c615e17c751b70ab4f0aa75c59b
+    input:
+      mnemonic: "broom ramp luggage this language sketch door allow elbow wife moon impulse"
+      derivation_path: "m/44'/60'/0'/0/1"
+    expected:
+      address: "0x996891c410FB76C19DBA72C6f6cEFF2d9DD069b1"
+      public_key: "044516c4aa5352035e1bb5be132694e1389a4ac37d32e5e717d35ee4c4dfab513226a9d14ea37a55962ad3644a08e2ce551b4495beabb9b09e688c7b92eba18acc"
+    platforms_verified: []
+
+  - id: ethereum-sign-eip1559-1
+    coin: ethereum
+    operation: sign
+    variant: eip1559
+    source:
+      kind: upstream_test
+      path: tests/chains/Ethereum/TWAnySignerTests.cpp
+      commit: d692ac27749d0c615e17c751b70ab4f0aa75c59b
+      # TEST(TWAnySignerEthereum, SignERC1559Transfer_1442), lines 313-349.
+      # The test also links the broadcast transaction
+      # ropsten.etherscan.io/tx/0x14429509307efebfdaa05227d84c147450d168c68539351fbc01ed87c916ab2e
+      # in a comment. That hash is NOT asserted by the test, so it is
+      # deliberately not carried as an expected value here.
+    input:
+      chain_id: "3" # Converted from uint256_t(3)
+      nonce: "6" # Converted from uint256_t(6)
+      max_priority_fee_per_gas: "2000000000" # Converted from uint256_t(2000000000)
+      max_fee_per_gas: "3000000000" # Converted from uint256_t(3000000000)
+      gas_limit: "21100" # Converted from uint256_t(21100)
+      to_address: "0xB9F5771C27664bF2282D98E09D7F50cEc7cB01a7"
+      value: "543210987654321" # Converted from uint256_t(543210987654321)
+      data: "" # transfer.set_data(Data().data(), 0)
+      # Upstream's published test key for this vector, read from the same test
+      # function (`auto key = parse_hex(...)`). Chain id 3 is Ropsten, a
+      # deprecated testnet; this key has never held mainnet value. Without it
+      # the vector cannot be executed, because the expected bytes below are the
+      # signature this key produces.
+      private_key: "4f96ed80e9a7555a6f74b3d658afdd9c756b0a40d4ca30c42c2039eb449bb904"
+    expected:
+      encoded: "02f8710306847735940084b2d05e0082526c94b9f5771c27664bf2282d98e09d7f50cec7cb01a78701ee0c29f50cb180c080a092c336138f7d0231fe9422bb30ee9ef10bf222761fe9e04442e3a11e88880c64a06487026011dae03dc281bc21c7d7ede5c2226d197befb813a4ecad686b559e58"
+      # The remaining three are asserted by the same upstream test and are what
+      # DECISION-13's EvmSignResult exposes, so the vector checks the parsed
+      # result and not only the raw bytes.
+      v: "00"
+      r: "92c336138f7d0231fe9422bb30ee9ef10bf222761fe9e04442e3a11e88880c64"
+      s: "6487026011dae03dc281bc21c7d7ede5c2226d197befb813a4ecad686b559e58"
+    platforms_verified: []

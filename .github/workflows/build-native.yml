@@ -1,0 +1,520 @@
+name: Build native artifacts
+
+# This workflow is the source of truth for how one artifact set is made.
+#
+# Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library.
+# Not affiliated with or endorsed by Trust Wallet.
+#
+# One run produces one artifact set — id `as_<upstreamTag>_<nnn>`, never reused
+# — and publishes it as a release of THIS repository tagged
+# `native-<upstreamTag>-<nnn>`, with content-addressed asset names
+# (DECISION-14 §3.1). Two jobs feed it, because DECISION-9 chose Option C and
+# the two platforms have nothing in common on the way in:
+#
+#   apple    Relinks upstream's own static archives from the
+#            TrustWalletCore-<tag>.tar.xz release asset together with our
+#            wcf_build_info.c. We did not compile upstream's object code; every
+#            record says so with provenance
+#            `relinked_from_upstream_release_asset`. Moving Apple to a
+#            from-source build is the declared M3 target (DECISION-9 §4 step 3).
+#
+#   android  Builds upstream's git tree at the pinned commit with our
+#            wcf_build_info.c linked in. There is no alternative: upstream
+#            ships no Android artifact on GitHub Releases and its GitHub
+#            Packages coordinate is token-gated, so there is nothing to mirror.
+#            Records say `built_from_source`.
+#
+# Every gate is in tools/native_build/ and runs the same command a developer
+# runs locally. Nothing here is reachable from the three published packages at
+# runtime; artifact download is build-time tooling only (PRD §16 S4).
+#
+# CHECKSUMS RECORDED HERE ARE FIRST-SEEN. Six of upstream's eight 4.8.0 release
+# assets carry no upstream-published checksum, TrustWalletCore-<tag>.tar.xz
+# among them. Every digest this workflow writes is one we computed over bytes
+# we downloaded; none of it is attested by upstream. `--expected-tarball-sha256`
+# pins a later run to an earlier observation of ours, which is the strongest
+# statement available and is not the same as an upstream attestation.
+#
+# NOT YET RUN. At the time this file was written it had never executed: its
+# first run is a human's. The Apple half was exercised end to end on a
+# developer machine (the relink, both gates, the record, and a dart:ffi call
+# into the produced library); the Android half was not, because no NDK, JDK or
+# Gradle was available there.
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: Upstream release tag, e.g. 4.8.0
+        required: true
+        default: '4.8.0'
+      upstream_commit:
+        description: 40 lowercase hex commit the tag resolves to
+        required: true
+        default: 'd692ac27749d0c615e17c751b70ab4f0aa75c59b'
+      artifact_set_id:
+        description: >-
+          as_<tag>_<nnn>. NEVER REUSED, monotonic within a tag. Allocated by
+          you, not by the workflow: a set id is a permanent identifier and
+          picking it automatically would let a re-run quietly mint one.
+        required: true
+        default: 'as_4.8.0_001'
+      expected_tarball_sha256:
+        description: >-
+          Optional. Pin the Apple input asset to a digest seen before. Upstream
+          publishes none for it, so this pins to OUR earlier observation.
+        required: false
+        default: '30b0532d9f143b6409aa405f3ba124625fb01e70f13d8e52b3904334c617ff60'
+      android_abis:
+        description: >-
+          ABIs to ship. armeabi-v7a and x86 are excluded on purpose: PRD §12.2
+          step 8 drops an ABI that is not device-tested.
+        required: true
+        default: 'arm64-v8a,x86_64'
+      xcode_version:
+        description: >-
+          Xcode to select on the macOS runner. Pinned rather than defaulted:
+          the toolchain goes into every Apple record, so it must not drift with
+          the runner image. The job fails and lists what is installed if this
+          version is absent.
+        required: true
+        default: '26.6'
+      ndk_version:
+        description: >-
+          NDK for the Android build. r27+ is required so that
+          -Wl,-z,max-page-size=16384 is the default; the alignment gate proves
+          it reached the bytes. 28.0.12674087 is what upstream's own
+          android/wallet-core/build.gradle pins at 4.8.0.
+        required: true
+        default: '28.0.12674087'
+      cmake_version:
+        description: CMake required by upstream's Gradle module.
+        required: true
+        default: '3.18.1'
+      expected_symbol_count:
+        description: >-
+          How many TW* C functions the tag's headers must declare. 464 at
+          4.8.0. A different number at a new tag is not necessarily wrong, but
+          it must be a decision and not a surprise, so the build stops.
+        required: true
+        default: '464'
+      publish_release:
+        description: >-
+          false (default) uploads to a DRAFT release, which can be deleted and
+          retried. true publishes it. A tag and an asset name are never reused
+          (DECISION-14 §3.1), so a botched public run costs a set id.
+        required: true
+        type: boolean
+        default: false
+
+# Never cancel a run in flight: a cancelled publish leaves a half-uploaded
+# release under a tag that can never be reused.
+concurrency:
+  group: build-native-${{ inputs.artifact_set_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # The absolute URL of this run, compiled into wcf_build_info() and recorded
+  # in every artifact record (DECISION-14 §2.1).
+  BUILD_WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  plan:
+    name: Validate inputs and reserve the release tag
+    runs-on: ubuntu-24.04
+    outputs:
+      release_tag: ${{ steps.plan.outputs.release_tag }}
+      sequence: ${{ steps.plan.outputs.sequence }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Validate the inputs and derive the release tag
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag='${{ inputs.upstream_tag }}'
+          commit='${{ inputs.upstream_commit }}'
+          set_id='${{ inputs.artifact_set_id }}'
+
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::upstream_commit must be 40 lowercase hex, got $commit"; exit 1; }
+          [[ "$set_id" =~ ^as_[0-9A-Za-z._-]+_[0-9]{3}$ ]] || {
+            echo "::error::artifact_set_id must look like as_<tag>_<nnn>, got $set_id"; exit 1; }
+          [[ "$set_id" == "as_${tag}_"* ]] || {
+            echo "::error::artifact_set_id $set_id does not belong to tag $tag"; exit 1; }
+
+          sequence="${set_id##*_}"
+          release_tag="native-${tag}-${sequence}"
+
+          # A set id and a release tag are permanent. If the tag already exists,
+          # this run would either fail at upload or overwrite history; stop here
+          # instead and make the operator allocate the next sequence.
+          if gh release view "$release_tag" --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            echo "::error::release $release_tag already exists. Allocate the next sequence; a tag is never reused (DECISION-14 §3.1)."
+            exit 1
+          fi
+
+          echo "release_tag=$release_tag" >>"$GITHUB_OUTPUT"
+          echo "sequence=$sequence" >>"$GITHUB_OUTPUT"
+          echo "artifact set: $set_id"
+          echo "release tag:  $release_tag"
+          echo "workflow url: $BUILD_WORKFLOW_URL"
+
+  # ---------------------------------------------------------------------------
+  apple:
+    name: Apple (relink upstream's static archives)
+    needs: plan
+    runs-on: macos-15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Select the pinned Xcode
+        run: |
+          set -euo pipefail
+          app="/Applications/Xcode_${{ inputs.xcode_version }}.app"
+          if [[ ! -d "$app" ]]; then
+            echo "::error::Xcode ${{ inputs.xcode_version }} is not on this runner. Installed:"
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "$app"
+          xcodebuild -version
+
+      # The Apple input. Upstream publishes no checksum for it; the digest the
+      # build records is first-seen, and --expected-tarball-sha256 pins it to
+      # our own earlier observation when one is given.
+      - name: Download TrustWalletCore-${{ inputs.upstream_tag }}.tar.xz
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/upstream"
+          gh release download '${{ inputs.upstream_tag }}' \
+            --repo trustwallet/wallet-core \
+            --pattern 'TrustWalletCore-*.tar.xz' \
+            --dir "$RUNNER_TEMP/upstream"
+          ls -l "$RUNNER_TEMP/upstream"
+
+      # One clang invocation per architecture, with a -u list generated from
+      # the tag's own headers. The list is load-bearing: -all_load fails on
+      # eight undefined Monero symbols in these archives (T0.5, evidence §4.3).
+      # Gates run inside the script, per artifact.
+      - name: Relink, gate, and record
+        env:
+          EXPECTED_TARBALL_SHA256: ${{ inputs.expected_tarball_sha256 }}
+        run: |
+          set -euo pipefail
+          args=(
+            --tarball "$RUNNER_TEMP/upstream/TrustWalletCore-${{ inputs.upstream_tag }}.tar.xz"
+            --tag '${{ inputs.upstream_tag }}'
+            --commit '${{ inputs.upstream_commit }}'
+            --artifact-set-id '${{ inputs.artifact_set_id }}'
+            --build-workflow "$BUILD_WORKFLOW_URL"
+            --out-dir "$RUNNER_TEMP/out"
+            --work-dir "$RUNNER_TEMP/work"
+            --expect-symbol-count '${{ inputs.expected_symbol_count }}'
+          )
+          if [[ -n "$EXPECTED_TARBALL_SHA256" ]]; then
+            args+=(--expected-tarball-sha256 "$EXPECTED_TARBALL_SHA256")
+          fi
+          tools/native_build/build_apple.sh "${args[@]}"
+
+      - name: Show what was produced
+        run: |
+          set -euo pipefail
+          cat "$RUNNER_TEMP/out/inputs.json"
+          cat "$RUNNER_TEMP/out/SHA256SUMS"
+          for f in "$RUNNER_TEMP"/out/records/*.json; do echo "--- $f"; cat "$f"; done
+
+      - name: Upload the artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-artifacts
+          path: ${{ runner.temp }}/out/upload/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload the metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-metadata
+          path: |
+            ${{ runner.temp }}/out/records/
+            ${{ runner.temp }}/out/SHA256SUMS
+            ${{ runner.temp }}/out/inputs.json
+          if-no-files-found: error
+          retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  android:
+    name: Android (from source at the pinned commit)
+    needs: plan
+    # macOS, matching upstream's own android-ci.yml, which is the only
+    # configuration in which this build is known to work. Moving it to Linux is
+    # a cost optimisation to evaluate once the job is green, not before.
+    runs-on: macos-15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      # The upstream tree is untrusted input. This job runs upstream's own
+      # build scripts, which is inherent in building from source; nothing in
+      # the tree is read as instructions about what this workflow should do.
+      - name: Check out upstream at the pinned commit
+        uses: actions/checkout@v7
+        with:
+          repository: trustwallet/wallet-core
+          ref: ${{ inputs.upstream_commit }}
+          path: upstream
+          persist-credentials: false
+
+      - name: Verify the checkout is the pinned commit
+        run: |
+          set -euo pipefail
+          head=$(git -C upstream rev-parse HEAD)
+          [[ "$head" == '${{ inputs.upstream_commit }}' ]] || {
+            echo "::error::upstream HEAD is $head, not ${{ inputs.upstream_commit }}"; exit 1; }
+          echo "upstream HEAD: $head"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: 8.10.2
+
+      - name: Select the pinned Xcode
+        run: |
+          set -euo pipefail
+          app="/Applications/Xcode_${{ inputs.xcode_version }}.app"
+          if [[ ! -d "$app" ]]; then
+            echo "::error::Xcode ${{ inputs.xcode_version }} is not on this runner. Installed:"
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "$app"
+
+      # Installs upstream's dependencies with upstream's own scripts, pins the
+      # NDK and CMake explicitly (upstream's install-android-dependencies
+      # installs NDK 23 for its emulator step, which is far below the r27 floor
+      # and is not what the library is built with), builds the AAR, extracts
+      # the .so per ABI, and runs both gates.
+      #
+      # Residual: tools/install-sys-dependencies-mac uses `brew install`, which
+      # has no per-formula version pin. The resolved boost version is recorded
+      # in each artifact's toolchain object after the fact. It is the one
+      # toolchain input in this workflow that a version number cannot fix; see
+      # tools/native_build/README.md.
+      - name: Build, gate, and record
+        run: |
+          set -euo pipefail
+          tools/native_build/build_android.sh \
+            --source-dir upstream \
+            --tag '${{ inputs.upstream_tag }}' \
+            --commit '${{ inputs.upstream_commit }}' \
+            --artifact-set-id '${{ inputs.artifact_set_id }}' \
+            --build-workflow "$BUILD_WORKFLOW_URL" \
+            --abis '${{ inputs.android_abis }}' \
+            --ndk-version '${{ inputs.ndk_version }}' \
+            --cmake-version '${{ inputs.cmake_version }}' \
+            --out-dir "$RUNNER_TEMP/out" \
+            --work-dir "$RUNNER_TEMP/work" \
+            --expect-symbol-count '${{ inputs.expected_symbol_count }}'
+
+      - name: Show what was produced
+        run: |
+          set -euo pipefail
+          cat "$RUNNER_TEMP/out/inputs.json"
+          cat "$RUNNER_TEMP/out/SHA256SUMS"
+          for f in "$RUNNER_TEMP"/out/records/*.json; do echo "--- $f"; cat "$f"; done
+
+      - name: Upload the artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-artifacts
+          path: ${{ runner.temp }}/out/upload/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload the metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-metadata
+          path: |
+            ${{ runner.temp }}/out/records/
+            ${{ runner.temp }}/out/SHA256SUMS
+            ${{ runner.temp }}/out/inputs.json
+          if-no-files-found: error
+          retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Assemble the set and upload the release
+    needs: [plan, apple, android]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Download the Apple artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-artifacts
+          path: set/upload
+
+      - name: Download the Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-artifacts
+          path: set/upload
+
+      - name: Download the Apple metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-metadata
+          path: set/apple
+
+      - name: Download the Android metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: android-metadata
+          path: set/android
+
+      # Every asset is re-hashed here, after the round trip through the
+      # workflow-artifact store, and compared against what the build jobs
+      # recorded. An asset name carries its own digest (DECISION-14 §3.1), so
+      # this also proves each file still matches its name.
+      - name: Re-verify every asset against the digest in its own name
+        run: |
+          set -euo pipefail
+          cd set/upload
+          fail=0
+          for f in *; do
+            actual=$(sha256sum "$f" | cut -d' ' -f1)
+            embedded=$(printf '%s' "$f" | awk -F'__' '{print $2}')
+            if [[ "$actual" != "$embedded" ]]; then
+              echo "::error::$f hashes to $actual but its name says $embedded"
+              fail=1
+            fi
+          done
+          (( fail == 0 )) || exit 1
+          echo "$(ls | wc -l) assets verified against the digests in their names"
+          sha256sum * | tee "$GITHUB_WORKSPACE/set/SHA256SUMS"
+
+      - name: Merge the per-artifact records into an artifacts block
+        run: |
+          set -euo pipefail
+          jq -s 'add' set/apple/records/*.json set/android/records/*.json >set/artifacts.json
+          jq . set/artifacts.json
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+
+      - name: Activate melos
+        run: dart pub global activate melos 8.6.0
+
+      - name: melos bootstrap
+        run: melos bootstrap
+
+      # The set does not ship unless it validates against DECISION-14 §5.1.
+      # compat_manifest.json is not edited here — the manifest update is a
+      # reviewed commit (DECISION-14 §4.3 step 2) — so the check runs against a
+      # copy with this run's artifacts, identity and toolchain spliced in.
+      - name: Validate the artifacts block against the manifest schema
+        run: |
+          set -euo pipefail
+          jq --slurpfile a set/artifacts.json \
+             --arg commit '${{ inputs.upstream_commit }}' \
+             --arg set_id '${{ inputs.artifact_set_id }}' \
+             --arg workflow "$BUILD_WORKFLOW_URL" '
+               .artifacts = $a[0]
+               | .identity = {
+                   symbol: "wcf_build_info",
+                   artifact_set_id: $set_id,
+                   upstream_commit: $commit,
+                   build_workflow: $workflow
+                 }
+             ' compat_manifest.json >set/candidate_manifest.json
+          dart run tools/manifest/bin/validate.dart set/candidate_manifest.json
+
+      # What the human pastes into compat_manifest.json, and what
+      # DECISION-14 §4.3 step 2 then reviews and commits.
+      - name: Print the manifest fragment to commit
+        run: |
+          set -euo pipefail
+          {
+            echo '## Artifact set `${{ inputs.artifact_set_id }}`'
+            echo
+            echo 'Release: `${{ needs.plan.outputs.release_tag }}`'
+            echo
+            echo 'Paste into `compat_manifest.json` — `artifacts`, `identity`,'
+            echo 'and `retention.primary` — then commit and review'
+            echo '(DECISION-14 §4.3 step 2).'
+            echo
+            echo '```json'
+            jq '{artifacts: .artifacts, identity: .identity,
+                 retention_primary: "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ needs.plan.outputs.release_tag }}"}' \
+              set/candidate_manifest.json
+            echo '```'
+            echo
+            echo 'Digests below are FIRST-SEEN values computed by this run.'
+            echo 'Upstream publishes no checksum for the Apple input asset.'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      # TODO(DECISION-14 §4.5): a CycloneDX 1.5 SBOM per artifact set, marked
+      # so that components we compiled are distinguishable from inventory
+      # derived from upstream's declarations. T1.2 did not produce one, so the
+      # condition attached to promoting the SBOM to the first public alpha is
+      # NOT met and the SBOM stays a 1.0 commitment until a follow-up task
+      # implements it. `sbom` in the manifest stays null; that is a recorded
+      # fact, not an oversight.
+
+      - name: Write the release notes
+        run: |
+          set -euo pipefail
+          cat >set/notes.md <<EOF
+          Artifact set \`${{ inputs.artifact_set_id }}\` for upstream \`${{ inputs.upstream_tag }}\` (\`${{ inputs.upstream_commit }}\`), built by [this workflow run]($BUILD_WORKFLOW_URL).
+
+          Asset names are \`<artifact_set_id>__<sha256>__<flat_name>\` and carry the full 64-hex digest of their own bytes (DECISION-14 §3.1). Verify what you download against \`compat_manifest.json\`.
+
+          **The digests here are first-seen values computed by this project.** Upstream publishes no checksum for the Apple input asset — six of its eight 4.8.0 release assets have none — so nothing upstream attests to these bytes.
+
+          Apple libraries are **relinked from upstream's own release-asset static archives** together with our build-identity object; we did not compile that object code. Android libraries are **built from source** at the pinned commit. Each artifact's \`provenance\` field in the manifest says which.
+
+          Every artifact carries \`wcf_build_info()\`, which returns this set's id and the upstream commit; \`WalletCore.initialize()\` compares it against the manifest.
+
+          Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
+          EOF
+          cat set/notes.md
+
+      - name: Create the release and upload the set
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          args=(
+            '${{ needs.plan.outputs.release_tag }}'
+            --repo '${{ github.repository }}'
+            --title 'Native artifacts ${{ inputs.artifact_set_id }}'
+            --notes-file set/notes.md
+          )
+          if [[ '${{ inputs.publish_release }}' != 'true' ]]; then args+=(--draft); fi
+          gh release create "${args[@]}" set/upload/* set/SHA256SUMS

@@ -101,41 +101,102 @@ class Schemas {
   );
 }
 
+/// The artifact set, keyed by logical name.
+///
+/// The Phase 0 model named four fixed artifacts as fields, which made the ABI
+/// set a code change (D0 finding F14). It is a map now: an artifact set is
+/// whatever the build produced, and which ABIs that is is a manifest fact.
 class Artifacts {
-  final ArtifactFile androidArm64;
-  final ArtifactFile androidArmeabi;
-  final ArtifactFile androidX86_64;
-  final ArtifactFile iosXcframework;
+  final Map<String, ArtifactFile> byLogicalName;
 
-  Artifacts({
-    required this.androidArm64,
-    required this.androidArmeabi,
-    required this.androidX86_64,
-    required this.iosXcframework,
+  Artifacts(this.byLogicalName);
+
+  factory Artifacts.fromJson(Map<String, dynamic> json) => Artifacts({
+    for (final entry in json.entries)
+      entry.key: ArtifactFile.fromJson(
+        entry.key,
+        entry.value as Map<String, dynamic>,
+      ),
   });
 
-  factory Artifacts.fromJson(Map<String, dynamic> json) => Artifacts(
-    androidArm64: ArtifactFile.fromJson(
-      json['android/arm64-v8a/libTrustWalletCore.so'] as Map<String, dynamic>,
-    ),
-    androidArmeabi: ArtifactFile.fromJson(
-      json['android/armeabi-v7a/libTrustWalletCore.so'] as Map<String, dynamic>,
-    ),
-    androidX86_64: ArtifactFile.fromJson(
-      json['android/x86_64/libTrustWalletCore.so'] as Map<String, dynamic>,
-    ),
-    iosXcframework: ArtifactFile.fromJson(
-      json['ios/TrustWalletCore.xcframework.zip'] as Map<String, dynamic>,
-    ),
-  );
+  Iterable<String> get logicalNames => byLogicalName.keys;
+
+  ArtifactFile? operator [](String logicalName) => byLogicalName[logicalName];
+
+  /// Artifacts whose `sha256` is a real digest rather than a `TBD-`
+  /// placeholder — the ones a consumer build could actually fetch.
+  Iterable<ArtifactFile> get populated =>
+      byLogicalName.values.where((a) => a.isPopulated);
 }
 
+/// One artifact's record: the fourteen fields of DECISION-14 §5.1.
+///
+/// Everything past `sha256` and `size` is nullable in this model, and null
+/// means "the manifest does not carry it yet", which is the state of every
+/// entry until T1.2's workflow runs. The validator is what decides when that
+/// is allowed; this class only reads.
 class ArtifactFile {
+  final String logicalNameKey;
   final String sha256;
   final int size;
-  ArtifactFile({required this.sha256, required this.size});
-  factory ArtifactFile.fromJson(Map<String, dynamic> json) =>
-      ArtifactFile(sha256: json['sha256'] as String, size: json['size'] as int);
+  final String? sourceCommit;
+  final String? buildWorkflow;
+  final String? linkage;
+  final String? targetOs;
+  final String? abi;
+  final String? minOs;
+  final Map<String, String>? toolchain;
+  final String? signature;
+  final Map<String, dynamic>? attestation;
+  final String? provenance;
+  final String? assetName;
+  final String? logicalName;
+
+  ArtifactFile({
+    required this.logicalNameKey,
+    required this.sha256,
+    required this.size,
+    this.sourceCommit,
+    this.buildWorkflow,
+    this.linkage,
+    this.targetOs,
+    this.abi,
+    this.minOs,
+    this.toolchain,
+    this.signature,
+    this.attestation,
+    this.provenance,
+    this.assetName,
+    this.logicalName,
+  });
+
+  factory ArtifactFile.fromJson(String key, Map<String, dynamic> json) {
+    final rawToolchain = json['toolchain'];
+    final rawAttestation = json['attestation'];
+    return ArtifactFile(
+      logicalNameKey: key,
+      sha256: json['sha256'] as String,
+      size: json['size'] as int,
+      sourceCommit: json['source_commit'] as String?,
+      buildWorkflow: json['build_workflow'] as String?,
+      linkage: json['linkage'] as String?,
+      targetOs: json['target_os'] as String?,
+      abi: json['abi'] as String?,
+      minOs: json['min_os'] as String?,
+      toolchain: rawToolchain is Map<String, dynamic>
+          ? rawToolchain.map((k, v) => MapEntry(k, v as String))
+          : null,
+      signature: json['signature'] as String?,
+      attestation: rawAttestation is Map<String, dynamic>
+          ? rawAttestation
+          : null,
+      provenance: json['provenance'] as String?,
+      assetName: json['asset_name'] as String?,
+      logicalName: json['logical_name'] as String?,
+    );
+  }
+
+  bool get isPopulated => RegExp(r'^[0-9a-f]{64}$').hasMatch(sha256);
 }
 
 class Packages {
@@ -154,38 +215,42 @@ class Packages {
   );
 }
 
+/// The set-wide toolchain summary (DECISION-14 §5.1 note 1).
+///
+/// Not authoritative: under DECISION-9 Option C one set is built by two
+/// toolchains, so the per-artifact `toolchain` object is what describes a
+/// binary and this carries only what every artifact in the set agrees on. The
+/// key set is therefore open, and reading it is a lookup rather than four
+/// fields.
 class Toolchain {
-  final String ndk;
-  final String xcode;
-  final String cmake;
-  final String rust;
-  Toolchain({
-    required this.ndk,
-    required this.xcode,
-    required this.cmake,
-    required this.rust,
-  });
-  factory Toolchain.fromJson(Map<String, dynamic> json) => Toolchain(
-    ndk: json['ndk'] as String,
-    xcode: json['xcode'] as String,
-    cmake: json['cmake'] as String,
-    rust: json['rust'] as String,
-  );
+  final Map<String, String> entries;
+  Toolchain(this.entries);
+  factory Toolchain.fromJson(Map<String, dynamic> json) =>
+      Toolchain({for (final e in json.entries) e.key: e.value as String});
+
+  String? operator [](String key) => entries[key];
 }
 
 class Identity {
   final String symbol;
   final String artifactSetId;
   final String upstreamCommit;
+
+  /// DECISION-14 §5's new field: the workflow run that produced the set. Null
+  /// until the manifest carries a real artifact set.
+  final String? buildWorkflow;
+
   Identity({
     required this.symbol,
     required this.artifactSetId,
     required this.upstreamCommit,
+    this.buildWorkflow,
   });
   factory Identity.fromJson(Map<String, dynamic> json) => Identity(
     symbol: json['symbol'] as String,
     artifactSetId: json['artifact_set_id'] as String,
     upstreamCommit: json['upstream_commit'] as String,
+    buildWorkflow: json['build_workflow'] as String?,
   );
 }
 
