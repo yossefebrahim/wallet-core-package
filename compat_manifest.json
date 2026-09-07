@@ -5,7 +5,7 @@
     "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
   },
   "generators": {
-    "ffigen": "TBD-T1.3",
+    "ffigen": "21.0.0",
     "protoc": "TBD-T1.4",
     "protoc_gen_dart": "TBD-T1.4",
     "registry_transform": "TBD-T1.5"

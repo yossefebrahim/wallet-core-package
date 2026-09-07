@@ -1,0 +1,2457 @@
+{
+  "generated_by": "melos run gen:ffi (tools/inventory/bin/symbols.dart)",
+  "headers": {
+    "source": "release_asset",
+    "archive": "TrustWalletCore-4.8.0.tar.xz",
+    "archive_sha256": "30b0532d9f143b6409aa405f3ba124625fb01e70f13d8e52b3904334c617ff60",
+    "tag": "4.8.0",
+    "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+    "file_count": 143,
+    "dir_sha256": "94b628c3646822c5c89b8791bb0297a83e9bb6a21ad41681894d7baab285da33"
+  },
+  "generated": {
+    "file": "lib/src/generated/ffi/wallet_core_bindings.dart"
+  },
+  "counts": {
+    "functions": {
+      "in_headers": 466,
+      "in_generated": 466,
+      "missing": 0
+    },
+    "enums": {
+      "in_headers": 19,
+      "in_generated": 19,
+      "missing": 0
+    },
+    "exported_tw_functions": 464
+  },
+  "missing": [],
+  "extra": [],
+  "symbols": {
+    "TWAESPaddingMode": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinSigHashType": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBlockchain": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinType": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCurve": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivation": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumChainID": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWFilecoinAddressType": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWFiroAddressType": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDVersion": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHRP": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyType": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyType": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPurpose": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStellarMemoType": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStellarPassphrase": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStellarVersionByte": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyEncryption": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyEncryptionLevel": {
+      "kind": "enum",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAESDecryptCBC": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAESDecryptCTR": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAESEncryptCBC": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAESEncryptCTR": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountDerivationPath": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountExtendedPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAccountPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateBech32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateBech32WithPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateSS58": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateSS58WithPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateWithPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateWithPublicKeyDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateWithPublicKeyFilecoinAddressType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateWithPublicKeyFiroAddressType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressIsValid": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressIsValidBech32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnyAddressIsValidSS58": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnySignerPlan": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnySignerSign": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnySignerSignJSON": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAnySignerSupportsJSON": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWAsnParserEcdsaSignatureFromDer": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBarzGetCounterfactualAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBarzGetDiamondCutCode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBarzGetFormattedSignature": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBarzGetInitCode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBarzGetPrefixedMsgHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase32Decode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase32DecodeWithAlphabet": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase32Encode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase32EncodeWithAlphabet": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase58Decode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase58DecodeNoCheck": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase58Encode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase58EncodeNoCheck": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase64Decode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase64DecodeUrl": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase64Encode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBase64EncodeUrl": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBech32Decode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBech32DecodeM": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBech32Encode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBech32EncodeM": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressCreateWithPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressIsValid": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressIsValidString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressKeyhash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinAddressPrefix": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinMessageSignerSignMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinMessageSignerVerifyMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptBuildPayToPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptBuildPayToPublicKeyHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptBuildPayToScriptHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptBuildPayToWitnessPubkeyHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptBuildPayToWitnessScriptHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptCreateCopy": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptCreateWithBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptEncode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptHashTypeForCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptIsPayToScriptHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptIsPayToWitnessPublicKeyHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptIsPayToWitnessScriptHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptIsWitnessProgram": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptLockScriptForAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptLockScriptForAddressReplay": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptMatchPayToPubkey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptMatchPayToPubkeyHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptMatchPayToScriptHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptMatchPayToWitnessPublicKeyHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptMatchPayToWitnessScriptHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptScriptHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinScriptSize": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinSigHashTypeIsNone": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBitcoinSigHashTypeIsSingle": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizGetEncodedHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizGetSignedHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizPasskeySessionEncodeExecuteWithPasskeySessionCall": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizPasskeySessionEncodePasskeySessionNonce": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizPasskeySessionEncodeRegisterSessionCall": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizPasskeySessionEncodeRemoveSessionCall": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizPasskeySessionSignExecuteWithSignatureCall": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWBizSignExecuteWithSignatureCall": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCardanoGetByronAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCardanoGetStakingAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCardanoMinAdaAmount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCardanoOutputMinAdaAmount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeBlockchain": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeChainId": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeConfigurationGetAccountURL": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeConfigurationGetDecimals": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeConfigurationGetID": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeConfigurationGetName": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeConfigurationGetNativeTokenName": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeConfigurationGetSymbol": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeConfigurationGetTransactionURL": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeCurve": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeDerivationPath": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeDerivationPathWithDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeDeriveAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeDeriveAddressFromPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeDeriveAddressFromPublicKeyAndDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeHRP": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeP2pkhPrefix": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeP2shPrefix": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypePublicKeyType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypePurpose": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeSS58Prefix": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeSlip44Id": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeStaticPrefix": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeValidate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeXprvVersion": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCoinTypeXpubVersion": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxDecryptEasy": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxEncryptEasy": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxPublicKeyCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxPublicKeyData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxPublicKeyDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxPublicKeyIsValid": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxSecretKeyCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxSecretKeyCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxSecretKeyData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxSecretKeyDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxSecretKeyGetPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWCryptoBoxSecretKeyIsValid": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataAppendByte": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataAppendBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataAppendData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataCopyBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataCreateWithBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataCreateWithHexString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataCreateWithSize": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataReplaceBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataReset": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataReverse": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataSet": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataSize": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataVectorAdd": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataVectorCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataVectorCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataVectorDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataVectorGet": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDataVectorSize": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathAccount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathChange": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathIndexAt": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathIndexCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathIndexDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathIndexDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathIndexHardened": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathIndexValue": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathIndicesCount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWDerivationPathPurpose": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEip7702GetAuthorizationHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEip7702SignAuthorization": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiDecodeCall": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiDecodeContractCall": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiDecodeOutput": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiDecodeParams": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiDecodeValue": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiEncode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiEncodeFunction": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiEncodeTyped": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamBool": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamBytesFix": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamInt16": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamInt32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamInt64": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamInt8": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamIntN": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamUInt16": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamUInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamUInt32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamUInt64": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamUInt8": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddInArrayParamUIntN": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamArray": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamBool": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamBytesFix": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamInt16": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamInt32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamInt64": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamInt8": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamIntN": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamUInt16": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamUInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamUInt32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamUInt64": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamUInt8": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionAddParamUIntN": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionGetParamAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionGetParamBool": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionGetParamString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionGetParamUInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionGetParamUInt64": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionGetParamUInt8": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiFunctionGetType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiGetFunctionSignature": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueDecodeArray": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueDecodeUInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueDecodeValue": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeBool": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeBytesDyn": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeInt32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeUInt256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAbiValueEncodeUInt32": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumAddressChecksummed": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumEip1014Create2Address": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumEip1967ProxyInitCode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumEip2645GetPath": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumMessageSignerSignMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumMessageSignerSignMessageEip155": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumMessageSignerSignMessageImmutableX": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumMessageSignerSignTypedMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumMessageSignerSignTypedMessageEip155": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumMessageSignerVerifyMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWEthereumRlpEncode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWFIOAccountCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWFIOAccountDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWFIOAccountDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWFilecoinAddressConverterConvertFromEthereum": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWFilecoinAddressConverterConvertToEthereum": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWGroestlcoinAddressCreateWithPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWGroestlcoinAddressCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWGroestlcoinAddressDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWGroestlcoinAddressDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWGroestlcoinAddressEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWGroestlcoinAddressIsValidString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDVersionIsPrivate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDVersionIsPublic": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletCreateWithEntropy": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletCreateWithMnemonic": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletCreateWithMnemonicCheck": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletEntropy": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetAddressDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetAddressForCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetDerivedKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetExtendedPrivateKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetExtendedPrivateKeyAccount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetExtendedPrivateKeyDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetExtendedPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetExtendedPublicKeyAccount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetExtendedPublicKeyDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetKeyByCurve": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetKeyDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetKeyForCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetMasterKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletGetPublicKeyFromExtended": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletMnemonic": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHDWalletSeed": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashBlake256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashBlake256Blake256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashBlake256RIPEMD": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashBlake2b": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashBlake2bPersonal": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashGroestl512": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashGroestl512Groestl512": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashKeccak256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashKeccak512": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashRIPEMD": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA1": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA256RIPEMD": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA256SHA256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA3_256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA3_256RIPEMD": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA3_512": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA512": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWHashSHA512_256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWLiquidStakingBuildRequest": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWMessageSignerPreImageHashes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWMessageSignerSign": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWMessageSignerVerify": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWMnemonicIsValid": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWMnemonicIsValidWord": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWMnemonicSuggest": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNEARAccountCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNEARAccountDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNEARAccountDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressArgs": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressCodeHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressHashType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWNervosAddressIsValidString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPBKDF2HmacSha256": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPBKDF2HmacSha512": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyCreateCopy": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKeyByType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKeyCurve25519": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKeyEd25519": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKeyEd25519Blake2b": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKeyEd25519Cardano": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKeyNist256p1": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyGetPublicKeySecp256k1": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeyIsValid": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeySign": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeySignAsDER": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPrivateKeySignZilliqaSchnorr": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyCompressed": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyCreateWithData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyIsCompressed": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyIsValid": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyKeyType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyRecover": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyUncompressed": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyVerify": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyVerifyAsDER": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWPublicKeyVerifyZilliqaSchnorr": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressCreateWithPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressHRP": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressIsValidString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressWitnessProgram": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSegwitAddressWitnessVersion": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaAddressCreateWithString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaAddressDefaultTokenAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaAddressDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaAddressDescription": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaAddressToken2022Address": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionGetComputeUnitLimit": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionGetComputeUnitPrice": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionInsertInstruction": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionInsertTransferInstruction": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionSetComputeUnitLimit": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionSetComputeUnitPrice": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionSetFeePayer": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWSolanaTransactionUpdateBlockhashAndSign": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStarkExMessageSignerSignMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStarkExMessageSignerVerifyMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStarkWareGetStarkKeyFromSignature": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyAccount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyAccountCount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyAccountForCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyAccountForCoinDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyAddAccount": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyAddAccountDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyCreate": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyCreateEncryption": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyCreateLevel": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyCreateLevelAndEncryption": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyDecryptMnemonic": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyDecryptPrivateKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyDecryptPrivateKeyEncoded": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyEncryptionParameters": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyExportJSON": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyFixAddresses": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyFixEncryption": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyHasPrivateKeyEncoded": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyIdentifier": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportHDWallet": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportHDWalletWithEncryption": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportJSON": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportPrivateKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportPrivateKeyEncoded": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportPrivateKeyEncodedWithEncryption": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportPrivateKeyEncodedWithEncryptionAndDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportPrivateKeyWithEncryption": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyImportPrivateKeyWithEncryptionAndDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyIsMnemonic": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyLoad": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyName": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyPrivateKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyRemoveAccountForCoin": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyRemoveAccountForCoinDerivation": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyRemoveAccountForCoinDerivationPath": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyStore": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyStoreWithTemporaryFile": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyUpdateAddress": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStoredKeyWallet": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringCreateWithHexData": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringCreateWithRawBytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringCreateWithUTF8Bytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringDelete": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringEqual": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringGet": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringSize": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWStringUTF8Bytes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTHORChainSwapBuildSwap": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTONAddressConverterFromBoc": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTONAddressConverterToBoc": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTONAddressConverterToUserFriendly": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTONMessageSignerSignMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTONWalletBuildV4R2StateInit": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTONWalletBuildV5R1StateInit": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTezosMessageSignerFormatMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTezosMessageSignerInputToPayload": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTezosMessageSignerSignMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTezosMessageSignerVerifyMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTransactionCompilerCompileWithSignatures": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTransactionCompilerCompileWithSignaturesAndPubKeyType": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTransactionCompilerPreImageHashes": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTransactionDecoderDecode": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTransactionUtilCalcTxHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTronMessageSignerSignMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWTronMessageSignerVerifyMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWWalletConnectRequestParse": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWWebAuthnGetPublicKey": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWWebAuthnGetRSValues": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWWebAuthnReconstructOriginalMessage": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWWebAuthnSolidityGetFormattedSignature": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "TWWebAuthnSolidityGetMessageHash": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "hrpForString": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    },
+    "stringForHRP": {
+      "kind": "function",
+      "in_headers": true,
+      "in_generated": true
+    }
+  }
+}

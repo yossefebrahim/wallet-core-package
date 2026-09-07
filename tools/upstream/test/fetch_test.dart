@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:test/test.dart';
+import 'package:wcf_tool_upstream/dist.dart';
 import 'package:wcf_tool_upstream/fetch.dart';
 import 'package:wcf_tool_upstream/manifest_edit.dart';
 
@@ -65,21 +66,28 @@ void main() {
 
   tearDown(() => work.deleteSync(recursive: true));
 
-  FetchOptions options({String? commit = _commit, String? from}) =>
-      FetchOptions(
-        from: from ?? archive.path,
-        manifestPath: manifest.path,
-        destination: destination,
-        noticesPath: notices.path,
-        commit: commit,
-      );
+  FetchOptions options({
+    String? commit = _commit,
+    String? from,
+    String? fromDist,
+    bool distOnly = false,
+  }) => FetchOptions(
+    from: from ?? archive.path,
+    manifestPath: manifest.path,
+    destination: destination,
+    noticesPath: notices.path,
+    commit: commit,
+    distOnly: distOnly,
+    fromDist: fromDist,
+    distDestination: '${work.path}/third_party/wallet-core-dist',
+  );
 
   Future<FetchResult> run({String? commit = _commit}) =>
       runFetch(options(commit: commit), log: StringBuffer());
 
   test('extracts the tree, strips the wrapper directory', () async {
     final result = await run();
-    expect(result.extraction.strippedTopLevel, equals('wallet-core-4.8.0'));
+    expect(result.extraction!.strippedTopLevel, equals('wallet-core-4.8.0'));
     expect(File('$destination/registry.json').existsSync(), isTrue);
     expect(
       File('$destination/include/TrustWalletCore/TWCoinType.h').existsSync(),
@@ -198,6 +206,133 @@ void main() {
     );
   });
 
+  group('--from-dist', () {
+    // The release asset ships 143 public headers to the git tree's 67; ffigen
+    // (T1.3) runs over the asset's set, so `upstream:fetch` can place it.
+    late File asset;
+
+    setUp(() {
+      asset = File('${work.path}/TrustWalletCore-4.8.0.tar.xz')
+        ..writeAsBytesSync(
+          XZEncoder().encodeBytes(
+            TarEncoder().encodeBytes(
+              Archive()
+                ..add(
+                  ArchiveFile.string(
+                    './include/TrustWalletCore/TWData.h',
+                    '// TWData.h (from the asset)\n',
+                  ),
+                )
+                ..add(
+                  ArchiveFile.string('./Sources/Wallet.swift', 'let x=1\n'),
+                ),
+            ),
+          ),
+        );
+    });
+
+    test('is off unless asked for', () async {
+      final result = await run();
+      expect(result.distHeaders, isNull);
+      expect(
+        Directory('${work.path}/third_party/wallet-core-dist').existsSync(),
+        isFalse,
+      );
+    });
+
+    test('places the asset headers beside the source tree', () async {
+      final result = await runFetch(
+        options(fromDist: asset.path),
+        log: StringBuffer(),
+      );
+      final dist = result.distHeaders;
+      expect(dist, isNotNull);
+      expect(dist!.archiveName, equals('TrustWalletCore-4.8.0.tar.xz'));
+      expect(dist.tag, equals('4.8.0'));
+      expect(dist.commit, equals(_commit));
+      expect(dist.fileCount, equals(1));
+      expect(
+        File(
+          '${work.path}/third_party/wallet-core-dist/include/TrustWalletCore/'
+          'TWData.h',
+        ).readAsStringSync(),
+        equals('// TWData.h (from the asset)\n'),
+      );
+      // The source tree is still placed, and still the thing schemas describes.
+      expect(
+        File('$destination/include/TrustWalletCore/TWData.h').existsSync(),
+        isTrue,
+      );
+    });
+
+    test('leaves schemas.headers_sha describing the git tree', () async {
+      final withoutDist = await run();
+      final gitTreeHeadersSha = withoutDist.headersSha;
+
+      final result = await runFetch(
+        options(fromDist: asset.path),
+        log: StringBuffer(),
+      );
+      final schemas =
+          (jsonDecode(manifest.readAsStringSync())
+                  as Map<String, Object?>)['schemas']!
+              as Map<String, Object?>;
+      expect(schemas['headers_sha'], equals(gitTreeHeadersSha));
+      expect(result.headersSha, equals(gitTreeHeadersSha));
+      expect(result.distHeaders!.dirSha256, isNot(equals(gitTreeHeadersSha)));
+    });
+
+    test('refuses a missing asset', () async {
+      await expectLater(
+        runFetch(
+          options(fromDist: '${work.path}/absent.tar.xz'),
+          log: StringBuffer(),
+        ),
+        throwsA(isA<UsageError>()),
+      );
+    });
+
+    test(
+      '--dist-only touches neither the source tree nor the manifest',
+      () async {
+        final before = manifest.readAsBytesSync();
+        final result = await runFetch(
+          options(fromDist: asset.path, distOnly: true),
+          log: StringBuffer(),
+        );
+
+        expect(result.distHeaders, isNotNull);
+        expect(result.extraction, isNull);
+        expect(result.headersSha, isNull);
+        expect(result.manifestChanged, isNull);
+        expect(
+          File(
+            '${work.path}/third_party/wallet-core-dist/include/TrustWalletCore/'
+            'TWData.h',
+          ).existsSync(),
+          isTrue,
+        );
+        expect(Directory(destination).existsSync(), isFalse);
+        expect(notices.existsSync(), isFalse);
+        expect(manifest.readAsBytesSync(), equals(before));
+      },
+    );
+
+    test('--dist-only still verifies the commit pin', () async {
+      await expectLater(
+        runFetch(
+          options(
+            fromDist: asset.path,
+            distOnly: true,
+            commit: '0000000000000000000000000000000000000000',
+          ),
+          log: StringBuffer(),
+        ),
+        throwsA(isA<CommitPinMismatch>()),
+      );
+    });
+  });
+
   group('FetchOptions.parse', () {
     test('defaults to the repository-root paths', () {
       final parsed = FetchOptions.parse(const []);
@@ -206,6 +341,11 @@ void main() {
       expect(parsed.noticesPath, equals('THIRD_PARTY_NOTICES.md'));
       expect(parsed.from, isNull);
       expect(parsed.commit, isNull);
+      expect(parsed.dist, isFalse);
+      expect(parsed.distOnly, isFalse);
+      expect(parsed.fromDist, isNull);
+      expect(parsed.wantsDist, isFalse);
+      expect(parsed.distDestination, equals(defaultDistDestination));
     });
 
     test('reads every flag', () {
@@ -220,12 +360,33 @@ void main() {
         'out',
         '--notices',
         'n.md',
+        '--from-dist',
+        '/tmp/TrustWalletCore-4.8.0.tar.xz',
+        '--dist-dest',
+        'dist-out',
       ]);
       expect(parsed.from, equals('/tmp/a.tar.gz'));
       expect(parsed.commit, equals(_commit));
       expect(parsed.manifestPath, equals('m.json'));
       expect(parsed.destination, equals('out'));
       expect(parsed.noticesPath, equals('n.md'));
+      expect(parsed.fromDist, equals('/tmp/TrustWalletCore-4.8.0.tar.xz'));
+      expect(parsed.distDestination, equals('dist-out'));
+    });
+
+    test('--dist is a flag; --from-dist and --dist-only imply it', () {
+      expect(FetchOptions.parse(['--dist']).dist, isTrue);
+      expect(FetchOptions.parse(['--dist']).wantsDist, isTrue);
+      final fromDist = FetchOptions.parse(['--from-dist', '/tmp/a.tar.xz']);
+      expect(fromDist.dist, isFalse);
+      expect(fromDist.wantsDist, isTrue);
+      final distOnly = FetchOptions.parse(['--dist-only']);
+      expect(distOnly.distOnly, isTrue);
+      expect(distOnly.wantsDist, isTrue);
+      expect(
+        () => FetchOptions.parse(['--from-dist']),
+        throwsA(isA<UsageError>()),
+      );
     });
 
     test('rejects an unknown flag and a flag without a value', () {
