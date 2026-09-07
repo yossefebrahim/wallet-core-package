@@ -1,0 +1,881 @@
+{
+  "byFile": {
+    "Aeternity.proto": [
+      "TW.Aeternity.Proto.SigningInput"
+    ],
+    "Aion.proto": [
+      "TW.Aion.Proto.SigningInput"
+    ],
+    "Algorand.proto": [
+      "TW.Algorand.Proto.SigningInput"
+    ],
+    "Aptos.proto": [
+      "TW.Aptos.Proto.SigningInput"
+    ],
+    "Binance.proto": [
+      "TW.Binance.Proto.SigningInput"
+    ],
+    "Bitcoin.proto": [
+      "TW.Bitcoin.Proto.SigningInput"
+    ],
+    "BitcoinV2.proto": [
+      "TW.BitcoinV2.Proto.SigningInput"
+    ],
+    "Biz.proto": [
+      "TW.Biz.Proto.ExecuteWithSignatureInput"
+    ],
+    "BizPasskeySession.proto": [
+      "TW.BizPasskeySession.Proto.ExecuteWithSignatureInput"
+    ],
+    "Cardano.proto": [
+      "TW.Cardano.Proto.SigningInput"
+    ],
+    "Cosmos.proto": [
+      "TW.Cosmos.Proto.SigningInput"
+    ],
+    "EOS.proto": [
+      "TW.EOS.Proto.SigningInput"
+    ],
+    "Ethereum.proto": [
+      "TW.Ethereum.Proto.MessageSigningInput",
+      "TW.Ethereum.Proto.SigningInput"
+    ],
+    "Everscale.proto": [
+      "TW.Everscale.Proto.SigningInput"
+    ],
+    "FIO.proto": [
+      "TW.FIO.Proto.SigningInput"
+    ],
+    "Filecoin.proto": [
+      "TW.Filecoin.Proto.SigningInput"
+    ],
+    "Greenfield.proto": [
+      "TW.Greenfield.Proto.SigningInput"
+    ],
+    "Harmony.proto": [
+      "TW.Harmony.Proto.SigningInput"
+    ],
+    "Hedera.proto": [
+      "TW.Hedera.Proto.SigningInput"
+    ],
+    "Icon.proto": [
+      "TW.Icon.Proto.SigningInput"
+    ],
+    "InternetComputer.proto": [
+      "TW.InternetComputer.Proto.SigningInput"
+    ],
+    "MultiversX.proto": [
+      "TW.MultiversX.Proto.SigningInput"
+    ],
+    "NEAR.proto": [
+      "TW.NEAR.Proto.SigningInput"
+    ],
+    "NEO.proto": [
+      "TW.NEO.Proto.SigningInput"
+    ],
+    "NULS.proto": [
+      "TW.NULS.Proto.SigningInput"
+    ],
+    "Nano.proto": [
+      "TW.Nano.Proto.SigningInput"
+    ],
+    "Nebulas.proto": [
+      "TW.Nebulas.Proto.SigningInput"
+    ],
+    "Nervos.proto": [
+      "TW.Nervos.Proto.SigningInput"
+    ],
+    "Nimiq.proto": [
+      "TW.Nimiq.Proto.SigningInput"
+    ],
+    "Oasis.proto": [
+      "TW.Oasis.Proto.SigningInput"
+    ],
+    "Ontology.proto": [
+      "TW.Ontology.Proto.SigningInput"
+    ],
+    "Pactus.proto": [
+      "TW.Pactus.Proto.SigningInput"
+    ],
+    "Polkadot.proto": [
+      "TW.Polkadot.Proto.SigningInput"
+    ],
+    "Polymesh.proto": [
+      "TW.Polymesh.Proto.SigningInput"
+    ],
+    "Ripple.proto": [
+      "TW.Ripple.Proto.SigningInput"
+    ],
+    "Solana.proto": [
+      "TW.Solana.Proto.CreateNonceAccount",
+      "TW.Solana.Proto.MessageSigningInput",
+      "TW.Solana.Proto.SigningInput"
+    ],
+    "Stellar.proto": [
+      "TW.Stellar.Proto.SigningInput"
+    ],
+    "Sui.proto": [
+      "TW.Sui.Proto.MessageSigningInput",
+      "TW.Sui.Proto.SigningInput"
+    ],
+    "Tezos.proto": [
+      "TW.Tezos.Proto.SigningInput"
+    ],
+    "TheOpenNetwork.proto": [
+      "TW.TheOpenNetwork.Proto.SigningInput"
+    ],
+    "Theta.proto": [
+      "TW.Theta.Proto.SigningInput"
+    ],
+    "Tron.proto": [
+      "TW.Tron.Proto.SigningInput"
+    ],
+    "VeChain.proto": [
+      "TW.VeChain.Proto.SigningInput"
+    ],
+    "Waves.proto": [
+      "TW.Waves.Proto.SigningInput"
+    ],
+    "Zilliqa.proto": [
+      "TW.Zilliqa.Proto.SigningInput"
+    ]
+  },
+  "generated": "tools/gen/proto.sh \u2014 do not hand-edit",
+  "key": "fully-qualified protobuf message name, as returned by GeneratedMessage.info_.qualifiedMessageName",
+  "matchRule": "field name contains 'private_key'",
+  "mentionsWithoutFieldMatches": {
+    "Common.proto": [
+      "Error_missing_private_key = 5;",
+      "Error_invalid_private_key = 15;"
+    ]
+  },
+  "messages": {
+    "TW.Aeternity.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Aeternity.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 8,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Aeternity.proto"
+    },
+    "TW.Aion.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Aion.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 7,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Aion.proto"
+    },
+    "TW.Algorand.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Algorand.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 4,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Algorand.proto"
+    },
+    "TW.Aptos.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Aptos.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 7,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Aptos.proto"
+    },
+    "TW.Binance.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Binance.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 6,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Binance.proto"
+    },
+    "TW.Bitcoin.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Bitcoin.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 6,
+          "protoName": "private_key",
+          "repeated": true,
+          "type": "bytes"
+        }
+      ],
+      "file": "Bitcoin.proto"
+    },
+    "TW.BitcoinV2.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "BitcoinV2.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKeys",
+          "number": 1,
+          "protoName": "private_keys",
+          "repeated": true,
+          "type": "bytes"
+        }
+      ],
+      "file": "BitcoinV2.proto"
+    },
+    "TW.Biz.Proto.ExecuteWithSignatureInput": {
+      "dartClass": "ExecuteWithSignatureInput",
+      "dartFile": "Biz.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Biz.proto"
+    },
+    "TW.BizPasskeySession.Proto.ExecuteWithSignatureInput": {
+      "dartClass": "ExecuteWithSignatureInput",
+      "dartFile": "BizPasskeySession.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "BizPasskeySession.proto"
+    },
+    "TW.Cardano.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Cardano.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": true,
+          "type": "bytes"
+        }
+      ],
+      "file": "Cardano.proto"
+    },
+    "TW.Cosmos.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Cosmos.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 7,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Cosmos.proto"
+    },
+    "TW.EOS.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "EOS.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 9,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        },
+        {
+          "dartName": "privateKeyType",
+          "number": 10,
+          "protoName": "private_key_type",
+          "repeated": false,
+          "type": "enum"
+        }
+      ],
+      "file": "EOS.proto"
+    },
+    "TW.Ethereum.Proto.MessageSigningInput": {
+      "dartClass": "MessageSigningInput",
+      "dartFile": "Ethereum.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Ethereum.proto"
+    },
+    "TW.Ethereum.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Ethereum.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 9,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Ethereum.proto"
+    },
+    "TW.Everscale.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Everscale.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Everscale.proto"
+    },
+    "TW.FIO.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "FIO.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 3,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "FIO.proto"
+    },
+    "TW.Filecoin.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Filecoin.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Filecoin.proto"
+    },
+    "TW.Greenfield.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Greenfield.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 9,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Greenfield.proto"
+    },
+    "TW.Harmony.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Harmony.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Harmony.proto"
+    },
+    "TW.Hedera.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Hedera.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Hedera.proto"
+    },
+    "TW.Icon.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Icon.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 8,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Icon.proto"
+    },
+    "TW.InternetComputer.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "InternetComputer.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "InternetComputer.proto"
+    },
+    "TW.MultiversX.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "MultiversX.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "MultiversX.proto"
+    },
+    "TW.NEAR.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "NEAR.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 6,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "NEAR.proto"
+    },
+    "TW.NEO.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "NEO.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 3,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "NEO.proto"
+    },
+    "TW.NULS.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "NULS.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        },
+        {
+          "dartName": "feePayerPrivateKey",
+          "number": 13,
+          "protoName": "fee_payer_private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "NULS.proto"
+    },
+    "TW.Nano.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Nano.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Nano.proto"
+    },
+    "TW.Nebulas.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Nebulas.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 10,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Nebulas.proto"
+    },
+    "TW.Nervos.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Nervos.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": true,
+          "type": "bytes"
+        }
+      ],
+      "file": "Nervos.proto"
+    },
+    "TW.Nimiq.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Nimiq.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Nimiq.proto"
+    },
+    "TW.Oasis.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Oasis.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Oasis.proto"
+    },
+    "TW.Ontology.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Ontology.pb.dart",
+      "fields": [
+        {
+          "dartName": "ownerPrivateKey",
+          "number": 3,
+          "protoName": "owner_private_key",
+          "repeated": false,
+          "type": "bytes"
+        },
+        {
+          "dartName": "payerPrivateKey",
+          "number": 6,
+          "protoName": "payer_private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Ontology.proto"
+    },
+    "TW.Pactus.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Pactus.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Pactus.proto"
+    },
+    "TW.Polkadot.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Polkadot.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 8,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Polkadot.proto"
+    },
+    "TW.Polymesh.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Polymesh.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 8,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Polymesh.proto"
+    },
+    "TW.Ripple.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Ripple.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 6,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Ripple.proto"
+    },
+    "TW.Solana.Proto.CreateNonceAccount": {
+      "dartClass": "CreateNonceAccount",
+      "dartFile": "Solana.pb.dart",
+      "fields": [
+        {
+          "dartName": "nonceAccountPrivateKey",
+          "number": 3,
+          "protoName": "nonce_account_private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Solana.proto"
+    },
+    "TW.Solana.Proto.MessageSigningInput": {
+      "dartClass": "MessageSigningInput",
+      "dartFile": "Solana.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Solana.proto"
+    },
+    "TW.Solana.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Solana.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        },
+        {
+          "dartName": "feePayerPrivateKey",
+          "number": 17,
+          "protoName": "fee_payer_private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Solana.proto"
+    },
+    "TW.Stellar.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Stellar.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 4,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Stellar.proto"
+    },
+    "TW.Sui.Proto.MessageSigningInput": {
+      "dartClass": "MessageSigningInput",
+      "dartFile": "Sui.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Sui.proto"
+    },
+    "TW.Sui.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Sui.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Sui.proto"
+    },
+    "TW.Tezos.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Tezos.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 3,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Tezos.proto"
+    },
+    "TW.TheOpenNetwork.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "TheOpenNetwork.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 1,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "TheOpenNetwork.proto"
+    },
+    "TW.Theta.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Theta.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 7,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Theta.proto"
+    },
+    "TW.Tron.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Tron.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Tron.proto"
+    },
+    "TW.VeChain.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "VeChain.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 9,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "VeChain.proto"
+    },
+    "TW.Waves.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Waves.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 2,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Waves.proto"
+    },
+    "TW.Zilliqa.Proto.SigningInput": {
+      "dartClass": "SigningInput",
+      "dartFile": "Zilliqa.pb.dart",
+      "fields": [
+        {
+          "dartName": "privateKey",
+          "number": 6,
+          "protoName": "private_key",
+          "repeated": false,
+          "type": "bytes"
+        }
+      ],
+      "file": "Zilliqa.proto"
+    }
+  },
+  "source": "protoc FileDescriptorSet of third_party/wallet-core/src/proto/*.proto",
+  "summary": {
+    "fields": 53,
+    "messages": 49,
+    "protoFilesScanned": 60,
+    "protoFilesWithKeyFields": 45
+  },
+  "upstream": {
+    "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+    "proto_dir_sha": "a488593adb2d9b5622018a19b22748bf00781ee885fdaa6c4b145b12fd8447f0",
+    "repo": "trustwallet/wallet-core",
+    "tag": "4.8.0"
+  }
+}

@@ -1,0 +1,16 @@
+name: wcf_tool_inventory
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  path: ^1.9.0
+  # For T1.1's directory-hash definition and the header-set provenance record,
+  # which this tool copies into inventory.json rather than reimplementing.
+  wcf_tool_upstream:
+    path: ../upstream
+
+dev_dependencies:
+  test: ^1.25.0

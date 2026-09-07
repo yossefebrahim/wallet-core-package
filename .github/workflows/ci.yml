@@ -54,6 +54,67 @@ jobs:
       - name: Check pubspec.lock is unchanged
         run: git diff --exit-code pubspec.lock
 
+  # AGENTS.md rule 1 — "generated directories are never hand-edited" — enforced
+  # rather than reviewed. The job reproduces both generator inputs from the pin
+  # in `compat_manifest.json`, regenerates everything, and fails on a diff.
+  #
+  # Two archives, because they are two different things: the source tree
+  # (`src/proto`, `registry.json`) feeds T1.4 and T1.5, and the tagged release
+  # asset's 143 public headers feed ffigen. The git tree ships only 67 of those
+  # headers; the other 76 are produced by upstream's own build. Both URLs are
+  # built from `upstream.repo` and `upstream.tag` by pure functions in
+  # `tools/upstream/lib/`, so what CI fetches is decided by the manifest.
+  generated:
+    name: Generated code (gen:check, inventory:check)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+
+      # ffigen needs libclang to parse upstream's headers. The paths installed
+      # here are among the `llvm-path` entries in
+      # `packages/wallet_core_flutter_bindings/ffigen.yaml`.
+      - name: Install libclang
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libclang-dev
+
+      - name: Put the pub global bin directory on PATH
+        run: echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Activate melos
+        run: dart pub global activate melos 8.6.0
+
+      - name: melos bootstrap
+        run: melos bootstrap
+
+      # `--dist` fetches the release asset as well as the source tree. The
+      # commit is already pinned in the manifest, so the fetch verifies it
+      # rather than setting it.
+      - name: Fetch the pinned upstream source tree and release asset
+        run: melos run upstream:fetch -- --dist
+
+      # The fetch writes the schema digests; a change there means the pin moved
+      # under us, which is a separate failure from a stale generated file.
+      - name: Check the manifest is unchanged by the fetch
+        run: git diff --exit-code compat_manifest.json THIRD_PARTY_NOTICES.md
+
+      - name: melos run gen:check
+        run: melos run gen:check
+
+      - name: melos run inventory:check
+        run: melos run inventory:check
+
+      - name: melos run manifest:validate
+        run: melos run manifest:validate
+
   # placeholder — device jobs are implemented by task T1.17
   android-emulator:
     name: Android emulator

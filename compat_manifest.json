@@ -5,10 +5,10 @@
     "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
   },
   "generators": {
-    "ffigen": "TBD-T1.3",
-    "protoc": "TBD-T1.4",
-    "protoc_gen_dart": "TBD-T1.4",
-    "registry_transform": "TBD-T1.5"
+    "ffigen": "21.0.0",
+    "protoc": "33.4",
+    "protoc_gen_dart": "25.0.0",
+    "registry_transform": "9d982d272a360db645ff4da91b3307907fbd4b23e639841b4767df53097ed003"
   },
   "schemas": {
     "proto_dir_sha": "a488593adb2d9b5622018a19b22748bf00781ee885fdaa6c4b145b12fd8447f0",
