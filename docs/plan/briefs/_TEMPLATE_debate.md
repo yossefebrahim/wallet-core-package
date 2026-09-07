@@ -4,7 +4,7 @@ Your job is adversarial: assume the phase is NOT done until the evidence in the 
 </task>
 
 <context>
-PRD: docs/wallet_core_flutter_prd.md (Draft v1.1). Governing sections for this phase: [§ list].
+PRD: docs/wallet_core_flutter_prd.md (current draft; check the Status row). Governing sections for this phase: [§ list].
 Plan for this phase: docs/plan/phases/[file].md — read its exit criteria and task table.
 Progress and review notes: docs/plan/PROGRESS.md.
 Decision docs so far: docs/decisions/.
@@ -28,6 +28,7 @@ DECISION-[n]: [question].
 </contested_points>
 
 <questions>
+0. Threat model (mandatory every phase, PRD §16 S6): which rows of docs/security/threat_model.md changed owner, mitigation, or residual risk during this phase, and is the file updated? Name the rows.
 1. [Targeted PRD checks, for example: "For each item 1–7 of PRD §11.2, state satisfied / not satisfied / cannot determine, citing the implementing code in packages/wallet_core_flutter_bindings/lib/src/memory/."]
 2. [...]
 </questions>

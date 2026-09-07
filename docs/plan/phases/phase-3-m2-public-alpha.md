@@ -57,3 +57,8 @@ API freeze candidate for §10; error hierarchy; cookbook (5 guides including sec
 - **Agreed points:** every §10.2 bullet has a public type; `lint:public-api` is green; five cookbook guides exist; `pana` output attached; variant-aware matrix published; `SECURITY.md`, the v1 feature table, and the retention policy exist; the hosted-install smoke passed.
 - **Contested points:** any API choice from T3.2 the human flagged; helper scope (what is in EVM/UTXO/Solana helpers and why nothing else); DECISION-7 stays "in SDK" (human).
 - **Questions:** Is raw protobuf signing reachable from the default import by any path? Does the feature table match the matrix exactly? Does any cookbook example violate §11.3 (for example holding a mnemonic longer than needed)? Does any public doc comment over-claim on wiping, reproducibility, or audits? Is the `advanced.dart` warning sufficient? Would a P1 team reading the README understand what is Tested versus exposed?
+
+## D0 follow-ups binding on Phase 3 (added 2026-09-07)
+
+- **T3.7** provides the helper that builds `UtxoInput.script` bytes from an address or public key, which the DECISION-13 sketch leaves to the caller (D0, DECISION-13 note).
+- **T3.13** publishes the retention policy only with the wording DECISION-14 §3.2 settles after D0 (no promise about third-party availability) and after mirror pricing, account ownership, and a restore drill are verified.

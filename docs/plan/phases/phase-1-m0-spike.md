@@ -103,3 +103,10 @@ Critical path: T1.1 → T1.3 → T1.6 → T1.11 → T1.12 → T1.16 → T1.17 �
 - **Agreed points:** each M0 exit criterion with evidence (test names, device results, example app, consumer-check log from packaged dependencies, identity-mismatch negative test, decision docs).
 - **Contested points:** DECISION-1: Approach A vs B vs "A now, B later" using T1.12 copy counts, T1.13 effort and generalization notes, and T1.14 coverage; ratification of DECISION-2, DECISION-6, DECISION-14.
 - **Questions:** For each item 1–8 of PRD §11.2, satisfied / not / unprovable, citing `packages/*_bindings/lib/src/memory/` and the proxy `Finalizer` in the SDK. Can any public object free a native pointer synchronously? Does `close()` during an in-flight operation behave as §14.3 says? Is the key-field check applied before every injection? Is any validation (S5) missing before a native call? Is any generated file hand-edited? Does the public export leak any forbidden type, including the generated `CoinType`? Spot-check two vectors' provenance against the pinned commit. Does the README or any doc use a forbidden word?
+
+## D0 follow-ups binding on Phase 1 (added 2026-09-07)
+
+- **T1.2** produces, per artifact, every PRD §12.3 durability field as modelled in DECISION-14 §5 (source commit, build workflow, linkage, target OS, ABI, minimum OS, toolchain, size, sha256, signature, attestation identity, `provenance`) and extends `tools/manifest` to validate the per-artifact record by path grammar and schema instead of the fixed Phase 0 key set (D0 F6, F14); `wcf_build_info` carries an explicit default-visibility annotation and the export-visibility gate stays (D0 F9).
+- **T1.1 / T1.2** add semantic strict-mode checks to `tools/manifest` for the fields they fill (40-hex commits, non-empty repo and identity strings, URL form) (D0 F15).
+- **T1.17** adds `package-ecosystem: pub` to `.github/dependabot.yml` and verifies the mechanism against a pub workspace rather than assuming it (D0 F8, TM-28 owner).
+- **T1.3** ships `gen:check` so AGENTS.md rule 1's CI enforcement becomes true (D0 rule-by-rule).

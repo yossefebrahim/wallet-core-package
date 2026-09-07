@@ -48,3 +48,7 @@ New upstream tag absorbed with zero hand-edits; both diff reports attached to th
 - **Agreed points:** the pin PR for the absorbed tag shows zero hand-edits (clean regeneration diff), both diff reports attached, tests green, the reproducibility result recorded.
 - **Contested points:** whether the documented build diffs (if any) are acceptable or must be eliminated before README says "reproducible"; whether the behavioral diff's sensitivity is right (false positives vs missed changes).
 - **Questions:** Does the upgrade report name the unverified surface upstream touched? Could an upstream serialization change slip through both diffs? Does the watcher ever publish or push without a human? Are provenance attestations verifiable by a consumer? Does the breakage path keep the previous pin published?
+
+## D0 follow-ups binding on Phase 4 (added 2026-09-07)
+
+- **T4.3** polls the repository security-advisories feed (`/repos/trustwallet/wallet-core/security-advisories`) in addition to tags and opens an expedited pin PR on a new published advisory (D0 F8, TM-27 owner); it also watches the layout of `TrustWalletCore-<tag>.tar.xz` (DECISION-9 trigger 2) and DECISION-8's revisit triggers 1–4 and 6.

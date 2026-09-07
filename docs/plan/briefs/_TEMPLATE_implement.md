@@ -10,17 +10,17 @@ PRD sections that govern this task: [§ numbers] in docs/wallet_core_flutter_prd
 </task>
 
 <repo_constraints>
-1. Generated directories (**/lib/src/generated/**, docs/capability_matrix.*) are never hand-edited; regenerate with melos run gen:*.
-2. No cryptography, key derivation, hashing, or signed-transaction serialization is implemented here; every such operation calls upstream through the generated bindings. Encoding upstream's signing-input protobuf in Dart is allowed; producing signed transaction bytes is not.
+1. Generated directories (**/lib/src/generated/**, docs/capability_matrix.*) are never hand-edited; regenerate with melos run gen:* (CI enforces it once gen:check exists, T1.3).
+2. No cryptography, key derivation, or signed-transaction serialization is implemented here; every such operation calls upstream through the generated bindings. Encoding upstream's signing-input protobuf in Dart is allowed; producing signed transaction bytes is not. Integrity hashing (SHA-256 of artifacts, manifests, generated inputs) is allowed and required by PRD §12.3.
 3. No network access at runtime in SDK, bindings, or native-loader code.
-4. package:wallet_core_flutter/wallet_core_flutter.dart exports no dart:ffi type, no generated TW* class, and no protobuf class in any public signature.
+4. package:wallet_core_flutter/wallet_core_flutter.dart exports no dart:ffi type, no generated TW* class, and no protobuf class in any public signature; within the SDK package only advanced.dart may export them.
 5. Every native-backed object implements the disposal contract of PRD §11.2 (explicit dispose, finalizer detach, double-dispose no-op, DisposedError after disposal, finally-released temporaries).
 6. Requests never contain key material. Family code encodes key-less inputs (encodeKeylessInput) and parses results (parseSigningOutput → sealed SignResult); only the signer injects keys, after checking the generated key_fields.json list. Raw protobuf signing exists only under advanced.dart.
 7. Every test vector entry cites provenance (upstream path + commit, a standard, or a published transaction).
-8. Docs never use "zeroization", "secret-free", "reproducible", or "audited" about this SDK, never make legal claims about AGPL, and package names never contain "trust".
+8. Docs never use "zeroization", "secret-free", or "audited" about this SDK, never use "reproducible" about its artifacts before the PRD §12.4 demonstration is recorded (M3), never make legal claims about AGPL, and package names never contain "trust".
 9. Do not add a dependency without listing it, with version, in your final report.
 10. Touch only the owned paths above. No unrelated cleanup, renames, or formatting sweeps.
-11. The public SDK never exposes the generated CoinType; use the stable coin/network facade (DECISION-11). Public resources close asynchronously (Future<void> close()); only internal wrappers have synchronous dispose() (PRD §11.2, §14.3). Signers take a Set<KeyLocator> and return sealed SignResults (DECISION-13).
+11. The default public SDK surface never exposes the generated CoinType; use the stable coin/network facade (DECISION-11). Public resources of the default surface close asynchronously (Future<void> close()); synchronous dispose() exists only on internal wrappers and on advanced.dart's same-isolate objects (PRD §11.2, §14.3). Signers take a Set<KeyLocator> and return sealed SignResults (DECISION-13).
 [Add task-specific constraints here, for example "encodeKeylessInput must be a pure function with no isolate, pointer, or key access".]
 </repo_constraints>
 

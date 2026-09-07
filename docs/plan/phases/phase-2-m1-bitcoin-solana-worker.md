@@ -75,3 +75,7 @@ The signer owns key resolution and injection: `Signer.sign(request, Set<KeyLocat
 - **Agreed points:** BTC (both variants), SOL, and ETH-message vectors pass on both platforms (CI run URLs); worker tests cover every §14.3 clause; the hostile-input suite runs in CI; README counts are generated per variant.
 - **Contested points:** DECISION-3: long-lived worker vs per-call isolates vs hybrid, using T2.10 data; whether sequential processing is an acceptable throughput bound; DECISION-13 in practice: does the `KeyLocator` model hold for Bitcoin's repeated keys and Solana's fee payer without leaking keys into requests.
 - **Questions:** Does any ref leak survive `shutdown()`? Can a native pointer cross the isolate boundary anywhere (PRD §14.1)? Does any family function receive key bytes? Is the key-field check run before every injection, including the multi-key path? Is every Tested cell backed by a vector for that exact variant and a passing result on both platforms? Is "generated" ever derived from the global signer symbol? Are exclusions justified? Does the mnemonic cross isolates more than once per import?
+
+## D0 follow-ups binding on Phase 2 (added 2026-09-07)
+
+- **T2.8** binds vector variants to the coin's family from the generated registry data (an Ethereum `taproot` vector must fail) and makes `exclusions.yaml` entries require a non-empty coin and reason (D0 F16). Until T2.8 lands, docs must not describe PRD §13.2 checks (a)–(c) as mechanical.
