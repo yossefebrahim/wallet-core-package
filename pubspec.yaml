@@ -16,6 +16,7 @@ workspace:
   - tools/manifest
   - tools/upstream
   - tools/vectors
+  - tools/gen
 
 dev_dependencies:
   lints: ^6.0.0
@@ -68,3 +69,4 @@ melos:
         --out-dir "${WCF_NATIVE_OUT:-${TMPDIR:-/tmp}/wcf-native}"
         --expect-symbol-count 464
     vectors:validate: dart run tools/vectors/bin/validate.dart test_vectors
+    gen:registry: dart run tools/gen/bin/registry_transform.dart
