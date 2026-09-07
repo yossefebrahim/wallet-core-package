@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft v1.2 (supersedes Draft v1.1; absorbs the 2026-09-07 architecture audit, see §25) |
+| **Status** | Draft v1.2.1 (supersedes Draft v1.2; Phase 0 evidence corrections, see §26) |
 | **Author** | Yossef Ebrahim |
 | **Date** | September 7, 2026 (v1.1: September 6, 2026) |
 | **License** | MIT (package code); upstream Trust Wallet Core is Apache 2.0 |
@@ -44,9 +44,9 @@ What changes in v1.1 is precision: package boundaries are defined, the memory-sa
 
 **[VERIFIED]** Trust Wallet Core is an open-source (Apache 2.0) C++ library with strict C interfaces, supporting 130+ blockchains, with official idiomatic bindings for Swift (iOS) and Java/Kotlin (Android), plus JavaScript/WebAssembly, Go (beta), and Kotlin Multiplatform (beta). Upstream ships releases frequently (multiple releases per month in the observed history).
 
-**[VERIFIED]** The upstream repository contains a `flutter/` directory titled "Wallet Core Bindings for Flutter" with a runnable app and tests. Its README gives setup and run instructions only; it contains no support statement, no platform matrix, and no description of how the bindings are generated or released. It is not published to pub.dev. The main README lists official bindings (Swift, Kotlin, JS/WASM, Go beta, KMP beta) and separately points to community-maintained projects, including a Flutter binding, with an explicit "not an endorsement" note; **[UNVERIFIED]** whether that pointer refers to the in-tree `flutter/` directory or to an external project.
+**[VERIFIED]** The upstream repository contains a `flutter/` directory titled "Wallet Core Bindings for Flutter" with a runnable app and tests. Its README gives setup and run instructions only; it contains no support statement, no platform matrix, and no description of how the bindings are generated or released. It is not published to pub.dev. The main README lists official bindings (Swift, Kotlin, JS/WASM, Go beta, KMP beta) and separately points to community-maintained projects, including a Flutter binding, with an explicit "not an endorsement" note; **[VERIFIED 2026-09-07]** that pointer refers to an external project (`weishirongzhen/flutter_trust_wallet_core`; open PR #4634 would repoint it to `xuelongqy/wallet_core_bindings`), not to the in-tree directory (DECISION-8, E7–E8).
 
-**Interpretation:** upstream has a Flutter/Dart *sample or in-tree binding*, but it is not a supported, published, production-ready Flutter SDK. **[UNVERIFIED]** whether upstream intends to develop it further; this must be checked (issues, commit history, maintainers' statements) before we position against it, because if upstream ships an official Flutter SDK the value of this project shrinks to "permissive license + DX".
+**Interpretation:** upstream has a Flutter/Dart *sample or in-tree binding*, but it is not a supported, published, production-ready Flutter SDK. **[UNVERIFIED]** whether upstream intends to develop it further — checked 2026-09-07 (DECISION-8): one commit (2025-06-09, PR #4412), no README entry, no publication, no maintainer statement found, CI regenerates it as a build smoke check; the dated negative is recorded and the question stays open with revisit triggers in the upstream watcher, because if upstream ships an official Flutter SDK the value of this project shrinks to "permissive license + DX".
 
 **The gap:** a Flutter team building a **closed-source commercial wallet** today must choose between an AGPL-licensed community binding (with commercial licensing on request), the unsupported upstream sample, abandoned packages, hand-written bindings, or platform-channel code over the Swift/Kotlin SDKs. None is a maintained, permissively-licensed, documented Dart SDK.
 
@@ -57,7 +57,7 @@ What changes in v1.1 is precision: package boundaries are defined, the memory-sa
 | `flutter_trust_wallet_core` | 0.0.1 (Dec 2020) | Abandoned; flagged Dart 3 incompatible on pub.dev | **[UNVERIFIED]** (not read) | Android, iOS | **[VERIFIED]** version/date/Dart-3 flag |
 | `trust_wallet_core_lib` | 0.0.7+3.0.4 (Feb 2021) | Inactive | MIT **[VERIFIED]** | Android (minSdk 23), iOS 13+ | Wraps the API list of a 2021 wallet-core |
 | `wallet_core_bindings` (+ `_native`, `_libs`, `_wasm`, `_wasm_assets`) | 4.8.0 (Aug 30, 2026) | Actively maintained | **AGPL-3.0 [VERIFIED]**; README mentions commercial licensing on request | Android, iOS, macOS, Linux, Web, Windows (native FFI on the first four; WASM for all) | **[VERIFIED]** README claims: "TrustWalletCore include files and Protobuf file bindings", "APIs are repackaged for easier use", "Combined with Dart GC, there is no need to control memory". Unverified uploader; 140 pub points. |
-| Upstream `flutter/` directory | tracks master | In-tree, no support statement | Apache 2.0 (upstream repo) | **[UNVERIFIED]** | See §2 |
+| Upstream `flutter/` directory | one commit (2025-06-09, PR #4412), unchanged at 4.8.0; CI regenerates the bindings from current headers on every run | In-tree Dart console sample, unpublished, no support statement | Apache 2.0 (upstream repo) | **[VERIFIED 2026-09-07]** (DECISION-8) | See §2 |
 
 **Correction from v1.0:** `wallet_core_bindings` is **not** merely raw C bindings. It ships generated protobuf classes and a repackaged Dart API, and it relies on Dart GC for memory management. Our differentiation must therefore rest on license, an explicitly designed and documented public API with a stated memory/secret contract, and verified per-chain capability — not on "they only have raw bindings".
 
@@ -72,7 +72,7 @@ Differentiators:
 3. **Verified capability, not just exposure.** A published capability matrix (§13) states, per chain and per operation, whether support is generated, exposed, or tested against known vectors.
 4. **Transparent supply chain.** Pinned upstream commit, generator versions, artifact checksums, and (as a separate, later requirement) demonstrated reproducibility (§12, §15).
 
-**Qualification on audits:** upstream has been audited **[UNVERIFIED — check which reports exist and what versions they cover]**, but an upstream audit does **not** cover this binding: the FFI glue, protobuf construction in Dart, artifact acquisition, and the signing worker are ours and need their own review (§16).
+**Qualification on audits:** **[VERIFIED 2026-09-07]** the only published third-party report is Kudelski Security's 2023 secure code review of Rust StarkNet key-pair code (upstream `audit/`), and upstream has published one repository security advisory (GHSA-7g72-jxww-q9vq, `ed25519-dalek`); claims of other audits are unverified (`docs/decisions/evidence/upstream-audits.md`). An upstream audit does **not** cover this binding: the FFI glue, protobuf construction in Dart, artifact acquisition, and the signing worker are ours and need their own review (§16).
 
 Secondary opportunity: upstream's documentation references community-maintained projects, so a well-maintained, correctly-disclaimed binding is a plausible candidate for that listing.
 
@@ -159,8 +159,8 @@ try {
 - **Wallets & keys:** `HDWallet` (create / import mnemonic / import entropy), `Mnemonic` validation and word lists, `PrivateKey`, `PublicKey`, `StoredKey` (encrypted keystore import/export via upstream).
 - **Accounts & addresses:** an `Account` is a plain descriptor (coin/network, derivation path, address, public key) that owns no native handle and no key; `Address.parse/validate` for every coin in the registry via `TWAnyAddress` — *exposed* for all coins; *tested* per §13. Network (mainnet/testnet) is explicit wherever upstream supports it; **[VERIFIED]** upstream's registry models EVM networks as separate coins with chain IDs but models Bitcoin testnet only as a derivation entry, so the facade carries that distinction (**[DECISION-11]**).
 - **Transaction requests:** immutable Dart value types per family (`EvmTransactionRequest`, `UtxoTransactionRequest`, `SolanaTransactionRequest`, …). [REQ] Requests never contain key material. A request is "what to sign"; a signer decides "with what". UTXO inputs name the key each one needs through a `KeyLocator` (see Signers). The generic `RawSigningInput(coin, protobufBytes)` escape hatch is **not** in the default SDK: arbitrary protobuf bytes can already contain key fields and the SDK cannot prove otherwise, so it lives under `advanced.dart`, where the caller accepts secret-handling responsibility.
-- **Signers:** `Signer` interface with `sign(request, keys)`, `signMessage`, and — where upstream supports it — `plan` (UTXO) and `compile` (external-signature compilation via `TWTransactionCompilerPreImageHashes` and `TWTransactionCompilerCompileWithSignatures`, **[VERIFIED]** present in the 4.8.0 headers; per-coin availability **[UNVERIFIED]**). `keys` is a set of `KeyLocator`s (an HD path in a wallet, an imported key, an external-signer key): a single-key chain takes one, a Bitcoin spend takes one per input. **[VERIFIED]** upstream's Bitcoin `SigningInput` declares `repeated bytes private_key`, and Solana's carries `private_key`, `fee_payer_private_key`, and `nonce_account_private_key`, so a one-account signer cannot represent ordinary transactions. Unsupported cases (multisig, partially signed transactions, watch-only accounts) fail with typed errors. Results form a sealed `SignResult` family (`EvmSignResult`, `UtxoSignResult`, `SolanaSignResult`, …) because upstream outputs differ per chain (Bitcoin: encoded bytes plus a transaction-id string; Solana: a base64 string; Ethereum: raw bytes). The 1.0 implementation is `LocalSigner` (worker-owned keys). The interface is designed so a future `ExternalSigner` (hardware wallet, MPC, remote HSM) can implement it without changing request types (**[DECISION-13]**).
-- **Errors:** typed hierarchy — `WalletCoreException` → `InvalidInputError`, `UnsupportedOperationError(coin, capability)`, `SigningError(upstreamCode, message)`, `KeyResolutionError`, `DisposedError` (internal handles) / `ClosedError` (public resources), `WorkerTerminatedError`, `NativeLoadError`, `ManifestMismatchError`. Upstream's `SigningOutput.error`/`error_message` map to `SigningError`.
+- **Signers:** `Signer` interface with `sign(request, keys)`, `signMessage`, and — where upstream supports it — `plan` (UTXO) and `compile` (external-signature compilation via `TWTransactionCompilerPreImageHashes` and `TWTransactionCompilerCompileWithSignatures`, **[VERIFIED]** present in the 4.8.0 headers; per-coin availability **[UNVERIFIED]**). `keys` is a set of `KeyLocator`s (an HD path in a wallet, an imported key, an external-signer key): a single-key chain takes one, a Bitcoin spend takes one per input. **[VERIFIED]** upstream's Bitcoin `SigningInput` declares `repeated bytes private_key`, and Solana's carries `private_key`, `fee_payer_private_key`, and `nonce_account_private_key`, so a one-account signer cannot represent ordinary transactions. Unsupported cases (multisig, partially signed transactions, watch-only accounts) fail with typed errors. Results form a sealed `SignResult` family (`EvmSignResult`, `UtxoSignResult`, `SolanaSignResult`, …) because upstream outputs differ per chain (Bitcoin: encoded bytes plus a transaction-id string; Solana: a string in the requested encoding, base58 by default per `SigningInput.tx_encoding`; Ethereum: raw bytes). The 1.0 implementation is `LocalSigner` (worker-owned keys). The interface is designed so a future `ExternalSigner` (hardware wallet, MPC, remote HSM) can implement it without changing request types (**[DECISION-13]**).
+- **Errors:** typed hierarchy — `WalletCoreException` → `InvalidInputError`, `UnsupportedOperationError(coin, capability)`, `SigningError(upstreamCode, message)`, `KeyResolutionError`, `DisposedError` (internal handles) / `ClosedError` (public resources), `WorkerTerminatedError(kind)`, `NativeLoadError`, `ManifestMismatchError(check)`, and — from §14.3 and the facade — `SessionStateError`, `QueueFullError`, `OperationTimeoutError`, `OperationCancelledError`, `UnknownCoinError` (DECISION-11, DECISION-12, DECISION-14; ratified at D0). Upstream's `SigningOutput.error`/`error_message` map to `SigningError`.
 - **Lifecycle:** two contracts (§11.2, §14.3). Internal native handles implement synchronous `Disposable`. Public resources owned by the session (`Wallet`, signers) expose an idempotent `Future<void> close()` that asks the worker to free the handle and awaits the acknowledgement; `WalletCore.shutdown()` closes everything and terminates the worker.
 
 [REQ] Convenience helpers beyond Ethereum/EVM, Bitcoin family, and Solana are **not** in scope until M2 exit criteria are met (§18).
@@ -230,12 +230,12 @@ v1.0 assumed conventional platform packaging (AAR / xcframework via podspec). Fl
 | Minimum versions | Requires a Flutter version with stable build hooks; **[UNVERIFIED]** exact minimum and stability status for prebuilt-binary (`DynamicLoadingBundled`) assets on iOS and Android — the docs page reflects Flutter 3.47.2 and does not state a minimum | Works on older Flutter |
 | iOS specifics | **[VERIFIED]** hook is invoked per SDK (`iphoneos`, `iphonesimulator`) and per architecture and must emit identical framework/asset names for the same asset ID; the docs say not to use `_sim`/arch suffixes | xcframework already separates device/simulator slices |
 | Android specifics | **[VERIFIED]** `libc++_shared.so` is not a system library; apps using the C++ standard library must bundle it (docs point to `package:android_libcpp_shared`) | Same requirement, handled via Gradle packaging |
-| Static vs dynamic | Docs do not cover static linking; upstream's iOS distribution is a static xcframework **[UNVERIFIED]** whether a dynamic slice is available or must be built | Static xcframework consumption is routine |
+| Static vs dynamic | Docs do not cover static linking; **[VERIFIED 2026-09-07]** upstream's iOS `WalletCore.xcframework` at 4.8.0 is a *dynamic* framework (device and simulator slices), and the `TrustWalletCore-<tag>.tar.xz` asset carries static archives including a macOS slice (DECISION-9, F2 and F10) — a dynamic slice exists as shipped and by relink | Dynamic framework consumption is routine; the static archives need a relink step |
 | Risk | Newer mechanism; fewer worked examples with large third-party static/dynamic libs; unknown interaction with upstream's Rust-built components | Two build systems to maintain; consumer friction; well trodden |
 
 ### 12.2 Evaluation protocol [REQ] (M0)
 
-Using upstream 4.8.0 artifacts (or a from-source build of that tag if release assets are insufficient — **[UNVERIFIED]** the 19 release assets' contents), for **each** option:
+Using upstream 4.8.0 artifacts (or a from-source build of that tag if release assets are insufficient — **[VERIFIED 2026-09-07]** the 8 release assets' contents, `docs/decisions/evidence/release-assets-4.8.0.md`), for **each** option:
 
 1. Build a consumer app from a clean checkout (`flutter create` + add dependency; no manual native edits).
 2. Run on: Android emulator (x86_64) and physical arm64 device; iOS simulator (arm64 and x64 hosts if available) and physical device.
@@ -364,14 +364,14 @@ One file, `compat_manifest.json`, checked into the repo, shipped inside `wallet_
   "generators": { "ffigen": "x.y.z", "protoc": "x.y.z", "protoc_gen_dart": "x.y.z", "registry_transform": "<script sha>" },
   "schemas": { "proto_dir_sha": "<sha>", "registry_json_sha": "<sha>", "headers_sha": "<sha>" },
   "artifacts": {
-    "android/arm64-v8a/libTrustWalletCore.so": { "sha256": "…", "size": 0 },
+    "android/arm64-v8a/libTrustWalletCore.so": { "sha256": "…", "size": 0, "source_commit": "<sha>", "build_workflow": "<workflow-run url>", "linkage": "dynamic", "target_os": "android", "abi": "arm64-v8a", "min_os": "21", "toolchain": { "ndk": "…", "cmake": "…", "rust": "…" }, "signature": null, "attestation": null, "provenance": "built_from_source", "asset_name": "<artifact_set_id>__<sha256[0:12]>__android-arm64-v8a-libTrustWalletCore.so", "logical_name": "android/arm64-v8a/libTrustWalletCore.so" },
     "android/armeabi-v7a/…": {}, "android/x86_64/…": {},
     "ios/TrustWalletCore.xcframework.zip": { "sha256": "…", "size": 0 }
   },
   "packages": { "wallet_core_flutter": "0.x.y", "wallet_core_flutter_bindings": "0.x.y", "wallet_core_flutter_native": "0.x.y" },
   "toolchain": { "ndk": "…", "xcode": "…", "cmake": "…", "rust": "…" },
   "release_set": "<id shared by the three package versions>",
-  "identity": { "symbol": "wcf_build_info", "artifact_set_id": "<id>", "upstream_commit": "<sha>" },
+  "identity": { "symbol": "wcf_build_info", "artifact_set_id": "as_<tag>_<nnn>", "upstream_commit": "<sha>", "build_workflow": "<workflow-run url>" },
   "retention": { "primary": "<immutable content-addressed base URL>", "mirror": "<url or null>", "policy": "<url>" },
   "sbom": "<path or null>",
   "reproducible_build_verified": false
@@ -463,7 +463,7 @@ Estimates after M0 are placeholders **to be re-estimated from M0 findings** (pac
 | **DECISION-6** | Minimum Flutter/Dart versions | Derived from DECISION-2 measurements | §12.2 step 6 | M0 exit |
 | **DECISION-7** | Chain-family helpers in-package vs per-family packages | In SDK (default); split later | Size/cadence data | post-M2 |
 | **DECISION-8** | Status and intent of upstream `flutter/` directory | Sample; abandoned; planned SDK | Check upstream issues/commits/maintainers | M0 start |
-| **DECISION-9** | Source of native artifacts (must allow the build-identity symbol of §12.3) | Upstream release assets plus a companion identity library; from-source build in CI; both | Inspect the 19 release assets | M0 start |
+| **DECISION-9** | Source of native artifacts (must allow the build-identity symbol of §12.3) | Upstream release assets plus a companion identity library; from-source build in CI; both | Inspected the 8 release assets (T0.5, 2026-09-07) | M0 start |
 | **DECISION-10** | Which operations and variants are *Exposed* in 1.0 for coins without vectors, and the exact v1 feature/exclusion table (S9) | Advanced-only raw signing; typed helpers; explicit exclusions | Capability policy + owner | M2 |
 | **DECISION-11** | Public coin/network/account model: stable facade over the generated registry; explicit network where upstream has none; assets deferred to helpers | Thin facade (default); full chain-family/network/asset model; generated enum public with a deprecation policy | Owner, on the ADR drafted at M0 start | M0 start |
 | **DECISION-12** | Session lifecycle and worker protocol (§14.3): states, request ids, queue bound, timeouts, cancellation, close semantics, failure behavior; async public close vs synchronous internal dispose | As §14.3; per-call isolates (folds into DECISION-3) | ADR + M0/M1 data | M0 start (protocol), M1 exit (worker model) |
@@ -516,3 +516,14 @@ Estimates after M0 are placeholders **to be re-estimated from M0 findings** (pac
 - **Upstream updates (A-14, [REC]):** candidate/stable channels with an expedited security path; upgrade reports name the unverified surface touched.
 - **Rejected or reframed:** A-01's descriptor-aware validator (circular without a secret marker); A-04's full five-type domain model (exceeds 1.0 scope); A-15's removal of per-phase reviews and merging of vector tasks (kept in the execution plan for provenance and lane reasons). Details in the triage file.
 - **Kept from v1.1:** everything else.
+
+## 26. Changelog — v1.2 → v1.2.1 (Phase 0 evidence, September 7, 2026)
+
+Factual corrections from the Phase 0 evidence tasks; no requirement changed.
+
+- **§2, §3 (DECISION-8, T0.4):** upstream's `flutter/` is a one-commit, unpublished Dart console sample regenerated by CI as a build smoke check; the README's Flutter pointer is an external project. "Tracks master" replaced; one [UNVERIFIED] resolved, one kept with its dated negative.
+- **§4 (T0.9):** the audit qualification names the one published report (Kudelski 2023, Rust StarkNet key pairs) and the one published advisory (GHSA-7g72-jxww-q9vq); other audit claims stay unverified.
+- **§12.1, §12.2, §22 (DECISION-9, T0.5):** upstream's iOS framework at 4.8.0 is dynamic, not static; the release carries 8 assets, not 19, none of them Android; the tarball asset holds static archives including a macOS slice.
+- **§10.2 (DECISION-13, T0.11):** Solana's result is a string in the requested encoding, base58 by default.
+- **§15.3 (DECISION-14 §5.1, D0 F6):** the per-artifact manifest record carries every §12.3 durability field plus `provenance`, `asset_name`, `logical_name`, with `toolchain` per artifact and the top-level block a set-wide summary; `identity` gains `build_workflow`; the code block shows the full shape for one artifact. T1.2 implements; `compat_manifest.json` and the validator change then.
+- **§10.2 (DECISION-11/12/14, ratified at D0):** the error hierarchy gains `SessionStateError`, `QueueFullError`, `OperationTimeoutError`, `OperationCancelledError`, `UnknownCoinError`, and `ManifestMismatchError` carries a `check` discriminator.
