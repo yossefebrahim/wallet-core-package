@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **Source** | [docs/wallet_core_flutter_prd.md](../wallet_core_flutter_prd.md) — PRD Draft v1.2, 2026-09-07 |
-| **Plan version** | 1.2 — 2026-09-07 (1.1 absorbed the architecture audit, plan §7 and [audit_triage.md](../audit-resaults/audit_triage.md); 1.2 moves the commit boundary to `agy-delegate`, plan §2.9 and §8) |
-| **Orchestrator** | A Claude Code session opened in this repository. It writes briefs, dispatches, monitors, reviews, re-runs gates, and keeps [PROGRESS.md](PROGRESS.md) current. It does not implement, and it never runs a git command that creates or moves a commit, tag, or branch head (`init`, `add`, `commit`, `merge`, `rebase`, `tag`, `push`): those are delegated to `agy-delegate` with a commit brief (plan §2.9). |
-| **Implementers** | `claude-delegate` (default, almost everything) · `agy-delegate` (small, bounded coding tasks) · `agy-delegate` also executes every git commit, fast-forward, and tag on the orchestrator's commit brief (plan §2.9); it never pushes |
+| **Plan version** | 1.3 — 2026-09-07 (1.1 absorbed the architecture audit, plan §7 and [audit_triage.md](../audit-resaults/audit_triage.md); 1.2 moved the commit boundary to `agy-delegate`; **1.3 removes it entirely — the repository owner is the only party that commits, tags, or pushes**, plan §2.9) |
+| **Orchestrator** | A Claude Code session opened in this repository. It writes briefs, dispatches, monitors, reviews, re-runs gates, and keeps [PROGRESS.md](PROGRESS.md) current. It does not implement, and it never runs a git command that creates or moves a commit, tag, or branch head (`init`, `add`, `commit`, `merge`, `rebase`, `tag`, `push`). Since 2026-09-07 those are **not delegated either**: the repository owner performs every commit, tag, and push themselves (plan §2.9). |
+| **Implementers** | `claude-delegate` (default, almost everything) · `agy-delegate` (small, bounded coding tasks). Neither commits: since 2026-09-07 the owner performs every commit, tag, and push (plan §2.9). |
 | **Phase auditor** | `codex-delegate` in `--read-only` mode: an adversarial debate at the end of every phase, plus one checkpoint debate inside Phase 1 |
 | **Human** | Approves phase closes, records decisions the PRD assigns to the owner, and performs every publication |
 
@@ -58,7 +58,7 @@ main ──┬── task/T1.3 (worktree ../wallet-core-package.worktrees/T1.3) 
 - Implementers never share a working tree. The delegate skills state that multiple implementers in one tree destroy attribution and the review boundary.
 - **Concurrency cap: 3 implementer sessions at once** (raise only after T0.3 shows the machine and the CLIs' quotas tolerate it). Within a wave, tasks beyond the cap queue in table order.
 - **Device lock:** one device-gated task at a time, because the emulator and simulator are single shared resources.
-- Landing is always onto `main` as a fast-forward (rebase first if `main` moved), never a merge commit from the implementer. The git operations of a landing are executed by `agy-delegate` on the orchestrator's commit brief (plan §2.9). After landing, the orchestrator removes the worktree and deletes the branch.
+- Landing used to mean a fast-forward onto `main` executed by `agy-delegate` on a commit brief. **Since 2026-09-07 no session commits (plan §2.9):** a task that passes review is left in its worktree, its row in PROGRESS.md reads `ready for you`, and the worktree and branch stay until the owner has taken the work.
 - A later wave's brief may rely on an earlier task's behavior only after that task has landed on `main` (fresh implementer sessions have no memory).
 - **Evaluation branches:** Phase 1's two packaging evaluations (T1.8, T1.9) and the Approach B prototype (T1.13) touch `pubspec.yaml` and native build files in incompatible ways. They land on branches `eval/option1`, `eval/option2`, `eval/approach-b` and are tagged. Only the option that wins its decision is rebased onto `main`.
 
@@ -99,7 +99,7 @@ A phase is closed only by this procedure.
    - **rejected** → the reason is recorded (Codex's claim was wrong, or it contradicts a PRD requirement).
 5. When rework has landed, resume the same Codex thread with `--session <threadId>` and a delta brief listing the fixes; ask it to concede or hold each blocking point. Repeat until nothing blocking remains.
 6. Record each `DECISION-n` outcome in `docs/decisions/DECISION-n.md`: options, data, debate verdict, final choice, who decided (the PRD's "Decided by" column names the human for DECISION-4, DECISION-5, DECISION-7).
-7. The human approves the close. The orchestrator dispatches a commit brief that has `agy-delegate` tag `main` as `phase-<n>-closed` (plan §2.9).
+7. The human approves the close and tags `phase-<n>-closed` themselves; no session tags (plan §2.9).
 
 Codex never implements in this plan. Its only deliverable is its final message.
 
@@ -166,9 +166,31 @@ Permission escalations (`--dangerously-skip-permissions`, `danger-full-access`) 
 - A lane's CLI is unavailable or out of quota: pause that lane; substituting another implementer is the human's call.
 - Anything outward-facing: pushing to a remote, creating a GitHub release, publishing to pub.dev, opening issues on upstream.
 
-### 2.9 Commit boundary (user rule, 2026-09-07)
+### 2.9 Commit boundary (user rule, 2026-09-07; tightened by the user 2026-09-07 later the same day)
 
-The user decided that the orchestrating session never commits or pushes. Consequences:
+**Current rule, and the one that governs: nobody but the repository owner commits.** The owner said in chat, "stop
+commiting ot pushing the code base please" and "I will do that with my self". From that moment:
+
+- **No session commits, tags, or pushes** — not the orchestrator, not `agy-delegate`, not any implementer. Commit
+  briefs are no longer written or dispatched, and `briefs/_TEMPLATE_commit.md`, `briefs/LAND_*.md` and
+  `briefs/TAG_*.md` are dormant, kept only as a record of what was done before the rule changed.
+- **Work accumulates uncommitted.** A finished task is reviewed by the orchestrator, its gates re-run, and it is then
+  left in its worktree with a review note in PROGRESS.md saying it is ready for the owner. The owner decides what to
+  stage, in what order, and with what message.
+- **Landing still means "reviewed and gate-green"**, not "committed". PROGRESS.md task rows read `ready for you (worktree
+  <path>, branch <branch>)` instead of `landed <hash>` for everything after this rule took effect.
+- **A remote now exists** (`origin`, created by the owner). That changes nothing here: pushing was already
+  outward-facing and is now entirely theirs.
+
+What was committed before the rule changed, for the record: 29 commits ending at `89b137c`, plus the tag
+`phase-0-closed`, every one of them made by `agy-delegate` on a commit brief and reviewed afterwards. The owner pushed
+them; no session ever ran `git push`.
+
+---
+
+**Superseded (kept because it explains the history above): the 2026-09-07 morning rule.** The user's first instruction
+was that the orchestrating session never commits or pushes, and that `agy-delegate` executes commits instead.
+Consequences as they stood then:
 
 - **Orchestrator may run:** `git worktree add/remove`, `git branch -d`, `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, and any read-only inspection. It edits files in the main checkout only under `docs/plan/` (PROGRESS.md, briefs) and, as plan §2.2 step 8 allows, trivial integration fixes inside a task worktree before that task's commit brief.
 - **Orchestrator never runs:** `git init`, `git add`, `git commit`, `git merge`, `git rebase`, `git tag`, `git push`, `git remote add`, or anything that amends, resets, or rewrites history.
