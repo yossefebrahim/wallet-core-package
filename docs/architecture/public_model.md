@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Decision** | [DECISION-11](../decisions/DECISION-11.md) — public coin / network / account model |
 | **Binding on** | T1.11 (SDK core), T1.12 (EVM path), T2.5 (UTXO family), T2.8 (capability matrix), T3.6 / T3.8 (family helpers) |
-| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0; recorded by the human. |
+| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording. |
 
 Everything below belongs to `package:wallet_core_flutter/wallet_core_flutter.dart`. Per AGENTS.md rule 4 and rule 12, no signature here names a foreign-function type, a generated type, or a serialization type; the mapping to upstream's coin identifiers happens one layer down, inside the bindings package, and is described in DECISION-11 §4.2. `Uint8List` (`dart:typed_data`) is a plain Dart value type and is used freely.
 
@@ -37,6 +37,16 @@ Everything below belongs to `package:wallet_core_flutter/wallet_core_flutter.dar
 /// * A new chain appearing upstream is a minor version here. It is reported as
 ///   *generated* in the capability matrix and never as *tested* until a vector
 ///   exists.
+///
+/// The rename and removal rules are not a matter of care at review time. They
+/// are enforced by a check on every upstream-pin PR that **fails the PR** when
+/// a registry id disappears or is renamed without the corresponding alias or
+/// removal entry in the same change, and that check is operational before any
+/// pin is merged (DECISION-11 §4.3).
+///
+/// Whether an operation on a coin actually works is a separate question from
+/// whether the coin resolves here, and it is answered only by the capability
+/// matrix (`docs/capability_matrix.md`). A `Coin` existing means an id resolves.
 final class Coin {
   const Coin._();
 
@@ -145,6 +155,14 @@ enum CoinStatus {
 /// can be added in a minor version without breaking an exhaustive `switch` in
 /// consumer code. This is *this SDK's* grouping, not upstream's blockchain
 /// field, and the two do not correspond one to one.
+///
+/// **This type is unstable metadata and is never a support claim.** Which family
+/// a coin belongs to, and whether that family has request builders, describe how
+/// this version of this SDK is organised; both can change in a minor version.
+/// Neither tells you whether an operation on a given coin is tested, or works.
+/// The capability matrix (`docs/capability_matrix.md`) is the only support claim
+/// this project makes, and it is generated per coin and per operation with
+/// *exposed*, *generated*, and *tested* distinguished (DECISION-11 §4.5).
 final class ChainFamily {
   const ChainFamily._();
 
@@ -153,6 +171,11 @@ final class ChainFamily {
 
   /// Whether this SDK ships typed request builders for the family, as opposed to
   /// exposing the coin for address operations only.
+  ///
+  /// Unstable metadata, and **not a support claim**: it is a fact about the
+  /// family, not about any coin in it. A coin in a family with request builders
+  /// may still have no vector and no tested operation. Read the capability
+  /// matrix to learn what works.
   bool get hasRequestBuilders;
 
   static const ChainFamily evm = ChainFamily._();
@@ -161,6 +184,12 @@ final class ChainFamily {
 
   /// Coins this SDK exposes for address operations but for which it ships no
   /// request builder at this version.
+  ///
+  /// Unstable metadata, and **not a support claim** in either direction: a coin
+  /// here is not "unsupported" (its addresses work), and a coin leaving this
+  /// bucket when a family is implemented is not a promise that any operation on
+  /// it is tested. Membership changes as families land, which is a minor version
+  /// and not a breaking change. Read the capability matrix to learn what works.
   static const ChainFamily other = ChainFamily._();
 }
 ```

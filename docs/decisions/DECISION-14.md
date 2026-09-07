@@ -7,8 +7,8 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Question** | What does this project promise about the binaries and the package set it publishes: how a build proves *which* library it linked, where artifacts live and for how long, how the three packages are pinned to each other, in what order they publish, and what happens when a published set turns out to be wrong? |
 | **Governing PRD sections** | §12.3 (artifact acquisition, identity, durability), §12.4 (the two separate integrity requirements), §15.3 (manifest), §15.4 (versioning, publication order, recovery release), §16 S3, §22 DECISION-14 |
 | **Depends on** | [`DECISION-9`](DECISION-9.md) (T0.5) and [`evidence/release-assets-4.8.0.md`](evidence/release-assets-4.8.0.md) |
-| **Fills manifest fields** | `identity`, `release_set`, `retention`, `sbom`, and DECISION-9's per-artifact `provenance` |
-| **Status** | recommended by T0.11; adjudicated at D0; recorded by the human |
+| **Fills manifest fields** | `identity`, `release_set`, `retention`, `sbom`, and the full per-artifact record of §5.1 (PRD §12.3's durability list plus DECISION-9's `provenance`) |
+| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
 
 ---
 
@@ -33,8 +33,24 @@ DECISION-9's recommendation, pending D0, is **Option C**: Apple libraries are re
  * not free it, and it is NOT a TWString — upstream's delete functions must
  * never be called on it. It stays valid for the lifetime of the loaded image.
  */
-const char *wcf_build_info(void);
+
+/* The symbol must be exported from the built image on both toolchains, and it
+ * must be exported explicitly rather than by default: the Android build is
+ * tuned for JNI and may compile with -fvisibility=hidden (DECISION-9 §3,
+ * upstream issue #4638), and a hidden identity symbol is indistinguishable at
+ * load time from a mirrored-without-relink artifact. */
+#if defined(_WIN32)
+#  define WCF_EXPORT __declspec(dllexport)
+#else
+#  define WCF_EXPORT __attribute__((visibility("default")))
+#endif
+
+WCF_EXPORT const char *wcf_build_info(void);
 ```
+
+`__attribute__((visibility("default")))` is the annotation for **both** toolchains we ship: Apple's clang and the Android NDK's clang accept it identically, and the NDK's own `JNIEXPORT` expands to exactly it. The annotation goes on the declaration in the header *and* on the definition, so a build that adds `-fvisibility=hidden` to our translation unit cannot hide it. The `_WIN32` arm exists only so the file compiles unchanged if a host build is ever added; no Windows artifact is published at 1.0.
+
+**The annotation does not replace the export gate; it is checked by it.** T1.2 runs `llvm-nm --defined-only --extern-only` on **every** artifact in the set and fails the build unless `wcf_build_info` is present (as `_wcf_build_info` on Mach-O, `wcf_build_info` on ELF), alongside the existing reconciliation against the 464-name `TW*` list (DECISION-9 §5, T1.2). Annotation and gate answer different questions: the annotation makes the export happen, the gate proves it happened in the binary we are about to publish. Neither is sufficient alone — a link-time version script or `--gc-sections` can still drop an annotated symbol, which is precisely the failure the gate exists to catch.
 
 It returns a NUL-terminated UTF-8 JSON object with exactly these keys:
 
@@ -73,32 +89,67 @@ A missing `wcf_build_info` symbol is `NativeLoadError`, not a mismatch: it means
 
 ## 3. Artifact URLs, retention, and mirror
 
-### 3.1 Content-addressed immutable URLs
+### 3.1 Content-addressed immutable URLs — two layouts, one identity
+
+A GitHub Release asset is a **flat file**: it is served from `https://github.com/<org>/<repo>/releases/download/<tag>/<asset-name>` and has no path component under the tag. A nested `{artifact_set_id}/{sha256}/{filename}` route cannot exist there, so the set id and the checksum have to live in the *name* on the primary, and in the *path* only on the object-store mirror. Both layouts carry the same three facts; they differ in where the separators go.
+
+**Primary — GitHub Releases, flat asset name.** The exact pattern, and it is a pattern the validator checks (§5.1):
 
 ```
-{retention.primary}/{artifact_set_id}/{sha256}/{filename}
+<artifact_set_id>__<sha256[0:12]>__<flat_name>
 ```
 
-for example
+where `<flat_name>` is the artifact's `logical_name` — its path in the manifest — with `/` replaced by `-` (`android/arm64-v8a/libTrustWalletCore.so` → `android-arm64-v8a-libTrustWalletCore.so`), `<sha256[0:12]>` is the first 12 lowercase hex characters of the artifact's sha256, and `__` (two underscores) is the field separator — it cannot occur inside a set id, a hex prefix, or a logical name, so the name parses unambiguously in either direction. Assembled:
 
 ```
-https://github.com/<org>/<repo>/releases/download/native-4.8.0-001/as_4.8.0_001/<sha256>/android-arm64-v8a-libTrustWalletCore.so
+{retention.primary}/{artifact_set_id}__{sha256[0:12]}__{flat_name}
 ```
+
+```
+https://github.com/<org>/<repo>/releases/download/native-4.8.0-001/as_4.8.0_001__9f2c1ab34de5__android-arm64-v8a-libTrustWalletCore.so
+```
+
+**Mirror — object store, hierarchical.** The nested layout is kept where it is expressible, because a bucket prefix per set is what makes listing, lifecycle rules, and a per-set delete tractable:
+
+```
+{retention.mirror}/{artifact_set_id}/{sha256}/{logical_name}
+```
+
+```
+https://<bucket>.<host>/wcf-artifacts/as_4.8.0_001/<64 hex>/android/arm64-v8a/libTrustWalletCore.so
+```
+
+**Base-URL semantics, stated so a fetcher can be written from this paragraph alone.** `retention.primary` and `retention.mirror` are both base URLs with no trailing slash, and neither is ever a per-file URL. They differ in the template applied to them, and the template is fixed by the location kind, not configurable per release:
+
+| | `retention.primary` | `retention.mirror` |
+|---|---|---|
+| Points at | one GitHub Release, tag `native-<upstreamTag>-<seq>` | a bucket prefix that holds every set |
+| Template | `base + "/" + asset_name` (one segment) | `base + "/" + artifact_set_id + "/" + sha256 + "/" + logical_name` |
+| Set id appears in | the asset name, and in the release tag | the path |
+| Changes per artifact set | yes — a new set is a new release tag, so a new base URL | no — one base serves every set |
+
+That asymmetry is why the manifest records both `asset_name` and `logical_name` per artifact (§5.1) instead of letting a fetcher guess: `asset_name` is the primary's whole path segment, `logical_name` is the mirror's tail and the manifest's own artifact key.
 
 Rules, all enforced by the build workflow (T1.2):
 
-- The sha256 in the path is the sha256 the manifest pins for that artifact. A URL therefore *names its own content*; a URL that returns different bytes is detectable without trusting the host, because the fetcher compares against the manifest anyway and the path makes a substitution obvious to a human reading a log.
-- A release tag `native-<upstreamTag>-<seq>` is created once and never re-uploaded to. Correcting an artifact means a new set id and a new tag, never a replacement under an existing URL.
-- `retention.primary` is a base URL, not a per-file URL, so a mirror is a base-URL swap and nothing else changes.
+- The checksum in the primary's name is a **prefix**, not the whole digest, and it is an aid to a human reading a log, not the check. Full verification is always the manifest's 64-hex `sha256` against the downloaded bytes, on both locations, with no "continue anyway" path. The mirror's path carries the full digest, so on that side the URL names its own content exactly.
+- A release tag `native-<upstreamTag>-<seq>` is created once and never re-uploaded to; an asset name is never reused. Correcting an artifact means a new set id and a new tag, never a replacement under an existing URL. The set id inside the asset name means a stray file cannot be mistaken for a member of another set even after it is downloaded and renamed.
+- A mirror is a base-URL swap plus the mirror template; nothing else changes, and the manifest is unchanged by which location served the bytes.
 - The fetch is build-time only (PRD §16 S4). Nothing in this scheme is reachable at runtime.
 
 ### 3.2 Retention promise — wording to publish
 
 Published in `docs/artifact_retention.md` (T3.13) and linked from `retention.policy`:
 
-> **Artifact retention.** Every native artifact set referenced by a published version of `wallet_core_flutter`, `wallet_core_flutter_bindings`, or `wallet_core_flutter_native` stays fetchable, unmodified, from the primary URL and from the mirror for **at least 24 months** after the last package version that references it is superseded, and in no case for less than **12 months** after that version is retired from pub.dev's recommended set. Artifact sets are never modified in place: a correction is always a new set with a new id, published as a new release of the package set. If retention is ever going to end for a set, notice is published in the repository's releases and in `SECURITY.md` at least 90 days beforehand. This promise is made by this project about storage this project controls; it is not a service-level agreement, and it is not a promise about GitHub, pub.dev, or any other third party's availability.
+> **Artifact retention.** For every native artifact set referenced by a published version of `wallet_core_flutter`, `wallet_core_flutter_bindings`, or `wallet_core_flutter_native`, this project undertakes: **not to intentionally delete or modify that set**, and **to keep it configured for serving from two locations** — the primary release and the mirror — for **at least 24 months** after the last package version that references it is superseded. Artifact sets are never modified in place: a correction is always a new set with a new id, published as a new release of the package set. If we decide to end retention for a set, notice is published in the repository's releases and in `SECURITY.md` at least 90 days beforehand.
+>
+> What this is not: it is **not** a promise that a set will be reachable at any given moment. Reachability depends on GitHub, on the mirror's provider, and on network conditions between them and you, none of which this project controls, and an outage or a provider's own action can make a set temporarily or permanently unavailable regardless of what we do. This is a statement of our own conduct and configuration, not a service-level agreement, and it carries no warranty. Consumers who need a stronger guarantee should use the offline/vendored artifact cache (PRD §12.3) and keep their own copy.
 
-The last sentence is the honest part and must not be dropped: a retention promise that implies a guarantee about someone else's infrastructure is a claim we cannot keep.
+Two things about this wording are deliberate.
+
+**It promises only what is ours.** The earlier draft said artifacts "stay fetchable", which is a claim about GitHub's and a storage provider's uptime — infrastructure we neither own nor pay for at a tier that would let us promise anything about it. What we can actually commit to is that we will not delete the bits, will not alter them, and will keep two locations configured; everything past that is the provider's availability, and the second paragraph says so plainly rather than in a disclaimer sentence a reader skips.
+
+**The 24-month figure is a proposal, not yet a commitment.** It is the number this record recommends, and it is affordable under §3.3's cost estimate, but three things must be verified before it is published: current mirror pricing against a live rate card, who owns and pays for the mirror account (a personal account is not a 24-month promise), and a demonstrated restore — a fetch of an old set from the mirror, verified against the manifest. **T3.13 does that verification and either publishes 24 months or publishes the number the verification supports.** Until then the figure appears in this record and not in `docs/artifact_retention.md`.
 
 ### 3.3 Mirror candidates and an honest cost estimate
 
@@ -112,7 +163,7 @@ The last sentence is the honest part and must not be dropped: a retention promis
 | macOS host | ~20 MB *(measured)* |
 | **Total per set** | **≈ 140–185 MB**, call it **200 MB** with dSYMs and checksums |
 
-**Cadence.** Upstream tagged 4.8.0 on 2026-08-28. Assuming we absorb 8–15 upstream tags a year plus a few recovery releases, that is **1.6–3 GB of new artifacts per year**, and with the 24-month promise a steady state of roughly **4–6 GB** under retention.
+**Cadence.** Upstream tagged 4.8.0 on 2026-08-28. Assuming we absorb 8–15 upstream tags a year plus a few recovery releases, that is **1.6–3 GB of new artifacts per year**, and at the proposed 24-month window a steady state of roughly **4–6 GB** under retention.
 
 | Candidate | Cost | Assessment |
 |---|---|---|
@@ -184,6 +235,12 @@ A CycloneDX 1.5 JSON document per artifact set, produced by the build workflow, 
 
 Marked [REC] in the PRD; recommended here as **required from the first public alpha** rather than 1.0, because it costs a workflow step and the alternative — publishing binaries with no component inventory — is the thing an adopting company's review will ask about first.
 
+**That earlier date is conditional, and the condition is the third bullet above.** Under Option C, a relinked Apple artifact's upstream half is enumerated from upstream's *declarations* at the pinned commit, not from anything we compiled; an SBOM that lists those components beside the ones we built, with no distinction, would assert an inventory we did not verify — which is worse than shipping no SBOM, because it is a document a reviewer will rely on. So:
+
+> The first-alpha date holds **only if T1.2 demonstrates that its CycloneDX output distinguishes compiled components from declaration-derived inventory** — concretely, that each component carries the producing artifact's `provenance` and that a consumer of the document can tell, per component, whether it was observed in our build or copied from an upstream declaration. If T1.2 cannot show that, the SBOM stays a **1.0** commitment and the intervening alphas ship without one rather than with an undifferentiated one.
+
+T1.2 records which of the two happened; the 1.0 acceptance checklist (§6, T5.11) requires the SBOM either way.
+
 ## 5. Manifest fields this record fills
 
 | Field | Value / shape | Source |
@@ -197,19 +254,51 @@ Marked [REC] in the PRD; recommended here as **required from the first public al
 | `retention.mirror` | R2 base URL, `null` until it exists | §3.3 |
 | `retention.policy` | URL of `docs/artifact_retention.md` | §3.2 |
 | `sbom` | path to the CycloneDX document, `null` until T1.2 emits one | §4.5 |
-| `artifacts.<path>.provenance` | **new per-artifact field**: `built_from_source` \| `relinked_from_upstream_release_asset` | DECISION-9 §4.4 |
+| `artifacts.<logical_name>` | the per-artifact record of §5.1 — fourteen fields, not two | §5.1 |
 
-Two of these are schema changes to files this task does not own: `identity.build_workflow` and the per-artifact `provenance`. `compat_manifest.json` and `tools/manifest/lib/manifest.dart` belong to T0.7; the changes are requested here and applied by **T1.2** (which produces the values) with the validator updated in the same change. Until then `manifest:validate` neither requires nor rejects them.
+### 5.1 The per-artifact record
+
+PRD §12.3 "Durability [REQ]" names, in one sentence, everything the manifest must record per artifact: *source commit, build workflow, linkage type, target OS, ABI, minimum OS, toolchain, size, checksum, signature, and attestation identity*. PRD §15.3's code block shows only `sha256` and `size`, so the requirement and the illustration disagree today. This record models the full list — plus DECISION-9's `provenance` and the two name fields §3.1 needs — and the **orchestrator's PRD patch updates §15.3's block from this table**; nothing in this task edits the PRD.
+
+The manifest key stays the artifact's logical path (`android/arm64-v8a/libTrustWalletCore.so`), and the value becomes an object:
+
+| Field | Type / domain | Example | Required | PRD §12.3 term |
+|---|---|---|---|---|
+| `sha256` | 64 lowercase hex | `9f2c1a…` | always | checksum |
+| `size` | integer bytes | `19720768` | always | size |
+| `source_commit` | 40 lowercase hex — the upstream commit these bits came from | `d692ac27…` | always | source commit |
+| `build_workflow` | absolute workflow-run URL | `https://github.com/<org>/<repo>/actions/runs/<id>` | always | build workflow |
+| `linkage` | `static` \| `dynamic` | `dynamic` | always | linkage type |
+| `target_os` | `android` \| `ios` \| `ios-simulator` \| `macos` | `android` | always | target OS |
+| `abi` | architecture, in the platform's own vocabulary: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `arm64`, `arm64_x86_64` (a fat slice) | `arm64-v8a` | always | ABI / architecture |
+| `min_os` | minimum OS as the platform states it: an Android API level (`21`) or an Apple deployment target (`13.0`) | `21` | always | minimum OS |
+| `toolchain` | object, per artifact, not per set — `{ "ndk": "r27c", "cmake": "3.29.3", "rust": "1.81.0" }` on Android, `{ "xcode": "17F113", "clang": "…", "sdk": "iphoneos26.5" }` on Apple | | always | toolchain |
+| `signature` | detached-signature asset name, or `null` | `null` | nullable | signature |
+| `attestation` | object identifying the attestation over these bytes — `{ "subject_digest": "sha256:…", "workflow_identity": "…", "bundle": "<asset name>" }` — or `null` until T4.5 | `null` | nullable | attestation identity |
+| `provenance` | `built_from_source` \| `relinked_from_upstream_release_asset` | `relinked_from_upstream_release_asset` | always | — (DECISION-9 §4.4) |
+| `asset_name` | the flat primary asset name of §3.1 | `as_4.8.0_001__9f2c1ab34de5__android-arm64-v8a-libTrustWalletCore.so` | always | — (§3.1) |
+| `logical_name` | the manifest key repeated inside the record, so a record is self-describing once detached from the map | `android/arm64-v8a/libTrustWalletCore.so` | always | — (§3.1) |
+
+Four notes on the modelling, each of which is a choice a reader could reasonably have made differently:
+
+1. **`toolchain` is per artifact and the top-level `toolchain` block stays as a set-wide summary.** Under Option C one set contains artifacts built by two different toolchains (a `clang` relink on Apple, a full NDK/CMake/Rust build on Android), so a single top-level block cannot describe them without being either wrong or empty. The per-artifact object is authoritative; the top-level block carries only what every artifact in the set agrees on, and the validator checks that agreement rather than assuming it.
+2. **`source_commit` is per artifact even though it will usually equal `upstream.commit`.** It is what PRD §12.3 asks for, and the case where it differs is real: a recovery release that rebuilds one platform against a patched tree while the others are unchanged.
+3. **`signature` and `attestation` are nullable, and nullable is not optional.** The keys are present and explicitly `null` before T4.5 lands, so the absence of an attestation is a recorded fact rather than a missing field, and a validator can distinguish "not yet attested" from "the producer forgot".
+4. **`min_os` is a string in the platform's own vocabulary**, not a normalised number. An Android API level and an iOS deployment target are not the same kind of value, and coercing them into one would lose which is which.
+
+**Who produces and who validates.** Production is **T1.2**'s: it is the only place that knows the toolchain versions, the link mode, the deployment target, and the workflow run, because it is the job that ran them. Validation is the manifest tool's, and **T1.2 extends `tools/manifest`** to do it in the same change that starts producing the values: presence of every required field, domain checks on `linkage` / `target_os` / `abi` / `provenance`, 64-hex `sha256` and 40-hex `source_commit`, `size > 0`, `asset_name` matching the §3.1 pattern *and* its embedded set id and checksum prefix agreeing with `identity.artifact_set_id` and this record's `sha256`, `logical_name` equal to the map key, and `signature`/`attestation` present-but-nullable. `melos run manifest:validate` is the gate.
+
+Three of these are schema changes to files this task does not own: `identity.build_workflow`, the per-artifact `provenance`, and the rest of the §5.1 record. `compat_manifest.json` and `tools/manifest/lib/manifest.dart` belong to T0.7; the changes are requested here and applied by **T1.2** (which produces the values) with the validator extended in the same change. Until then `manifest:validate` neither requires nor rejects the new fields.
 
 ## 6. Consequences for tasks
 
 | Task | What changes |
 |---|---|
-| **T1.2** — native artifacts workflow | Owns `wcf_build_info.c` and the JSON of §2.1 (three keys, `build_workflow` included); allocates `artifact_set_id`; uploads under the content-addressed URL scheme of §3.1; emits the CycloneDX SBOM; writes `identity`, `artifacts` (with `provenance`), `toolchain`, and extends the manifest schema and validator for the two new fields. |
-| **T1.7** — native package core | Implements the four comparisons of §2.3 with a distinguishing `check` on `ManifestMismatchError`; treats a missing `wcf_build_info` as `NativeLoadError`; never hashes the loaded library; fetches from `retention.primary` and falls back to `retention.mirror` **only** when it is non-null, applying the same checksum check to both. |
-| **T0.7 follow-up (in T1.2)** | `compat_manifest.json` gains `identity.build_workflow` and per-artifact `provenance`; the validator accepts and requires them once populated. |
+| **T1.2** — native artifacts workflow | Owns `wcf_build_info.c` with the explicit default-visibility annotation of §2.1 and the JSON of §2.1 (three keys, `build_workflow` included); runs the per-artifact `nm` export gate for `wcf_build_info` and the 464 `TW*` names; allocates `artifact_set_id`; uploads under the flat asset-name pattern of §3.1 and mirrors under the hierarchical one; emits the CycloneDX SBOM, marked per §4.5 so compiled components are distinguishable from declaration-derived inventory (and reports whether that condition was met); **produces the full per-artifact record of §5.1** and **extends `tools/manifest` to validate it**. |
+| **T1.7** — native package core | Implements the four comparisons of §2.3 with a distinguishing `check` on `ManifestMismatchError`; treats a missing `wcf_build_info` as `NativeLoadError`; never hashes the loaded library; builds the primary URL with the flat template of §3.1 and the mirror URL with the hierarchical one, falls back to `retention.mirror` **only** when it is non-null, and applies the same full-digest checksum check to both. |
+| **T0.7 follow-up (in T1.2)** | `compat_manifest.json` gains `identity.build_workflow` and the §5.1 per-artifact record; the validator accepts and requires them once populated. |
 | **T3.11** — release set | Owns `tools/manifest/embed_release_set.dart`, the exact pins of §4.2, the publication order and hosted-install smoke of §4.3 as a workflow, and `docs/releases/process.md` including §4.4 verbatim. |
-| **T3.13** — retention policy and `SECURITY.md` | Publishes §3.2's wording, re-checks the mirror pricing of §3.3 against current rate cards, and links the advisory process of §4.4.5. |
+| **T3.13** — retention policy and `SECURITY.md` | Publishes §3.2's wording; before publishing the window, verifies the three things §3.2 names — current mirror pricing against a live rate card, who owns and pays for the mirror account, and a demonstrated restore of an old set verified against the manifest — and publishes 24 months or the number that verification supports; links the advisory process of §4.4.5. |
 | **T4.5** — attestations | The attestation subject is the artifact set id of §2.1, so an attestation and a running binary can be tied together through the same identifier. |
 | **T4.3** — upstream watcher | Must also watch the layout of `TrustWalletCore-<tag>.tar.xz` (DECISION-9 §5): a layout change breaks the Apple relink and therefore the identity link step, silently, at the next tag. |
 | **T4.4** — independent-rebuild comparison (PRD §12.4) | Applies only to artifacts whose `provenance` is `built_from_source`; for relinked Apple artifacts the comparison is *not available by construction*, and the report must say so per artifact rather than reporting an aggregate. |
@@ -226,13 +315,13 @@ Everything in §2, §3, §4, and §5 stands unchanged — identity, URLs, retent
 - **The Apple `toolchain` block becomes a statement about our build** instead of a copy of upstream's `Info.plist` values.
 - **The cost is schedule, not contract:** T1.2 becomes the long pole and T1.6 loses the macOS host library it would otherwise get from a single `clang` invocation, so `test:native` waits for the from-source Apple pipeline. DECISION-9 §4 makes that trade explicitly and calls it the orchestrator's to make.
 
-Nothing in this record needs rewriting under B-only; §5's `provenance` column collapses to one value.
+Nothing in this record needs rewriting under B-only; §5.1's `provenance` field collapses to one value.
 
 ## 8. Answers to threat-model questions
 
 Questions 1–3 of `docs/security/threat_model.md` §6 are addressed to DECISION-12 and 4–6 to DECISION-13; none is addressed to this record. Four threat rows are answered by it, and they are recorded here so T5.7 can check them against the built system:
 
-- **TM-14 (artifact substitution in transit).** §3.1's content-addressed immutable URLs plus the manifest's sha256, with no "continue anyway" path in the fetcher (T1.7).
+- **TM-14 (artifact substitution in transit).** §3.1's immutable URLs — checksum-prefixed on the primary, fully content-addressed on the mirror — plus verification of the manifest's full sha256 on both, with no "continue anyway" path in the fetcher (T1.7).
 - **TM-15 (compromised CI or artifact host).** §3.3's separate-provider mirror, §2.1's `build_workflow` field binding a binary to a workflow run, and T4.5's attestation over the same `artifact_set_id`. The residual is unchanged: a compromise that lands both the artifact and its committed checksum in an approved PR defeats all of it, and human review of the pin PR is the remaining control.
 - **TM-16 (manifest tampering).** §2.3's comparisons 1 and 2 — the three packages must agree on a release-set id *and* on a manifest hash, and `_native`'s shipped copy must hash to it.
 - **TM-29 (no emergency-update path).** §4.4 is that path, written before the first publish, with the explicit statement that no runtime channel exists or will be built.

@@ -9,7 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Evidence** | `docs/decisions/evidence/prefetch-2026-09-07/upstream-src/registry.json`, `.../TWCoinType.h`, `.../TWDerivation.h`, `.../TWAnyAddress.h`, `.../TWHDWallet.h`, all at commit `d692ac27749d0c615e17c751b70ab4f0aa75c59b` (tag 4.8.0) |
 | **Interface sketch** | [`docs/architecture/public_model.md`](../architecture/public_model.md) |
 | **Recommendation** | **Option A — thin stable facade**, in the exact shape of §4 |
-| **Status** | recommended by T0.11; adjudicated at D0; recorded by the human |
+| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
 
 ---
 
@@ -115,6 +115,12 @@ Written into the doc comment of `Coin` and into `docs/architecture/public_model.
 5. **Adding a coin is a minor version.** New ids appear when the pin moves; the API diff (T4.1) lists them and the capability matrix marks them *generated*, never *tested*.
 6. **The registry `id` is the only stable key we publish.** `name`, `displayName`, `symbol`, `explorer`, and `info` are passed through as data and may change at any pin without a semver event; the doc comment says so.
 
+7. **The gate that enforces 2 and 3 must be operational before any pin merges.** Rules 2 and 3 are promises about a hand-written table (`lib/src/coin/aliases.dart`), and a hand-written table kept in step with upstream by good intentions will fall out of step at the pin where it matters. So the enforcement is mechanical and it is a *merge* gate, not a report:
+
+   > A check on every pin PR compares the previous pin's registry ids against the new one's. If an id **disappeared** or was **renamed** — the id is gone and an entry with the same `coinId` appears under a different id — the check **fails** unless the same PR adds the corresponding alias or removal entry. The failure names the id and the required entry. The PR cannot merge until it is added.
+
+   This runs as part of T4.1's API diff (§5), and the sequencing follows: the gate exists and passes **before the first pin PR is merged**, not after the first upstream rename is observed. If the gate is not in place, pins do not merge — an unenforced alias policy is worse than no policy, because consumers would have been told ids never break.
+
 ### 4.4 `Network` exists, and only where upstream has the concept
 
 `Network` is a small value type with `Network.mainnet` and `Network.testnet` and an `id` string, not an enum, for the same reason as `Coin`.
@@ -129,6 +135,13 @@ Written into the doc comment of `Coin` and into `docs/architecture/public_model.
 `AddressStyle` (`standard`, `legacy`, `segwit`, `taproot`) carries the rest of upstream's derivation names. `(Coin, Network, AddressStyle)` resolves to one `TWDerivation` value inside the bindings; unrepresentable combinations (`taproot` + `testnet` at 4.8.0, because upstream has no such derivation entry) throw `UnsupportedOperationError` in Dart. `Coin.addressStyles` reports what the pinned registry offers, so the failure is discoverable before it is thrown.
 
 This split is the one place the facade deliberately does not mirror upstream, and it is the reason `Network` cannot be a derivation name passed through: `segwit` and `testnet` sit in one JSON list and mean entirely different things.
+
+**Family metadata is descriptive, unstable, and never a support claim.** Two members of the facade look like they answer "is this chain supported?" and must not be read that way:
+
+- **`ChainFamily.other`** is the bucket for coins this SDK exposes for address operations but ships no request builder for. Its membership is *this SDK's* grouping at *this version*, it changes as families are implemented, and a coin moving out of `other` in a minor version is not a semver event on the facade.
+- **`ChainFamily.hasRequestBuilders`** says only that a family has typed request builders at all. It says nothing about whether a *particular* coin in that family has a vector, whether an operation is tested, or whether an address style works — a coin can sit in a family with request builders and still have no tested operation of any kind.
+
+Neither is stable across versions and neither is a claim of support. **The capability matrix (`docs/capability_matrix.md`, T2.8) is the only support claim this project makes**, it is generated rather than asserted, and it distinguishes *exposed* from *generated* from *tested* per coin and operation (PRD §13.1). The doc comments on both members say this, in those words, so a consumer reading the API rather than the docs still gets it. An application that needs to know what works reads the matrix; family metadata is for grouping a coin list in a UI.
 
 ### 4.6 Assets are deferred; `Account` is a descriptor
 

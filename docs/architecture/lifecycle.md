@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Decision** | [DECISION-12](../decisions/DECISION-12.md) — session lifecycle and worker protocol |
 | **Binding on** | T1.11 (session, proxies, errors), T2.1 (worker), T1.6 (internal handles), T1.7 (loader), T2.12 (fault suite) |
-| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0; recorded by the human. |
+| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording. |
 
 Sections 1–4 are the public surface (`package:wallet_core_flutter/wallet_core_flutter.dart`) and contain no foreign-function, generated, or serialization types. Sections 5–7 are internal to the SDK and the bindings package and are labelled as such.
 
@@ -73,6 +73,9 @@ enum SessionState { initializing, ready, closing, closed, failed }
 /// A deadline does not abort work already running in native code — there is no
 /// mechanism to do that. The operation runs to completion, its key material and
 /// temporaries are released as usual, and its result is discarded.
+///
+/// [dispose] is the one deadline that is **not** measured from submission and
+/// that never expires a caller's future: see its own comment.
 final class OperationTimeouts {
   const OperationTimeouts({
     this.initialize = const Duration(seconds: 30),
@@ -87,7 +90,21 @@ final class OperationTimeouts {
   final Duration walletOperation;
   final Duration derivation;
   final Duration signing;
+
+  /// Bounds the owner's **own** dispose step — the native delete and the
+  /// bookkeeping around it — measured from the moment that step begins, which
+  /// is after any operation already in flight has finished.
+  ///
+  /// It is not a deadline on [Wallet.close]: the acknowledgement of an explicit
+  /// close does not expire, because waiting behind an uninterruptible native
+  /// operation is not a fault and must not be reported as one. Exceeding this
+  /// bound means the owning isolate has stopped making progress, which surfaces
+  /// as [WorkerTerminatedError], not as [OperationTimeoutError].
   final Duration dispose;
+
+  /// Bounds teardown as a whole. This one **does** expire: on expiry the owning
+  /// isolate is killed and the session moves to [SessionState.closed], which is
+  /// recorded, because the alternative is a session that never closes.
   final Duration shutdownGrace;
 }
 ```
@@ -97,14 +114,19 @@ final class OperationTimeouts {
 ```dart
 abstract interface class WalletFacade {
   /// Creates a wallet with a new random mnemonic of [strength] bits.
+  ///
+  /// Carries a secret in **both** directions: [passphrase] crosses to the
+  /// owning isolate, and the generated mnemonic crosses back when the caller
+  /// asks for it. See the enumeration in [Wallet.exportMnemonic] and
+  /// `docs/security/memory_contract.md`.
   Future<Wallet> create({int strength = 128, String passphrase = ''});
 
   /// Imports a wallet from a BIP-39 mnemonic.
   ///
-  /// This is one of exactly two operations that carry a secret across the
-  /// isolate boundary. The mnemonic is a Dart `String`: this SDK drops its own
-  /// references once the wallet exists and cannot erase the caller's copy or the
-  /// platform's input buffers. See `docs/security/memory_contract.md`.
+  /// Carries a secret across the isolate boundary. The mnemonic is a Dart
+  /// `String`: this SDK drops its own references once the wallet exists and
+  /// cannot erase the caller's copy or the platform's input buffers. See
+  /// `docs/security/memory_contract.md`.
   Future<Wallet> importMnemonic(String mnemonic, {String passphrase = ''});
 
   /// Imports a wallet from entropy. Same secret-handling note as
@@ -144,6 +166,13 @@ abstract interface class Wallet {
   /// Returns a Dart `String` because it exists to be shown to a person. The
   /// string lives until it is collected and cannot be erased. Display it once
   /// and drop the reference.
+  ///
+  /// This is one of the five payloads that carry key material across the
+  /// isolate boundary, and one of the two that carry it *back*: the request
+  /// names only this wallet, the reply is the mnemonic. The others are
+  /// [WalletFacade.create] (passphrase out, mnemonic back), [importMnemonic]
+  /// and [importEntropy] (secret out), and keystore import (blob and password
+  /// out). Nothing else crosses in either direction (DECISION-12 §3.2).
   Future<String> exportMnemonic();
 
   /// Releases this wallet in the owning isolate and awaits the acknowledgement.
@@ -152,6 +181,14 @@ abstract interface class Wallet {
   /// The proxy is unusable from the moment this is called — every other member
   /// then throws [ClosedError] — and the underlying handle is freed after any
   /// operation already in flight on it has finished.
+  ///
+  /// **This wait does not expire.** An operation already running in native code
+  /// cannot be interrupted, so the acknowledgement can legitimately take longer
+  /// than [OperationTimeouts.dispose], which bounds only the owner's own
+  /// dispose step once that step begins. The returned future completes when the
+  /// acknowledgement arrives, or with [WorkerTerminatedError] if the session's
+  /// isolate ends first — never with [OperationTimeoutError]. A caller that must
+  /// bound its wait uses [WalletCore.shutdown], whose grace period does expire.
   Future<void> close();
 }
 
@@ -313,11 +350,13 @@ abstract interface class ResourceScope {
 | Fallback | native finalizer, callback = upstream delete, runs no Dart code | managed `Finalizer`, callback posts a dispose message |
 | Guarantee | upstream wipes the buffer that object currently owns, and nothing beyond it | the acknowledgement proves the owner released the handle |
 
-**Proxy finalizer rule.** A public proxy attaches a *managed* `Finalizer` whose callback posts a dispose message for its reference. The callback checks the session state first: in `ready` it posts and awaits nothing; in `closing`, `closed`, or `failed` it does nothing at all, because shutdown already released every handle. It never throws and never reports to the application. A proxy collected after the session closed is not counted as a leak.
+**Proxy finalizer rule.** A public proxy attaches a *managed* `Finalizer` whose callback posts a dispose message for its reference. The callback may **run** at any time — collection timing is the runtime's to choose — but it **posts** only while the session is `ready`; in `closing`, `closed`, or `failed` it does nothing at all, because shutdown already released every handle. Receiving a dispose message is safe in any state, which is why the callback needs no lock. It never throws and never reports to the application. A proxy collected after the session closed is not counted as a leak.
 
 ## 6. Worker protocol types — **internal to the SDK, not exported**
 
-These types cross the isolate boundary. Every one of them is a plain immutable value: no native address, no key material, no reference to anything unsendable except the one reply port in `Init`.
+These types cross the isolate boundary: **13 requests and 14 replies**. Every one of them is a plain immutable value with no native address and no reference to anything unsendable except the one reply port in `Init`.
+
+Five of the 27 carry key material, and they are enumerated rather than counted loosely (DECISION-12 §3.2): the requests `CreateWallet` (a passphrase), `ImportWallet` (a mnemonic or entropy, and a passphrase) and `ImportKey` (a keystore blob and its password, or raw key bytes under `advanced.dart`); and the replies `WalletCreated` (the generated mnemonic, only when the caller asked for it) and `MnemonicExported` (the wallet's mnemonic). Every other request and reply is key-less by construction. A secret-bearing payload is never logged, never put into an error, and never retained by the worker after it has crossed; the SDK drops its own references, and cannot erase the caller's.
 
 ```dart
 sealed class WorkerRequest {
@@ -326,9 +365,10 @@ sealed class WorkerRequest {
 }
 
 final class Init extends WorkerRequest { … }             // manifest snapshot, reply port, limits
-final class CreateWallet extends WorkerRequest { … }     // strength, passphrase
+final class CreateWallet extends WorkerRequest { … }     // strength, passphrase — carries a secret
 final class ImportWallet extends WorkerRequest { … }     // mnemonic OR entropy, passphrase — carries a secret
 final class ImportKey extends WorkerRequest { … }        // keystore blob + password — carries a secret
+final class ExportMnemonic extends WorkerRequest { … }   // walletRef — key-less request, secret-bearing reply
 final class DeriveAddress extends WorkerRequest { … }    // walletRef, coin, network, style, path
 final class ValidateAddress extends WorkerRequest { … }  // value, coin, network
 final class Sign extends WorkerRequest { … }             // request value, Set<KeyLocator>
@@ -343,8 +383,10 @@ sealed class WorkerReply {
 }
 
 final class InitOk extends WorkerReply { … }             // resolved symbol count
-final class WalletCreated extends WorkerReply { … }      // walletRef, optional mnemonic
+final class WalletCreated extends WorkerReply { … }      // walletRef, optional mnemonic — carries a secret
+                                                         //   when the caller asked CreateWallet for one
 final class KeyImported extends WorkerReply { … }        // keyRef
+final class MnemonicExported extends WorkerReply { … }   // mnemonic — carries a secret
 final class AddressDerived extends WorkerReply { … }     // address, public key, path
 final class AddressValidated extends WorkerReply { … }   // bool
 final class Signed extends WorkerReply { … }             // SignResult
@@ -362,9 +404,9 @@ final class Failed extends WorkerReply {                 // an already-typed err
 Rules the types encode, from DECISION-12 §3:
 
 - Exactly one reply per request, correlated by `id`. The exceptions are a dispose posted by a finalizer and a cancel, whose replies nobody awaits.
-- `DisposeRef`, `Cancel`, and `Shutdown` are control messages and are never rejected for a full queue: a load spike must not prevent teardown.
+- `DisposeRef`, `Cancel`, and `Shutdown` are control messages and are never rejected for a full queue: a load spike must not prevent teardown. The control path is nonetheless bounded (DECISION-12 §3.4): at most one pending `DisposeRef` per reference and one pending `Cancel` per target id, a `Cancel` for an unknown or finished id answered `NotCancellable` without being enqueued, a reserved control capacity, and `Shutdown` admissible always.
 - `DisposeRef` for an unknown, already-disposed, or shutdown-freed reference is a no-op that still replies `Disposed`.
-- A key derived for an operation is released in that operation's `finally`, so the reply is posted after the key is gone.
+- An operation parses upstream's output into a Dart-owned result **before** its `finally` releases the derived keys and every other key-bearing buffer, and the reply is posted after that release: parse, release, reply (DECISION-12 §3.9). The retained result is not key-bearing.
 - `Failed` carries a constructed exception, so the calling isolate never rebuilds an error from text.
 
 ## 7. `advanced.dart` — **explicitly outside the public contract**

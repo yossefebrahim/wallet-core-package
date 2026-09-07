@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Decision** | [DECISION-13](../decisions/DECISION-13.md) — signing model |
 | **Binding on** | T1.12 (EVM path), T2.0 (signing model in code), T2.5 (UTXO), T2.6 (Solana), T2.7 (EVM messages), T2.12 (hostile-input suite) |
-| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0; recorded by the human. |
+| **Status** | sketch: signatures and doc comments only, no bodies. recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording. |
 
 Sections 1–5 are the public surface (`package:wallet_core_flutter/wallet_core_flutter.dart`) and name no foreign-function, generated, or serialization type. Section 6 is internal to the SDK's family code and is labelled as such.
 
@@ -37,10 +37,15 @@ abstract interface class Signer {
   /// reference from another session.
   Future<SignResult> sign(TransactionRequest request, Set<KeyLocator> keys);
 
-  /// Convenience for the single-key case. Exactly equivalent to calling [sign]
-  /// with one [KeyLocator] derived from [account]; it is sugar over the set, not
-  /// an alternative path.
-  Future<SignResult> signWithAccount(TransactionRequest request, Account account);
+  /// Convenience for the single-key case. Exactly equivalent to
+  /// `sign(request, {key})`; it is sugar over the set, not an alternative path.
+  ///
+  /// It takes a [KeyLocator] and not an [Account] on purpose. An `Account`
+  /// (see [public_model.md](public_model.md) §4) is a descriptor: it carries a
+  /// coin, a path, an address, and a public key, and deliberately no reference
+  /// to the wallet it was derived from, so nothing can turn one back into a key.
+  /// Naming the key is therefore always the caller's explicit act.
+  Future<SignResult> signWithKey(TransactionRequest request, KeyLocator key);
 
   /// Signs a message request (personal-style or typed structured data).
   Future<SignResult> signMessage(MessageRequest request, Set<KeyLocator> keys);
@@ -206,6 +211,11 @@ final class UtxoInput {
   final AddressStyle addressStyle;
   final KeyLocator keyLocator;
 }
+
+// Note: [script] is the locking script of the output being spent, and building
+// those bytes for a given account and address style needs a helper the UTXO
+// family provides in Phase 3 (T3.7). The request type itself is unchanged by
+// that; until the helper exists the caller supplies the bytes.
 
 final class OutPoint {
   const OutPoint({required this.transactionId, required this.index});
@@ -415,7 +425,9 @@ final class KeyFieldEntry {
 2. Call `encodeKeylessInput(request)`.
 3. Verify, against `keyFields`, that the encoded bytes carry none of those fields. A match means the family encoder is defective; the operation fails with `InvalidInputError` before any key is derived.
 4. Derive the keys, inject them into the fields `keyFields` names, and call upstream.
-5. In a `finally`: release every derived key and every temporary allocation, and overwrite the SDK's own byte buffers. This block runs before the result is returned or the reply is posted — on the success, error, deadline, and cancellation paths alike.
-6. `parseSigningOutput` the result.
+5. **Still inside the `try`, and before anything is released:** `parseSigningOutput` upstream's output into a `SignResult`. Upstream's output lives in an allocation that step 6 frees, so it must be read while it is alive; parsing produces Dart-owned copies of the signed bytes, the signature components, and the transaction id.
+6. **In a `finally`:** release every derived key, the injected input buffer, and every other temporary allocation, and overwrite the SDK's own key-bearing byte buffers. This block runs before the result is returned or the reply is posted — on the success, error, deadline, and cancellation paths alike, and also when step 5 throws.
 
-Steps 2 and 6 are the family's; steps 1, 3, 4, and 5 are the signer's; no other component sees a key. `RawSigningInput`, which takes caller-supplied serialized bytes, exists only under `advanced.dart` — arbitrary bytes can contain key fields and this SDK cannot prove otherwise, so the caller accepts that responsibility explicitly (PRD §10.2).
+The rule in one line: **parse before releasing, release before replying** (DECISION-12 §3.9). The two categories must not be confused. The `SignResult` retained from step 5 is *not* key-bearing — a signed transaction carries signatures and public data, never the private key that produced them — so keeping it is not a secret held past the `finally`. What the `finally` releases is the key-bearing set: derived key handles, the serialized input after injection, and the temporaries around them. On a discarded path (a deadline that has already elapsed, a cancellation) the parsed result is dropped rather than posted, and the release happens exactly as it would have.
+
+Steps 2 and 5 are the family's; steps 1, 3, 4, and 6 are the signer's; no other component sees a key. `RawSigningInput`, which takes caller-supplied serialized bytes, exists only under `advanced.dart` — arbitrary bytes can contain key fields and this SDK cannot prove otherwise, so the caller accepts that responsibility explicitly (PRD §10.2).

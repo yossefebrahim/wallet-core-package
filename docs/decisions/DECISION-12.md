@@ -9,7 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Evidence** | `docs/security/threat_model.md` §1.4, TM-01, TM-23, TM-25, TM-26; `docs/decisions/evidence/prefetch-2026-09-07/upstream-src/TWHDWallet.h` (handle-returning constructors, all `_Nullable`, all requiring `TWHDWalletDelete`) |
 | **Interface sketch** | [`docs/architecture/lifecycle.md`](../architecture/lifecycle.md) |
 | **Recommendation** | **Protocol as specified below** (PRD §14.3 written out in full); per-call isolates rejected here, and the residual worker-vs-pool question left to DECISION-3 |
-| **Status** | recommended by T0.11; adjudicated at D0; recorded by the human |
+| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
 
 ---
 
@@ -73,8 +73,8 @@ What Option B genuinely buys — no long-lived seed residency (TM-02) — is ava
 |---|---|---|
 | `initializing` | nothing from the caller; `initialize()` has not returned yet. A second `initialize()` on the same session object returns the same `Future`. | `SessionStateError(actual: initializing)` for any operation reached through a leaked reference |
 | `ready` | every operation; `close()` on any proxy; `shutdown()` | — |
-| `closing` | `Dispose(ref)` posted by a proxy finalizer (accepted and dropped, §3.7); a second `shutdown()` (returns the same `Future`); a second `close()` on a proxy already closing (returns the same `Future`) | every new operation with `SessionStateError(actual: closing)` |
-| `closed` | `shutdown()` (no-op, returns immediately); `close()` on any proxy (no-op); `Dispose` from a late finalizer (dropped) | every operation with `ClosedError` |
+| `closing` | a `Dispose(ref)` still in flight from `ready`, or one posted by an explicit `close()` racing `shutdown()` (accepted, §3.7 — a finalizer posts nothing once the session leaves `ready`); a second `shutdown()` (returns the same `Future`); a second `close()` on a proxy already closing (returns the same `Future`) | every new operation with `SessionStateError(actual: closing)` |
+| `closed` | `shutdown()` (no-op, returns immediately); `close()` on any proxy (no-op); a late `Dispose` that was already in flight (dropped) | every operation with `ClosedError` |
 | `failed` | `shutdown()` (transitions to `closed` without a worker round trip) | every operation with `WorkerTerminatedError(kind)` |
 
 Transitions, exhaustively: `initializing → ready` (health check passed), `initializing → failed` (library load, identity mismatch, or symbol lookup failed — the failure cause is attached), `ready → closing` (`shutdown()`), `ready → failed` (worker terminated unexpectedly), `closing → closed` (worker acknowledged shutdown and exited, **or** the shutdown grace period elapsed), `closing → failed` (the worker died during shutdown; handles may not have been disposed, and the session says so), `failed → closed` (`shutdown()` after a failure, which only tears down the Dart side). There is no transition out of `closed`; recovery is a new `WalletCore.initialize()`.
@@ -88,9 +88,10 @@ Every message carries a `requestId`: a monotonically increasing `int` allocated 
 | Request | Payload | Reply | Notes |
 |---|---|---|---|
 | `Init` | manifest snapshot, the reply `SendPort`, queue bound, timeouts | `InitOk(symbolCount)` / `Failed` | sent once, by `initialize()`, before the session is `ready` |
-| `CreateWallet` | `strength`, `passphrase` | `WalletCreated(walletRef, mnemonic?)` | the mnemonic is returned only if the caller asked for it (PRD §11.3) |
-| `ImportWallet` | `mnemonic` **or** `entropy`, `passphrase` | `WalletCreated(walletRef)` | **one of exactly two secret-carrying messages**; documented as such in code and in `docs/security/memory_contract.md` (TM-04, TM-06) |
-| `ImportKey` | encrypted keystore blob + password, or raw key bytes (advanced only) | `KeyImported(keyRef)` | the second secret-carrying message; T3.4/T3.5 |
+| `CreateWallet` | `strength`, `passphrase` | `WalletCreated(walletRef, mnemonic?)` | **request and reply both carry a secret**: the passphrase in, and the mnemonic back if the caller asked for it (PRD §11.3) |
+| `ImportWallet` | `mnemonic` **or** `entropy`, `passphrase` | `WalletCreated(walletRef)` | **secret-carrying request**; documented as such in code and in `docs/security/memory_contract.md` (TM-04, TM-06) |
+| `ImportKey` | encrypted keystore blob + password, or raw key bytes (advanced only) | `KeyImported(keyRef)` | **secret-carrying request**; T3.4/T3.5 |
+| `ExportMnemonic` | `walletRef` | `MnemonicExported(mnemonic)` / `Failed` | the request carries no secret; **the reply does**. Backs `Wallet.exportMnemonic()` (PRD §11.3), which exists to display the mnemonic once |
 | `DeriveAddress` | `walletRef`, coin id, network, address style, explicit path | `AddressDerived(address, publicKey, path)` | returns a descriptor; no handle crosses back |
 | `ValidateAddress` | address string, coin id, network | `AddressValidated(bool)` | the stateless native call §1 rules must still happen in the owning isolate |
 | `Sign` | request value, `Set<KeyLocator>` | `Signed(SignResult)` / `Failed` | key-less request in, sealed result out (DECISION-13) |
@@ -100,7 +101,21 @@ Every message carries a `requestId`: a monotonically increasing `int` allocated 
 | `Cancel` | `targetRequestId` | `Cancelled(targetRequestId)` / `NotCancellable(targetRequestId)` | §3.6 |
 | `Shutdown` | grace period | `ShutdownComplete(disposedCount)` | §3.8 |
 
+Thirteen request types and fourteen reply types, exactly as `docs/architecture/lifecycle.md` §6 declares them (the fourteenth reply is `Failed`, which any request may receive).
+
 Replies are a sealed family; the failure member is `Failed(requestId, WalletCoreException)` carrying an already-typed error, so the UI isolate never reconstructs an exception from a string. All request and reply types are plain immutable Dart values with no native pointer, no handle, and no `SendPort` other than `Init`'s — a `Set<KeyLocator>` names keys, it does not carry them (DECISION-13).
+
+**Which payloads carry a secret, enumerated.** The message set has no single "the secret-carrying message"; it has five payloads, on both sides of the boundary, and each one is documented in code and in `docs/security/memory_contract.md` (TM-04, TM-06):
+
+| Payload | Direction | What it carries |
+|---|---|---|
+| `CreateWallet` | request | `passphrase` (a BIP-39 passphrase is key material: it selects the seed) |
+| `ImportWallet` | request | `mnemonic` **or** `entropy`, plus `passphrase` |
+| `ImportKey` | request | an encrypted keystore blob **and** its password, or raw key bytes under `advanced.dart` |
+| `WalletCreated` | reply | the generated `mnemonic`, **when and only when** the caller asked `CreateWallet` for it; otherwise the field is absent |
+| `MnemonicExported` | reply | the wallet's `mnemonic` |
+
+Every other request and reply is key-less by construction: refs, coin and network ids, paths, addresses, public keys, request values, locators, counts, and typed errors. Two consequences the implementation is held to. First, the secret-bearing set is *closed*: adding a message that carries key material in either direction reopens this record (§8). Second, a secret in a **reply** is the harder half — it exists because a person has to read it (PRD §11.3) — so both secret-bearing replies are produced only in response to an explicit request for that value, are never logged, never included in an error message, and never cached in the worker after the reply is posted. The SDK drops its own references once the value has crossed; it cannot erase the caller's copy, and the doc comments say so.
 
 ### 3.3 Refs
 
@@ -116,14 +131,27 @@ A `WalletRef` / `KeyRef` is an opaque object wrapping a session-scoped `int` id.
 A single FIFO queue in the worker, bounded (**default 32 pending operations**, configurable at `initialize()`, minimum 1). The bound counts queued *and* the one in-flight operation.
 
 - When full, the **submission** fails immediately with `QueueFullError(limit)`. It does not block, does not drop the oldest, and does not grow (TM-26).
-- `Dispose`, `Cancel`, and `Shutdown` are **control messages and are not subject to the bound.** A full queue must not prevent a caller from tearing down; that would turn a load spike into a stuck seed in memory.
+- `Dispose`, `Cancel`, and `Shutdown` are **control messages and are not subject to the operation bound.** A full queue must not prevent a caller from tearing down; that would turn a load spike into a stuck seed in memory.
 - Ordering is FIFO among operations. `Shutdown` jumps the queue in the sense that no *new* operation starts after it arrives, but already-queued operations are still resolved or rejected per §3.8.
+
+**The control path is exempt from the operation bound but is not unbounded.** "Not subject to the bound" would otherwise mean a caller can post control messages without limit and defeat TM-26 through the other door. Four rules bound it, and together they make the pending control set finite without ever refusing a teardown:
+
+1. **Coalescing.** At most one `Dispose` may be pending per ref and at most one `Cancel` per target request id. A repeat for the same target is folded into the pending one and completes with the same reply, which is also what makes `close()`'s idempotence (§3.8) cheap: two concurrent `close()` calls produce one queued `Dispose`, not two.
+2. **Immediate rejection of a `Cancel` with no live target.** A `Cancel` naming a request id the session never issued, or one whose future has already completed, is answered `NotCancellable(targetRequestId)` **without being enqueued** — in the UI isolate when it can be decided there (the id is not in the pending-reply table), otherwise by the worker on arrival, before any queue is touched. Cancels therefore cannot accumulate for work that no longer exists.
+3. **A reserved, bounded control capacity.** The worker reserves control slots separately from the operation queue: `queueLimit` slots (one possible `Cancel` per operation that can be pending) plus one slot per live ref for `Dispose`, plus a fixed reserve of 8. With rules 1 and 2 the pending control set cannot exceed that number, so the reserve is a bound the implementation asserts rather than a quota it enforces against callers. If the assertion ever fails, that is a bug in coalescing and the worker fails the session rather than growing.
+4. **`Shutdown` is always admissible.** It is accepted in every state that has a worker, counts against nothing, and is never refused for capacity — if control slots were somehow exhausted, `Shutdown` still lands and supersedes every pending control message, since §3.8 disposes everything anyway. A pending `Dispose` whose ref `Shutdown` then frees is answered `Disposed(ref)` all the same (§3.7).
 
 ### 3.5 Timeouts
 
-Every operation carries a deadline. Defaults, all overridable at `initialize()`: `Init` 30 s, `ImportWallet` / `CreateWallet` / `ImportKey` 20 s, `DeriveAddress` / `ValidateAddress` 5 s, `Sign` / `SignMessage` / `Plan` 15 s, `Dispose` 5 s, `Shutdown` grace period 10 s. The deadline starts when the operation is **submitted**, not when it starts running, so queue time counts against it — otherwise a bounded queue plus a slow operation still yields an unbounded wait.
+Every operation carries a deadline. Defaults, all overridable at `initialize()`: `Init` 30 s, `ImportWallet` / `CreateWallet` / `ImportKey` / `ExportMnemonic` 20 s, `DeriveAddress` / `ValidateAddress` 5 s, `Sign` / `SignMessage` / `Plan` 15 s, `Dispose` 5 s, `Shutdown` grace period 10 s. The deadline starts when the operation is **submitted**, not when it starts running, so queue time counts against it — otherwise a bounded queue plus a slow operation still yields an unbounded wait.
 
-On expiry the caller's `Future` completes with `OperationTimeoutError(operation, timeout)`. **The native call is not aborted** — there is no mechanism to abort it, and inventing one would mean interrupting upstream mid-computation. The worker finishes the operation, disposes its temporaries and any derived key exactly as it would normally (§3.9), and discards the result. A late result is never delivered under a `requestId` whose future is already completed.
+**`Dispose` is the one exception to submitted-time, and the rule is stated here because §3.8 depends on it.** An explicit `close()` must wait behind an operation already running in native code, which cannot be interrupted (§3.6) and may legitimately take longer than five seconds. Measuring the dispose deadline from submission would therefore expire `close()` for a reason that is not a fault, at exactly the moment the caller is trying to release a seed. So:
+
+> **The acknowledgement of an explicit `close()` does not expire.** The `dispose` deadline bounds only the worker's own dispose step — it starts when the worker *begins processing* the `Dispose` message, which is after any operation already in flight has finished, and it covers the native delete plus the ref-table update. Queue time behind an in-flight operation is not counted against it. The future returned by `close()` completes when `Disposed(ref)` arrives, or with `WorkerTerminatedError` if the session's isolate ends first, or with `SessionStateError`/`ClosedError` per §3.1 — never with `OperationTimeoutError`.
+
+If the worker's own dispose step exceeds the `dispose` deadline, that is not a caller-visible timeout but a worker fault: upstream's delete function has not returned, the isolate is not making progress, and the session moves to `failed` with `WorkerTerminatedError(kind: isolateExited)` once the isolate is torn down — the same path as any other worker that stops responding. `Dispose` posted by a finalizer (§3.7) awaits nothing and so has no deadline at all. The `shutdown` grace period of §3.8 is unaffected by this rule: it is a bound on teardown as a whole and it *does* expire, because there the alternative is a session that never closes.
+
+For every deadline other than `Dispose`'s, on expiry the caller's `Future` completes with `OperationTimeoutError(operation, timeout)`. **The native call is not aborted** — there is no mechanism to abort it, and inventing one would mean interrupting upstream mid-computation. The worker finishes the operation, disposes its temporaries and any derived key exactly as it would normally (§3.9), and discards the result. A late result is never delivered under a `requestId` whose future is already completed.
 
 ### 3.6 Cancellation
 
@@ -140,8 +168,9 @@ There is no third state: because the worker is sequential, an operation is eithe
 
 The managed `Finalizer` on a public proxy (PRD §11.2 item 8) behaves as follows, which is the explicit answer to threat-model question 1:
 
-- It **may** post `Dispose(ref)` at any time, including after the session has moved to `closing` or `closed`. Posting is always safe.
-- The proxy's finalizer callback checks the session state first. In `ready` it posts `Dispose(ref)` fire-and-forget and awaits nothing. In `closing`, `closed`, or `failed` it **posts nothing and does nothing**: `Shutdown` has already disposed every handle the session owned (§3.8), so there is nothing to free, and the reply port may be gone. The callback never throws, never allocates a `Future` the caller could see, and never reports an error to the app.
+- **The callback may *run* at any time; it *posts* only while the session is `ready`.** Those are two different statements and the distinction is the whole rule. Collection timing is not ours to control — a proxy may be collected during `ready`, during `closing`, after `closed`, or after `failed`, and the callback runs whenever the runtime decides.
+- What the callback does is decided by the state it observes when it runs. In `ready` it posts `Dispose(ref)` fire-and-forget and awaits nothing. In `closing`, `closed`, or `failed` it **posts nothing and does nothing**: `Shutdown` has already disposed every handle the session owned (§3.8), so there is nothing to free, and the reply port may be gone. The callback never throws, never allocates a `Future` the caller could see, and never reports an error to the app.
+- A `Dispose` that does arrive at the worker while the session is `closing` — one posted during `ready` that has not been processed yet, or an explicit `close()` racing `shutdown()` — is **safe to receive in any state**: the worker treats it per the idempotence rule above. Safety of receipt is why the callback needs no lock; it is not a licence to post after `ready`.
 - A `Dispose` that arrives at the worker **after** `Shutdown` has been processed is dropped without a reply, because the worker is already tearing down its ports; a `Dispose` that arrives *during* `closing` but before the handles are freed is treated as a normal idempotent dispose.
 - After `Shutdown`, no `Dispose` can arrive at a live worker at all, because the isolate has exited. Messages to a dead isolate's port are discarded by the runtime; we rely on that rather than on ordering.
 
@@ -153,10 +182,12 @@ Consequence for the leak tracker (T1.6): a proxy collected while the session was
 
 1. If the proxy is already closed or closing, return the existing future (idempotence is by memoised future, not by a boolean, so two concurrent `close()` calls await the same acknowledgement).
 2. Mark the proxy closed **locally and immediately** — any subsequent method on it throws `ClosedError` even before the worker replies. A closed proxy is unusable the moment `close()` is called, not when it completes.
-3. Post `Dispose(ref)` and await `Disposed(ref)`.
+3. Post `Dispose(ref)` and await `Disposed(ref)`. **This wait does not expire** (§3.5): the acknowledgement of an explicit close is non-expiring, and the `dispose` deadline bounds only the worker's own dispose step once it starts.
 4. Detach the managed `Finalizer` (the proxy is the detach key), so a later collection posts nothing.
 
 **`close()` during an in-flight operation on the same handle** (PRD §14.3): the worker processes messages sequentially, so `Dispose` is simply queued behind the running operation and cannot interleave with it. The operation completes, its key material is disposed (§3.9), its reply is posted, and only then is the handle deleted. The caller's `close()` future therefore completes strictly after the in-flight operation's future. No native pointer is freed while a call is using it — not by discipline, but because there is no point in the schedule at which it could be.
+
+This is exactly why step 3 cannot carry a submitted-time deadline: an in-flight `Sign` may take longer than the 5-second `dispose` default, and expiring `close()` because a signature was slow would report a fault that did not happen and would leave the caller without an answer about a handle that is about to be freed anyway. Step 2 is what makes the non-expiring wait acceptable in practice — the proxy is unusable from the instant `close()` is called, so the only thing the caller waits for is the confirmation, not the effect. A caller that must not block indefinitely has `shutdown()`, whose grace period *does* expire and which kills the isolate on expiry (below).
 
 `WalletCore.shutdown()` is idempotent and does:
 
@@ -173,13 +204,21 @@ Consequence for the leak tracker (T1.6): a proxy collected while the session was
 ```
 derive key(s) from walletRef via the locators
 try:
-    encode key-less input, inject key, call upstream, parse output
+    encode key-less input, inject key, call upstream
+    parse the output into a typed SignResult                             ← still inside the try
 finally:
-    dispose every derived key handle and every temporary native buffer   ← here
+    dispose every derived key handle and every key-bearing buffer        ← here
 post Signed(result) / Failed(error)                                      ← then here
 ```
 
-So for any observer in the UI isolate, the reply is proof that the key is already gone from the worker's own allocations. That ordering also holds for the timeout and cancellation paths (§3.5, §3.6): the `finally` runs even when the result is discarded.
+**Parsing happens before the `finally`, and that is normative, not incidental.** Upstream's output lives in a native allocation that the worker must read while it still exists, so `parseSigningOutput` (DECISION-13 §4.4) runs inside the `try`, producing a Dart-owned `SignResult` built from copies of the output bytes. Two categories of memory are involved and they are released differently:
+
+| | What it is | When it goes |
+|---|---|---|
+| **The retained output copy** | the parsed `SignResult` and the Dart byte copies inside it — signed transaction bytes, signature components, a transaction id | kept: it is the reply. It is **not key-bearing**; a signed transaction contains signatures and public data, never the private key that produced them |
+| **Key-bearing buffers** | derived key handles, the serialized signing input after injection, every temporary native allocation made for the call, and the SDK's own byte buffers that held key material | released in the `finally`, before the reply is posted, on every path |
+
+Writing the two orderings as one rule: **parse before releasing, release before replying.** The reply is therefore proof to any observer in the UI isolate that the key is already gone from the worker's own allocations, while the result it carries was read while the output was still alive. That ordering also holds for the timeout and cancellation paths (§3.5, §3.6): the `finally` runs even when the parsed result is then discarded, and a discarded result is dropped without being posted, not posted and ignored. If parsing throws, the `finally` still runs and the operation fails with a typed error — a parse failure never skips the release.
 
 It follows *a fortiori* that keys are disposed before any `Disposed(ref)` acknowledgement, since `Dispose` is a separate later message (§3.8). The residual, unchanged from TM-01, is that under Approach A (PRD §11.4) the serialized signing input held the key in a Dart `Uint8List` whose GC-internal copies we overwrite but cannot erase.
 
@@ -277,7 +316,7 @@ The sequential queue is what makes this safe: `Dispose` cannot be processed betw
 | **T1.6** — wrappers | Unchanged in substance; §3.11 fixes the vocabulary its tests use (`DisposedError` internal, `ClosedError` public) and confirms that leak-tracker accounting must not count proxies collected after `shutdown()`. |
 | **T1.7** — loader | The identity and release-set check runs **in the worker isolate**, during `Init`, before `initialize()` returns; a failure produces `initializing → failed` with `ManifestMismatchError` or `NativeLoadError` as the cause, and no session is handed to the caller. |
 | **T2.1** — worker | Implements this record verbatim. The message table of §3.2 is the message set; the defaults of §3.4 and §3.5 are the defaults; §3.7 and §3.9 are testable statements. |
-| **T2.12** — hostile-input and fault suite | Gains named tests: queue-full rejection at the bound and the exemption of control messages; deadline measured from submission; cancel-before-start vs cancel-in-native; `Dispose` for unknown / already-disposed / post-shutdown refs; `close()` during in-flight sign asserting reply order (§4.2); grace-period expiry forcing a kill; `onError`-vs-`onExit` producing the two `WorkerTerminationKind`s. |
+| **T2.12** — hostile-input and fault suite | Gains named tests: queue-full rejection at the bound and the exemption of control messages; the control-path bounds of §3.4 (repeated `Dispose`/`Cancel` for one target coalescing to one pending message, a `Cancel` for an unknown or finished id answered without being enqueued, `Shutdown` admitted with control capacity exhausted); deadline measured from submission; `close()` behind an in-flight operation that outlasts the `dispose` deadline completing normally rather than with `OperationTimeoutError` (§3.5); cancel-before-start vs cancel-in-native; `Dispose` for unknown / already-disposed / post-shutdown refs; `close()` during in-flight sign asserting reply order (§4.2); grace-period expiry forcing a kill; `onError`-vs-`onExit` producing the two `WorkerTerminationKind`s. |
 | **T2.10** — measurements | Records queue-wait separately from native time, since §3.5 makes queue time count against the deadline; feeds DECISION-3. |
 | **T1.18 / T3.9** — docs | "close vs dispose", the state machine, and the "shutdown is the lock primitive" pattern (TM-02, TM-03) come from §3.1, §3.8, §3.11. |
 | **T5.7** — threat model v1 | Must record §3.10: a hard native crash is not observable to the SDK, so TM-25's mapping is refined rather than restated. |
@@ -295,8 +334,8 @@ D0 should ratify them explicitly, since PRD §10.2 is quoted as the error surfac
 
 | Q | Question | Answer | Where |
 |---|---|---|---|
-| **Q1** | May a proxy's managed `Finalizer` post `Dispose(ref)` after `closing`/`closed`, and what does the worker do with a `Dispose` after `Shutdown`? | Posting is always safe; the callback **does not post** once the session is `closing`/`closed`/`failed`, because shutdown already freed everything. A `Dispose` for an unknown, already-disposed, or shutdown-freed ref is a no-op that still replies `Disposed`; one that arrives after the isolate exited is discarded by the runtime. | §3.7 |
-| **Q2** | Is key material for an in-flight operation disposed before or after the acknowledgement? | **Before.** Disposal happens in the operation's `finally`, and the reply is posted after that block returns — on the success, error, timeout, and cancellation paths alike. | §3.9 |
+| **Q1** | May a proxy's managed `Finalizer` post `Dispose(ref)` after `closing`/`closed`, and what does the worker do with a `Dispose` after `Shutdown`? | The callback may **run** at any time but **posts** only while the session is `ready`; in `closing`/`closed`/`failed` it does nothing, because shutdown already freed everything. Receiving a `Dispose` is safe in every state: for an unknown, already-disposed, or shutdown-freed ref it is a no-op that still replies `Disposed`, and one that arrives after the isolate exited is discarded by the runtime. | §3.7 |
+| **Q2** | Is key material for an in-flight operation disposed before or after the acknowledgement? | **Before.** The order is parse, then release, then reply: the output is parsed into a Dart-owned result inside the `try`, every key-bearing buffer is released in the `finally`, and only then is the reply posted — on the success, error, timeout, and cancellation paths alike. | §3.9 |
 | **Q3** | Should a native crash be distinguishable from a Dart uncaught error at the API level? | Along that axis, no — a hard native crash kills the process and leaves nothing to report, so `WorkerTerminationKind` deliberately has no `nativeCrash` member. What *is* distinguished, and is what an app can act on, is `uncaughtDartError` vs `isolateExited` vs `initializationFailed`. Soft native failures are per-operation typed errors and do not terminate the session. | §3.10 |
 
 ## 8. Revisit trigger
@@ -307,4 +346,5 @@ Re-open this record when any of the following occurs:
 2. **A user-visible operation needs to interrupt native work** (a very long UTXO plan, a large batch) — §3.6's "cancellation is a request" stops being adequate and the answer is an operation-splitting redesign, not a kill.
 3. **Upstream documents thread-safety for its handles** — the sequential-worker justification of §1 weakens, and concurrency inside one session becomes evaluable.
 4. **Dart gains a way to observe a native crash from a surviving isolate** — §3.10's answer to Q3 changes and `WorkerTerminationKind` grows a member.
-5. **Approach B (PRD §11.4) is selected at D1a** — §3.9's `finally` block moves partly into C, and the "key disposed before the reply" claim must be re-established for the adapter's own buffers.
+5. **Approach B (PRD §11.4) is selected at D1a** — §3.9's `finally` block moves partly into C, and the "parse, release, reply" ordering must be re-established for the adapter's own buffers.
+6. **A message that carries key material in either direction is added to §3.2** — the enumerated secret-bearing set is closed, so a sixth entry is a change to what crosses the isolate boundary and needs the same scrutiny the first five got (TM-04, TM-06).

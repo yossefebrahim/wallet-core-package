@@ -9,7 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Evidence** | `docs/decisions/evidence/prefetch-2026-09-07/upstream-src/proto/{Bitcoin,BitcoinV2,Solana,Ethereum,Common}.proto` and `.../TWTransactionCompiler.h`, at commit `d692ac27749d0c615e17c751b70ab4f0aa75c59b` (tag 4.8.0) |
 | **Interface sketch** | [`docs/architecture/signing.md`](../architecture/signing.md) |
 | **Recommendation** | **`Signer.sign(request, Set<KeyLocator>)` returning a sealed `SignResult`**, in the shape of §4 |
-| **Status** | recommended by T0.11; adjudicated at D0; recorded by the human |
+| **Status** | recommended by T0.11; adjudicated at D0 (recommendation upheld); pending the human's recording |
 
 ---
 
@@ -33,7 +33,7 @@ PRD §10.2 states the rule in one line: *a request is "what to sign"; a signer d
 
 **Rejected**, and the rejection is forced by the evidence rather than argued: `Bitcoin.SigningInput` field 6 is `repeated bytes private_key`, and the M1 acceptance vector is a two-input spend from two derivation paths (PRD §13.3, §18 M1). One `Account` cannot express two derivation paths. Solana's optional `fee_payer_private_key` (field 17) is a second, independent counter-example on a chain that is otherwise single-key. Option B would need an escape hatch on its first non-trivial Bitcoin transaction, and an escape hatch that appears in v1.0 is a v2.0 breaking change.
 
-A convenience overload — `signer.signWith(request, account)`, sugar for a single-element locator set — is kept, because for EVM and Solana transfers the one-key case is the common case. The sugar is defined *in terms of* the set, never beside it.
+A convenience overload — `signer.signWithKey(request, locator)`, sugar for a single-element locator set — is kept, because for EVM and Solana transfers the one-key case is the common case. It takes a locator rather than an `Account`, for the reason given in §4.1. The sugar is defined *in terms of* the set, never beside it.
 
 ## 3. Evidence
 
@@ -87,6 +87,7 @@ Signatures in [`docs/architecture/signing.md`](../architecture/signing.md).
 
 ```
 Future<SignResult> sign(TransactionRequest request, Set<KeyLocator> keys)
+Future<SignResult> signWithKey(TransactionRequest request, KeyLocator key)   // sugar for a one-element set
 Future<SignResult> signMessage(MessageRequest request, Set<KeyLocator> keys)
 Future<UtxoPlan>   plan(UtxoTransactionRequest request)          // UTXO chains only, no keys
 ```
@@ -96,6 +97,8 @@ A `Set`, not a `List`: order is meaningless to upstream (§3.2) and a set makes 
 - Every locator in the set must be usable by *this* signer and *this* session, or `KeyResolutionError`.
 - The family declares how many keys it needs and for which roles; a set that leaves a required role unfilled fails with `KeyResolutionError(reason: missingRole)` **before** any derivation, and a set with locators no role consumes fails with `KeyResolutionError(reason: unusedLocator)` — an unused locator usually means the caller believed a different key would be used, which is precisely the mistake worth failing on.
 - `SignResult.usedKeys` reports the locators actually consumed, so a test or an audit log can assert what signed without ever seeing a key.
+
+**The single-key sugar takes a `KeyLocator`, not an `Account`.** An earlier draft of this record offered an overload taking an `Account` in place of the key, and it cannot exist: an `Account` is a descriptor of coin, network, address style, derivation path, address, and public key, and it deliberately carries **no** `WalletRef` (DECISION-11 §4.6). There is nothing in it from which an `HdKeyLocator` could be built, and the two ways to make one work are both wrong — giving `Account` a wallet reference would make a descriptor into a half-capability and break its "safe to persist, grants nothing" property, and having the signer guess the wallet would reintroduce exactly the implicit key selection §6 Q5 rules out. `signWithKey(request, key)` keeps the convenience (one argument instead of a set literal) with none of that: the caller still names the key, and the sugar is defined as `sign(request, {key})`.
 
 ### 4.2 `KeyLocator` shapes
 
