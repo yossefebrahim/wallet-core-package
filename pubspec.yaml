@@ -68,3 +68,12 @@ melos:
         --out-dir "${WCF_NATIVE_OUT:-${TMPDIR:-/tmp}/wcf-native}"
         --expect-symbol-count 464
     vectors:validate: dart run tools/vectors/bin/validate.dart test_vectors
+    gen:proto:
+      description: >-
+        Regenerate the protobuf classes under
+        packages/wallet_core_flutter_bindings/lib/src/generated/proto/ from
+        third_party/wallet-core/src/proto/ at the pinned upstream commit, plus
+        key_fields.json (PRD §11.4). Fails unless the protoc and
+        protoc-gen-dart on PATH are exactly the versions pinned in
+        compat_manifest.json. Needs `melos run upstream:fetch` first.
+      run: tools/gen/proto.sh

@@ -13,6 +13,14 @@ environment:
 dependencies:
   # Exact pin, never a range (PRD §15.4).
   wallet_core_flutter_native: 0.0.1
+  # Runtime of the protobuf classes under lib/src/generated/proto/. Exact, not
+  # a range: those classes were emitted by protoc_plugin
+  # compat_manifest.json:generators.protoc_gen_dart and are a matched pair with
+  # the runtime that shipped alongside it. A range lets the two drift.
+  protobuf: 6.0.0
+  # Imported directly by the generated code (Int64 fields), so it is pinned
+  # here rather than inherited transitively through protobuf.
+  fixnum: 1.1.1
 
 dev_dependencies:
   lints: ^6.0.0

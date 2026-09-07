@@ -6,8 +6,8 @@
   },
   "generators": {
     "ffigen": "TBD-T1.3",
-    "protoc": "TBD-T1.4",
-    "protoc_gen_dart": "TBD-T1.4",
+    "protoc": "33.4",
+    "protoc_gen_dart": "25.0.0",
     "registry_transform": "TBD-T1.5"
   },
   "schemas": {
