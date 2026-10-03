@@ -359,11 +359,15 @@ for slice in "${slice_ids[@]}"; do
         "${identity_defines[@]}" \
         -o "$identity_object" "$identity_source"
 
+      # Install names up to the Mach-O maximum must be rewritable after the fact;
+      # the default padding fits ~87 characters. `flutter test` from a long checkout
+      # path and app bundlers rewrite the id.
       thin_dylib="$work_dir/${slice}-${arch}.dylib"
       wcf_run clang \
         -target "$triple" \
         -isysroot "$sdk_path" \
         -dynamiclib \
+        -Wl,-headerpad_max_install_names \
         -install_name "$install_name" \
         -o "$thin_dylib" \
         "@$uflags" \
