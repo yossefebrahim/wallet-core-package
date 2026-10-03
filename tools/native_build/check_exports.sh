@@ -23,7 +23,7 @@
 #
 # THE EXACT COMMAND, for the record and for T1.19, which must run the same one:
 #
-#   llvm-nm --defined-only --extern-only [--arch=<arch>] <artifact>
+#   llvm-nm [--dynamic] --defined-only --extern-only [--arch=<arch>] <artifact>
 #
 # reconciled in both directions against the canonical symbol list.
 
@@ -49,7 +49,8 @@ Options:
                          they land.
   --format macho|elf     Mach-O names carry a leading underscore, ELF names do
                          not. Stated rather than sniffed so a wrong value fails
-                         loudly instead of silently comparing nothing.
+                         loudly instead of silently comparing nothing. ELF adds
+                         --dynamic to read .dynsym from stripped releases.
   --nm PATH              llvm-nm to use. Default on Mach-O: the Xcode toolchain
                          copy (xcrun --find llvm-nm). On ELF there is no
                          default — pass the NDK's
@@ -127,6 +128,10 @@ failed=0
 for arch in "${archs[@]}"; do
   local_label=${arch:-'(single architecture)'}
   nm_cmd=("$nm_bin" --defined-only --extern-only)
+  # ELF: what a consumer can dlsym is the dynamic symbol table, and a release
+  # .so is stripped of .symtab (upstream's AAR is), so read .dynsym. Mach-O
+  # exports are in the one symbol table llvm-nm reads by default.
+  if [[ $format == elf ]]; then nm_cmd+=(--dynamic); fi
   if [[ -n $arch ]]; then nm_cmd+=("--arch=$arch"); fi
   nm_cmd+=("$binary")
 
