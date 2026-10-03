@@ -135,17 +135,14 @@ melos:
 
     test:native:
       description: >-
-        The `native`-tagged unit tests of the bindings package, against the real
-        host library. Needs `melos run native:host-lib` first, or WCF_NATIVE_LIB
-        pointing at a libTrustWalletCore built from the pinned upstream commit;
-        unset, WCF_NATIVE_LIB defaults to the path native:host-lib writes to.
-        WCF_NATIVE_REQUIRED=1 makes an absent library a failure here, where
-        `melos run test` lets the same tests skip.
-      run: >-
-        melos exec --scope="wallet_core_flutter_bindings" --
-        sh -c 'WCF_NATIVE_REQUIRED=1
-        WCF_NATIVE_LIB="${WCF_NATIVE_LIB:-${WCF_NATIVE_OUT:-${TMPDIR:-/tmp}/wcf-native}/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib}"
-        dart test --tags native'
+        The `native`-tagged unit tests of the bindings package (dart test) and
+        the SDK package (flutter test), against the real host library, with
+        WCF_NATIVE_REQUIRED=1 so an absent library is a failure here where
+        `melos run test` lets the same tests skip. WCF_NATIVE_LIB, unset,
+        defaults to third_party/wcf-native/macos/arm64_x86_64/libTrustWalletCore.dylib
+        when present and otherwise to the path native:host-lib writes to. See
+        tools/native_build/run_native_tests.sh.
+      run: bash tools/native_build/run_native_tests.sh
     gen:manifest:
       description: >-
         Embed compat_manifest.json into wallet_core_flutter_native: the const

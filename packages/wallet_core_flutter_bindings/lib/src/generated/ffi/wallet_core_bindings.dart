@@ -11636,8 +11636,16 @@ class WalletCoreBindings {
 class _SymbolAddresses {
   final WalletCoreBindings _library;
   _SymbolAddresses(this._library);
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWAnyAddress>)>>
+  get TWAnyAddressDelete => _library._TWAnyAddressDeletePtr;
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWData>)>>
   get TWDataDelete => _library._TWDataDeletePtr;
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWHDWallet>)>>
+  get TWHDWalletDelete => _library._TWHDWalletDeletePtr;
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWPrivateKey>)>>
+  get TWPrivateKeyDelete => _library._TWPrivateKeyDeletePtr;
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWPublicKey>)>>
+  get TWPublicKeyDelete => _library._TWPublicKeyDeletePtr;
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWString>)>>
   get TWStringDelete => _library._TWStringDeletePtr;
 }

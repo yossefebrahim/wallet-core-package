@@ -12,6 +12,10 @@ environment:
   flutter: ">=3.44.0"
 
 dependencies:
+  # `calloc` for the engine's secret staging buffers, which it zero-fills
+  # before freeing (lib/src/engine/secret_buffers.dart). Same constraint as the
+  # bindings package, so the workspace resolves one version.
+  ffi: ^2.1.0
   flutter:
     sdk: flutter
   # Exact pins, never ranges: the three packages release as one verified set
@@ -23,3 +27,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   lints: ^6.0.0
+  # The test-vector inventory loader (T0.8), so tests read
+  # test_vectors/ rather than copying values out of it.
+  wcf_tool_vectors:
+    path: ../../tools/vectors

@@ -47,7 +47,8 @@ globals:
 # A `NativeFinalizer` needs the raw address of the delete function, because its
 # callback is upstream's delete function itself and no Dart code may run in it
 # (PRD §11.2 item 5). ffigen emits an `addresses` member only for the names
-# listed here, so exactly the two the memory wrappers attach are listed — every
+# listed here, so exactly the delete functions some wrapper attaches are listed
+# — the memory wrappers' two and the SDK engine's four (T1.11) — and every
 # other function stays a call-only binding. Keep this list minimal: each entry
 # adds a `Pointer<NativeFunction<…>>` field to the generated class.
 #
@@ -58,7 +59,11 @@ globals:
 functions:
   symbol-address:
     include:
+      - TWAnyAddressDelete
       - TWDataDelete
+      - TWHDWalletDelete
+      - TWPrivateKeyDelete
+      - TWPublicKeyDelete
       - TWStringDelete
 
 # Bindings are name-sorted rather than left in source order: the entry points
