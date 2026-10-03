@@ -76,9 +76,9 @@ on:
           Xcode to select on the macOS runner. Pinned rather than defaulted:
           the toolchain goes into every Apple record, so it must not drift with
           the runner image. The job fails and lists what is installed if this
-          version is absent.
+          version is absent. On the macos-15 image Xcode_26.6.app is listed but not a real install (run 37148717861); 26.3.0 is the newest that is.
         required: true
-        default: '26.6'
+        default: '26.3.0'
       ndk_version:
         description: >-
           NDK for the Android build. r27+ is required so that
@@ -305,6 +305,18 @@ jobs:
             exit 1
           fi
           sudo xcode-select -s "$app"
+
+      # ndk;28.0.12674087 is behind android-sdk-preview-license on the macos-15
+      # image and sdkmanager cannot prompt in CI: accept the SDK licences the
+      # same way every Android CI does. No pipefail here on purpose — `yes`
+      # exits by SIGPIPE once sdkmanager closes its stdin.
+      - name: Accept the Android SDK licences the NDK install needs
+        run: |
+          set -eu
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+          yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          echo "licences accepted under $sdk/licenses:"
+          ls "$sdk/licenses"
 
       # Installs upstream's dependencies with upstream's own scripts, pins the
       # NDK and CMake explicitly (upstream's install-android-dependencies
