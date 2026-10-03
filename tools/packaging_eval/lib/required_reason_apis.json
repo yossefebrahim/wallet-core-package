@@ -1,0 +1,147 @@
+{
+  "$comment": [
+    "Apple's required-reason API categories, transcribed as data so the iOS",
+    "scan is auditable and updatable without touching code (PRD §12.2 step 10).",
+    "A hit means the shipped library imports an API in that category, which",
+    "means the app that links it needs a PrivacyInfo.xcprivacy declaring a",
+    "reason for it.",
+    "",
+    "Transcribed by hand from the Apple documentation named in `source`, on",
+    "`transcribed_on`. There is no network access in this repository's tooling",
+    "(AGENTS.md rule 3), so this file is a transcription, not a fetch; re-check",
+    "it against the page when the harness is next revised.",
+    "",
+    "`c_symbols` are the C entry points a Mach-O actually imports and is what",
+    "the nm -u scan matches; `objc_classes` are matched through their",
+    "_OBJC_CLASS_$_/_OBJC_METACLASS_$_ import symbols. `documented_apis` are",
+    "the API names Apple lists, including the Foundation/Swift spellings that",
+    "do not appear as undefined symbols in a C library; they are recorded so",
+    "the category is complete and so a reviewer can see what was and was not",
+    "scannable."
+  ],
+  "source": "https://developer.apple.com/documentation/BundleResources/privacy-manifest-files/describing-use-of-required-reason-api",
+  "transcribed_on": "2026-09-08",
+  "matching": {
+    "input": "nm -u -arch <arch> <binary>",
+    "normalisation": [
+      "strip one leading underscore (Mach-O C symbol prefix)",
+      "strip a trailing $INODE64, $UNIX2003, $NOCANCEL, $1050 or $DARWIN_EXTSN variant suffix",
+      "read _OBJC_CLASS_$_<Name> and _OBJC_METACLASS_$_<Name> as the class <Name>"
+    ]
+  },
+  "categories": [
+    {
+      "id": "NSPrivacyAccessedAPICategoryFileTimestamp",
+      "name": "File timestamp APIs",
+      "c_symbols": [
+        "fgetattrlist",
+        "fstat",
+        "fstat64",
+        "fstatat",
+        "fstatat64",
+        "getattrlist",
+        "getattrlistat",
+        "getattrlistbulk",
+        "lstat",
+        "lstat64",
+        "stat",
+        "stat64"
+      ],
+      "objc_classes": [],
+      "documented_apis": [
+        "creationDate",
+        "modificationDate",
+        "fileModificationDate",
+        "contentModificationDateKey",
+        "creationDateKey",
+        "getattrlist",
+        "getattrlistat",
+        "getattrlistbulk",
+        "fgetattrlist",
+        "stat",
+        "fstat",
+        "fstatat",
+        "lstat",
+        "NSFileCreationDate",
+        "NSFileModificationDate",
+        "NSURLContentModificationDateKey",
+        "NSURLCreationDateKey"
+      ]
+    },
+    {
+      "id": "NSPrivacyAccessedAPICategorySystemBootTime",
+      "name": "System boot time APIs",
+      "c_symbols": ["mach_absolute_time", "mach_continuous_time"],
+      "objc_classes": ["NSProcessInfo"],
+      "documented_apis": [
+        "systemUptime",
+        "mach_absolute_time",
+        "NSProcessInfo.systemUptime"
+      ]
+    },
+    {
+      "id": "NSPrivacyAccessedAPICategoryDiskSpace",
+      "name": "Disk space APIs",
+      "c_symbols": [
+        "fgetattrlist",
+        "fstatfs",
+        "fstatfs64",
+        "fstatvfs",
+        "getattrlist",
+        "getattrlistat",
+        "getfsstat",
+        "getfsstat64",
+        "statfs",
+        "statfs64",
+        "statvfs"
+      ],
+      "objc_classes": [],
+      "documented_apis": [
+        "volumeAvailableCapacityKey",
+        "volumeAvailableCapacityForImportantUsageKey",
+        "volumeAvailableCapacityForOpportunisticUsageKey",
+        "volumeTotalCapacityKey",
+        "systemFreeSize",
+        "systemSize",
+        "statfs",
+        "statvfs",
+        "fstatfs",
+        "fstatvfs",
+        "getattrlist",
+        "fgetattrlist",
+        "getattrlistat",
+        "NSFileSystemFreeSize",
+        "NSFileSystemSize",
+        "NSURLVolumeAvailableCapacityKey",
+        "NSURLVolumeAvailableCapacityForImportantUsageKey",
+        "NSURLVolumeAvailableCapacityForOpportunisticUsageKey",
+        "NSURLVolumeTotalCapacityKey"
+      ]
+    },
+    {
+      "id": "NSPrivacyAccessedAPICategoryActiveKeyboards",
+      "name": "Active keyboard APIs",
+      "c_symbols": [],
+      "objc_classes": ["UITextInputMode"],
+      "documented_apis": ["activeInputModes", "UITextInputMode.activeInputModes"]
+    },
+    {
+      "id": "NSPrivacyAccessedAPICategoryUserDefaults",
+      "name": "User defaults APIs",
+      "c_symbols": [
+        "CFPreferencesCopyAppValue",
+        "CFPreferencesCopyValue",
+        "CFPreferencesSetAppValue",
+        "CFPreferencesSetValue"
+      ],
+      "objc_classes": ["NSUserDefaults"],
+      "documented_apis": [
+        "NSUserDefaults",
+        "UserDefaults",
+        "AppStorage",
+        "CFPreferencesCopyAppValue",
+        "CFPreferencesSetAppValue"
+      ]
+    }
+  ]
+}

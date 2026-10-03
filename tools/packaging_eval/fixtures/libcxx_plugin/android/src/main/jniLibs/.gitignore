@@ -1,0 +1,5 @@
+# The NDK's own libc++_shared.so is materialised here at run time by
+# tool/materialize_libcxx.sh and is never committed: it is 1 MB per ABI and it
+# is the NDK's file, not ours.
+*/
+*.so

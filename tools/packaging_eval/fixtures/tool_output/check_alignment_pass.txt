@@ -1,0 +1,4 @@
+
+== 16 KB alignment gate: saved llvm-readelf output <repo>/tools/packaging_eval/fixtures/tool_output/llvm_readelf_l_16k.txt ==
+4 LOAD segments, 0 below the required alignment 0x4000
+16 KB alignment gate PASSED for <repo>/tools/packaging_eval/fixtures/tool_output/llvm_readelf_l_16k.txt

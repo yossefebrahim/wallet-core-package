@@ -18,6 +18,7 @@ workspace:
   - tools/upstream
   - tools/vectors
   - tools/gen
+  - tools/packaging_eval
 
 dev_dependencies:
   lints: ^6.0.0
@@ -107,6 +108,7 @@ melos:
         - melos run gen:ffi
         - melos run gen:proto
         - melos run gen:registry
+        - melos run gen:manifest
 
     gen:check:
       description: >-
@@ -115,11 +117,11 @@ melos:
         rather than reviewed.
       steps:
         - melos run gen:all
-        - git diff --exit-code -- "packages/*/lib/src/generated/" "docs/capability_matrix.*"
+        - git diff --exit-code -- "packages/*/lib/src/generated/" "docs/capability_matrix.*" "packages/wallet_core_flutter_native/assets/compat_manifest.json"
         # `git diff` cannot see a file that is not tracked yet, so a pin bump
         # that only *adds* a generated file (a new .proto upstream, say) would
         # pass the step above. This one catches it.
-        - sh -c 'u=$(git ls-files --others --exclude-standard -- packages/*/lib/src/generated docs/capability_matrix.*); test -z "$u" || { echo "gen-check failed - generated but untracked"; echo "$u"; false; }'
+        - sh -c 'u=$(git ls-files --others --exclude-standard -- packages/*/lib/src/generated docs/capability_matrix.* packages/wallet_core_flutter_native/assets/compat_manifest.json); test -z "$u" || { echo "gen-check failed - generated but untracked"; echo "$u"; false; }'
     gen:proto:
       description: >-
         Regenerate the protobuf classes under
@@ -130,3 +132,45 @@ melos:
         compat_manifest.json. Needs `melos run upstream:fetch` first.
       run: tools/gen/proto.sh
     gen:registry: dart run tools/gen/bin/registry_transform.dart
+
+    test:native:
+      description: >-
+        The `native`-tagged unit tests of the bindings package, against the real
+        host library. Needs `melos run native:host-lib` first, or WCF_NATIVE_LIB
+        pointing at a libTrustWalletCore built from the pinned upstream commit;
+        unset, WCF_NATIVE_LIB defaults to the path native:host-lib writes to.
+        WCF_NATIVE_REQUIRED=1 makes an absent library a failure here, where
+        `melos run test` lets the same tests skip.
+      run: >-
+        melos exec --scope="wallet_core_flutter_bindings" --
+        sh -c 'WCF_NATIVE_REQUIRED=1
+        WCF_NATIVE_LIB="${WCF_NATIVE_LIB:-${WCF_NATIVE_OUT:-${TMPDIR:-/tmp}/wcf-native}/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib}"
+        dart test --tags native'
+    gen:manifest:
+      description: >-
+        Embed compat_manifest.json into wallet_core_flutter_native: the const
+        values the runtime identity check of DECISION-14 §2.3 compares against
+        (lib/src/generated/manifest.dart), and a byte-for-byte copy of the
+        manifest itself (assets/compat_manifest.json), which is what PRD §15.3
+        ships inside the package and what the build-time fetch tool reads.
+        Constants rather than the asset because the check runs in the worker
+        isolate during Init, where rootBundle is unavailable (DECISION-12 §5),
+        and because the loader must also work from a pure-Dart CLI. Both
+        outputs are diffed by gen:check, so neither can drift from the root
+        manifest. T3.11 extends this generator to the other two packages
+        (DECISION-14 §4.1).
+      run: dart run tools/manifest/bin/embed.dart
+    packaging:measure:
+      description: >-
+        Run every PRD §12.2 packaging measurement that has a real input on this
+        machine — the relinked artifacts under third_party/wcf-native-all/,
+        upstream's cached WalletCore.xcframework, the NDK's libc++_shared.so —
+        generate a hosted consumer app against a loopback package repository,
+        and print the results table the two DECISION-2 option documents embed.
+        Rows with no input on this machine (an Android .so, an APK, a built
+        consumer app) are reported `unmeasured` with the exact command T1.8/T1.9
+        will run. Build-time tooling: results are written under
+        $WCF_PACKAGING_OUT and nothing is written inside the repository.
+      run: >-
+        dart run tools/packaging_eval/bin/measure_all.dart
+        --out-dir "${WCF_PACKAGING_OUT:-${TMPDIR:-/tmp}/wcf-packaging}"

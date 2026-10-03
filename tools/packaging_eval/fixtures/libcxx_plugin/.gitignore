@@ -1,0 +1,7 @@
+.dart_tool/
+.flutter-plugins-dependencies
+pubspec.lock
+android/.gradle/
+android/build/
+android/local.properties
+android/*.iml

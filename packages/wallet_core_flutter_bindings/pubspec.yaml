@@ -12,8 +12,12 @@ environment:
 
 dependencies:
   # The generated bindings need `dart:ffi` and nothing else; `package:ffi`
-  # (Utf8, calloc) belongs to the memory wrappers, so T1.6 adds it when it
-  # needs it.
+  # (`calloc`, `Utf8`) is the memory wrappers' (T1.6): every temporary native
+  # buffer they hand to upstream is allocated and freed through it. A caret
+  # range rather than an exact pin, because nothing generated depends on it —
+  # it is an ordinary source dependency of hand-written code, not half of a
+  # generator/runtime pair like `protobuf` below.
+  ffi: ^2.1.0
   # Exact pin, never a range (PRD §15.4).
   wallet_core_flutter_native: 0.0.1
   # Runtime of the protobuf classes under lib/src/generated/proto/. Exact, not

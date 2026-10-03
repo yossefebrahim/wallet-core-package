@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:wcf_tool_inventory/generated.dart';
 import 'package:wcf_tool_inventory/headers.dart';
 import 'package:wcf_tool_inventory/inventory.dart';
+import 'package:wcf_tool_inventory/symbol_names.dart';
 import 'package:wcf_tool_upstream/dist.dart';
 import 'package:wcf_tool_upstream/hashing.dart';
 
@@ -12,6 +13,8 @@ const _defaultGenerated =
     '$_bindingsPackage/lib/src/generated/ffi/'
     'wallet_core_bindings.dart';
 const _defaultOut = '$_bindingsPackage/lib/src/generated/inventory.json';
+const _defaultNamesOut =
+    '$_bindingsPackage/lib/src/generated/ffi/symbol_names.dart';
 
 const _usage =
     '''
@@ -19,15 +22,20 @@ Usage: dart run tools/inventory/bin/symbols.dart [options]
 
 Writes the generated symbol inventory (PRD §9): every function and enum
 upstream's headers declare, every one the generated Dart binds, and the
-provenance of the header set that produced them.
+provenance of the header set that produced them. Writes the bound function
+names as Dart constants alongside it, for the native loader's run-time
+health check.
 
-  --check              Do not write. Fail if inventory.json on disk is not
-                       what this run would write.
+  --check              Do not write. Fail if inventory.json or
+                       symbol_names.dart on disk is not what this run would
+                       write.
   --dist-root <dir>    Release-asset headers (default: $defaultDistDestination)
   --generated <path>   ffigen output
                        (default: $_defaultGenerated)
   --out <path>         Inventory to write
                        (default: $_defaultOut)
+  --names-out <path>   Symbol-name constants to write
+                       (default: $_defaultNamesOut)
   -h, --help           Print this help.
 
 Exits non-zero when a symbol the headers declare is not bound.
@@ -38,6 +46,7 @@ Future<void> main(List<String> args) async {
   var distRoot = defaultDistDestination;
   var generatedPath = _defaultGenerated;
   var outPath = _defaultOut;
+  var namesOutPath = _defaultNamesOut;
 
   String valueFor(String flag, int index) {
     if (index + 1 >= args.length) {
@@ -59,6 +68,9 @@ Future<void> main(List<String> args) async {
         i++;
       case '--out':
         outPath = valueFor(args[i], i);
+        i++;
+      case '--names-out':
+        namesOutPath = valueFor(args[i], i);
         i++;
       case '-h':
       case '--help':
@@ -130,27 +142,16 @@ Future<void> main(List<String> args) async {
     );
   }
 
-  final outFile = File(outPath);
-  if (check) {
-    if (!outFile.existsSync()) {
-      stderr.writeln('$outPath does not exist. Run `melos run gen:ffi`.');
-      exit(1);
-    }
-    if (outFile.readAsStringSync() != rendered) {
-      stderr.writeln(
-        '$outPath is stale: it is not what this run would write.\n'
-        'Run `melos run gen:ffi` and commit the result.',
-      );
-      exit(1);
-    }
-    stdout.writeln('$outPath: up to date');
-  } else {
-    outFile.parent.createSync(recursive: true);
-    final changed =
-        !outFile.existsSync() || outFile.readAsStringSync() != rendered;
-    if (changed) outFile.writeAsStringSync(rendered);
-    stdout.writeln('$outPath: ${changed ? "updated" : "unchanged"}');
-  }
+  // The same scan, rendered a second way: JSON with its provenance for CI and
+  // for people, Dart constants for the loader's run-time health check.
+  final renderedNames = renderSymbolNames(bound.functions);
+  stdout.writeln(
+    'symbol names: ${bound.functions.length} bound, '
+    '${bound.functions.where((n) => n.startsWith('TW')).length} TW*',
+  );
+
+  _emit(path: outPath, contents: rendered, check: check);
+  _emit(path: namesOutPath, contents: renderedNames, check: check);
 
   // PRD §9: "any missing symbol fails the build". Checked after the file is
   // written, so the inventory naming the gap is on disk to look at.
@@ -167,4 +168,36 @@ Future<void> main(List<String> args) async {
       );
     exit(1);
   }
+}
+
+/// Writes [contents] to [path], or — under `--check` — fails when what is on
+/// disk is not [contents].
+///
+/// Every generated output of this tool goes through here, so a stale one fails
+/// the same way whichever it is (AGENTS.md rule 1).
+void _emit({
+  required String path,
+  required String contents,
+  bool check = false,
+}) {
+  final file = File(path);
+  if (check) {
+    if (!file.existsSync()) {
+      stderr.writeln('$path does not exist. Run `melos run gen:ffi`.');
+      exit(1);
+    }
+    if (file.readAsStringSync() != contents) {
+      stderr.writeln(
+        '$path is stale: it is not what this run would write.\n'
+        'Run `melos run gen:ffi` and commit the result.',
+      );
+      exit(1);
+    }
+    stdout.writeln('$path: up to date');
+    return;
+  }
+  file.parent.createSync(recursive: true);
+  final changed = !file.existsSync() || file.readAsStringSync() != contents;
+  if (changed) file.writeAsStringSync(contents);
+  stdout.writeln('$path: ${changed ? "updated" : "unchanged"}');
 }

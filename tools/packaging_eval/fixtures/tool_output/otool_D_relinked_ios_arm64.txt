@@ -1,0 +1,2 @@
+<repo>/third_party/wcf-native-all/artifacts/ios/arm64/libTrustWalletCore.dylib:
+@rpath/libTrustWalletCore.dylib

@@ -1,0 +1,6 @@
+
+== 16 KB alignment gate: saved llvm-readelf output <repo>/tools/packaging_eval/fixtures/tool_output/llvm_readelf_l_4k.txt ==
+  LOAD segment aligned 0x1000, expected 0x4000
+  LOAD segment aligned 0x1000, expected 0x4000
+2 LOAD segments, 2 below the required alignment 0x4000
+error: 16 KB alignment gate FAILED for <repo>/tools/packaging_eval/fixtures/tool_output/llvm_readelf_l_4k.txt: rebuild with NDK r27+ (or -Wl,-z,max-page-size=16384)

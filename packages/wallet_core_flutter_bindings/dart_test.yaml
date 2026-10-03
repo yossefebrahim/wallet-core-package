@@ -1,0 +1,10 @@
+# Test tags for this package.
+#
+# `melos run test` runs `dart test` with no tag filter, so the `native` tests
+# run too and skip themselves when the host library is absent (see
+# `test/support/host_library.dart`). `melos run test:native` selects this tag
+# and sets WCF_NATIVE_REQUIRED=1, which turns that skip into a failure.
+tags:
+  native:
+    # Loads the real libTrustWalletCore built from the pinned upstream commit.
+    # Needs `melos run native:host-lib` first, or WCF_NATIVE_LIB set.

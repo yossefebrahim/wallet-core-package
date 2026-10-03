@@ -1,0 +1,10 @@
+Verifying alignment of unaligned.apk (4)...
+      34 lib/ (OK - directory)
+      78 lib/arm64-v8a/ (OK - directory)
+     138 lib/arm64-v8a/libc++_shared.so (BAD - 138)
+ 9236531 lib/x86_64/ (OK - directory)
+ 9236588 lib/x86_64/libc++_shared.so (BAD - 12396)
+18045301 AndroidManifest.xml (BAD - 1)
+18045362 classes.dex (BAD - 2)
+18045404 res/ (OK - directory)
+Verification FAILED

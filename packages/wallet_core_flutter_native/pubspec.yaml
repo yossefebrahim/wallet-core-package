@@ -1,9 +1,9 @@
 name: wallet_core_flutter_native
 description: >-
   Native distribution layer of the wallet_core_flutter workspace: artifact
-  acquisition and checksum verification at build time, build integration, and
-  library loading. Placeholder scaffold; see the library doc comment for the
-  project disclaimer.
+  acquisition and checksum verification at build time, build integration,
+  library loading, and the build-identity check. See the library doc comment
+  for the project disclaimer.
 version: 0.0.1
 publish_to: none
 resolution: workspace
@@ -13,6 +13,10 @@ environment:
   flutter: ">=3.44.0"
 
 dependencies:
+  # sha256 of the shipped manifest's bytes — DECISION-14 §2.3 comparison 2,
+  # PRD §12.3 integrity verification. Pure Dart, no network, no wallet
+  # cryptography (AGENTS.md rule 2).
+  crypto: ^3.0.0
   flutter:
     sdk: flutter
 
@@ -20,3 +24,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   lints: ^6.0.0
+
+flutter:
+  assets:
+    # A byte-for-byte copy of the repository's compat_manifest.json, written
+    # by `melos run gen:manifest` and diffed by `gen:check`. PRD §15.3 ships
+    # the manifest inside this package; the build-time fetch tool reads this
+    # JSON from the package directory, and an application can read it as an
+    # asset. The run-time identity check does not — it uses the generated
+    # constants in lib/src/generated/manifest.dart, because it runs in a
+    # worker isolate with no binary messenger (DECISION-12 §5).
+    - assets/compat_manifest.json

@@ -95,6 +95,32 @@ jobs:
       - name: melos bootstrap
         run: melos bootstrap
 
+      # `gen:proto` (tools/gen/proto.sh) refuses to run unless the protoc and
+      # protoc-gen-dart on PATH are exactly the versions compat_manifest.json
+      # pins (`generators.protoc`, `generators.protoc_gen_dart`); a bump of
+      # either pin without a matching bump here therefore fails this job
+      # loudly rather than regenerating with the wrong tool. Ubuntu's
+      # protobuf-compiler package is older and unpinned, so protoc comes from
+      # the protocolbuffers/protobuf release asset. The sha256 is FIRST-SEEN
+      # (orchestrator, 2026-09-08, downloaded once and hashed): protobuf
+      # publishes no checksums for its release zips.
+      - name: Install protoc 33.4 (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          curl -sSL --retry 3 -o "$RUNNER_TEMP/protoc.zip" \
+            https://github.com/protocolbuffers/protobuf/releases/download/v33.4/protoc-33.4-linux-x86_64.zip
+          echo "c0040ea9aef08fdeb2c74ca609b18d5fdbfc44ea0042fcfbfb38860d35f7dd66  $RUNNER_TEMP/protoc.zip" | sha256sum -c -
+          mkdir -p "$HOME/.local/protoc"
+          unzip -q -o "$RUNNER_TEMP/protoc.zip" -d "$HOME/.local/protoc"
+          echo "$HOME/.local/protoc/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/protoc/bin/protoc" --version
+
+      # The launcher `dart pub global activate` writes records the version;
+      # proto.sh reads it back, so the pin is checked from the file protoc will
+      # actually execute.
+      - name: Activate protoc_plugin 25.0.0 (pinned)
+        run: dart pub global activate protoc_plugin 25.0.0
+
       # `--dist` fetches the release asset as well as the source tree. The
       # commit is already pinned in the manifest, so the fetch verifies it
       # rather than setting it.

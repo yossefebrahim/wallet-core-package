@@ -1,0 +1,10 @@
+# Test configuration for the packaging measurement harness.
+#
+# The `slow` tag marks the PRD §12.2 step 11 acceptance test, which runs
+# `flutter create` and `flutter pub get` against the loopback package
+# repository and takes about a minute. It is *not* excluded from
+# `melos run test`: it is the one thing the harness exists to prove.
+
+tags:
+  slow:
+    timeout: 10x

@@ -1,0 +1,2 @@
+Non-fat file: <repo>/third_party/wcf-native-all/artifacts/ios/arm64/libTrustWalletCore.dylib is architecture: arm64
+Architectures in the fat file: <repo>/third_party/wcf-native-all/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib are: x86_64 arm64 

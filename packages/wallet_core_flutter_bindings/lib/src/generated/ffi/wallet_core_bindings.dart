@@ -11629,6 +11629,17 @@ class WalletCoreBindings {
       >('stringForHRP');
   late final _stringForHRP = _stringForHRPPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(int)>();
+
+  late final addresses = _SymbolAddresses(this);
+}
+
+class _SymbolAddresses {
+  final WalletCoreBindings _library;
+  _SymbolAddresses(this._library);
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWData>)>>
+  get TWDataDelete => _library._TWDataDeletePtr;
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<TWString>)>>
+  get TWStringDelete => _library._TWStringDeletePtr;
 }
 
 /// AES encryption/decryption methods.

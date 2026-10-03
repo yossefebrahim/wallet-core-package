@@ -44,6 +44,23 @@ globals:
   exclude:
     - '.*'
 
+# A `NativeFinalizer` needs the raw address of the delete function, because its
+# callback is upstream's delete function itself and no Dart code may run in it
+# (PRD §11.2 item 5). ffigen emits an `addresses` member only for the names
+# listed here, so exactly the two the memory wrappers attach are listed — every
+# other function stays a call-only binding. Keep this list minimal: each entry
+# adds a `Pointer<NativeFunction<…>>` field to the generated class.
+#
+# `symbol-address` is a member of `functions:`, not a top-level key; ffigen
+# ignores it silently at the top level. Nothing else is set under `functions:`,
+# so the include/exclude defaults are unchanged and all 466 declared functions
+# are still bound (`melos run inventory:check`).
+functions:
+  symbol-address:
+    include:
+      - TWDataDelete
+      - TWStringDelete
+
 # Bindings are name-sorted rather than left in source order: the entry points
 # come from a glob, and a glob's order is the filesystem's. Sorting is what
 # makes a second `gen:ffi` on the same input produce the same bytes on a

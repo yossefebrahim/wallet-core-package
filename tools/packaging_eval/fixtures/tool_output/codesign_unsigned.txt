@@ -1,0 +1,1 @@
+<repo>/third_party/wcf-native-all/artifacts/ios/arm64/libTrustWalletCore.dylib: code object is not signed at all
