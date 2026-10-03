@@ -1,0 +1,159 @@
+**Verdict: fix before commit.** Neither option has a key-material or FFI-lifetime problem. Both have a confirmed way to bundle bytes that were not verified against the build's own manifest. The Option 1 eval script can also record `pass` for things it did not measure, and `DECISION-2-option1.md` is stale throughout.
+
+## Findings (most severe first)
+
+**1. High: Option 1 bundles whatever is at the cache path, after verification, without re-hashing it.**
+- **Where:** `T1.8/packages/wallet_core_flutter_native/hook/build.dart:143-171` (with `hook/src/acquire.dart:130-135`).
+- **Defect:** the fetch tool hashes the cache file and returns 0; the hook then re-opens the same path, reads it (line 158) and emits it. Nothing checks the bytes actually read.
+- **Scenario:** two apps share `cache_dir` (the hook's own doc suggests `/var/cache/wcf  # verified cache shared between apps`, `hook_options.dart:18`) and pin different manifests. The cache path carries no tag or set id. App B's fetch finds A's file "corrupt", deletes it and installs B's bytes in the window before A's read, so A bundles B's library. Its log still says "sha256 \<A's\> verified". A local writer to a shared cache can use the same window to plant an arbitrary library. With honest sets the runtime identity check fails closed; a forged `wcf_build_info` would not.
+- **CONFIRMED:** throwaway `o1_toctou.dart` ran the real `acquireArtifact`, `runFetchArtifacts` and `takeSlice`. Output: `A pins 26fe46…`, `A bundles b4a7df… (== B bytes: true)`.
+- **Fix:** in `build.dart`, hash the in-memory `bytes` and check sha256 and size against `manifest.artifacts[logicalName]` before `takeSlice`; fail with `BuildError` on mismatch. Alternatively use Option 2's copy-out pass into a private directory.
+
+**2. Medium: Option 2's iOS "private" work directory is shared by every app using that package version, so an app can link another manifest's set.**
+- **Where:** `T1.9/packages/wallet_core_flutter_native/ios/wallet_core_flutter_native.podspec:105-106`; `ios/tool/prepare_xcframework.dart:160-181, 203`.
+- **Defect:** `--work` (`<pod>/.wcf_work`) and `--out` (`<pod>/Frameworks`) sit in the pod directory. For a hosted package that is the pub cache.
+- **Scenario:** two concurrent `pod install`s with different `WCF_MANIFEST`s. B's copy-out pass deletes A's freshly verified file in `.wcf_work` as "corrupt" and copies B's in. A then renames B's file into its framework and writes stamps: A's manifest hash plus the hashes of B-derived binaries. A's script phase passes and A links B's set.
+- **This makes two document claims false:** `DECISION-2-option2.md:26` and `verified_acquisition.dart:24` ("a private work directory inside the build"), and risk 3 at `DECISION-2-option2.md:230` ("the script phase then fails the stale one's build rather than linking the wrong set").
+- **CONFIRMED:** `o2_work.dart` with the real `acquireVerified` printed `A pins c2e686…`, `A takes 9a5670… (== B: true)`. The stamp step was confirmed by reading. Android is unaffected: Gradle's `temporaryDir` is per build.
+- **Fix:** take an exclusive lock (e.g. `File#flock` on a lock file in the pod dir) around the whole prepare-and-stamp step in the podspec, and use a unique work subdirectory. Correct both document claims.
+
+**3. Medium: the Option 1 classifier records a non-digest failure as a passing wrong-digest check.**
+- **Where:** `T1.8/eval/option1/tool/eval_tool.dart:264-269`; `run_eval.sh:608-612`.
+- **Defect:** `summary-only` matches the generic "could not be verified" headline. The hook prints that for any fetch-tool failure (missing vendored file, offline miss, transport error), and the script writes it as `pass`.
+- **Scenario:** a staged copy whose `vendored_dir` doesn't resolve fails offline with "not in the cache…". The row reads "pass wrong digest: build failed, digests not shown". Since the current hook always prints the one-line `sha256 mismatch` on a real mismatch, `summary-only` now only ever means "not a digest failure".
+- **CONFIRMED:** fed the real hook output for a missing-vendored-dir failure, reduced to Xcode's `error:` lines, into `classify-negative`; it returned `summary-only`.
+- **Fix:** treat `summary-only` as `fail` or `unmeasured`. Require the mismatch line for the flipped logical name.
+
+**4. Medium: Option 1's eval measures stale build outputs from earlier runs and records them as `pass`.**
+- **Where:** `T1.8/eval/option1/run_eval.sh:108-110` (only `$TMP/o1` is cleaned), then `:456, 466, 469-470, 660, 679, 682` (unguarded `packaged`, `ios_archive`, `--duplicate-scan` and `alignment --apk` on `$APP/build/...`).
+- **Scenario:** when the archive build is refused or fails, the previous run's `consumer/build/ios/archive` is measured anyway.
+- **CONFIRMED** from the document's own stale table: for `ios-device-arm64/release` it shows consumer-build "unmeasured refused here" and archive-link "refused here", yet symbols "pass 464/464", size "pass 16.50 MiB", ios-archive "pass" and duplicate-symbols "pass".
+- **Fix:** `rm -rf "$APP/build"` at start, and gate each packaged-binary row on its build's return code (or build a staged copy, as Option 2 does).
+
+**5. Medium: `DECISION-2-option1.md`'s embedded results and prose do not match `eval/option1/results/`.**
+- **CONFIRMED** by a cell-by-cell diff script. Every stale value is listed in the next section.
+- **Fix:** re-render the table from `results/table.md` and rewrite the listed prose.
+
+**6. Medium: Option 1 bundles an Android native library that no manifest digest covers.**
+- **Where:** `T1.8/packages/wallet_core_flutter_native/pubspec.yaml:40` (`android_libcpp_shared: ^0.2.0`).
+- **Defect:** its hook runs in every consumer build and emits `libc++_shared.so` from whichever NDK it finds (falling back to other installations, `DECISION-2-option1.md` §5). No sha256 is checked, which contradicts PRD §12.3 "every artifact's SHA-256 is pinned". Option 2 pins this file as a manifest row instead.
+- **Status:** CONFIRMED by reading (no digest check anywhere on that path). An environment-variable path override in that package is PLAUSIBLE; pub-cache reads became permission-gated before I could confirm it.
+- **Fix:** drop the dependency until T1.2 settles `c++_static` vs `c++_shared`. If shared, ship it as a verified manifest row through our own hook.
+
+**7. Low: Option 2's committed results do not come from the committed script, and two rows were hand-edited.**
+- **Where:** `T1.9/eval/option2/results/results.jsonl:2,5,6` vs `run_eval.sh:317-318`.
+- **Defect:** results.jsonl (22:08:24) predates run_eval.sh (22:08:56). Rows use key `runner_load_command_trustwalletcore` and summary "Runner loads TrustWalletCore: no", which the current script cannot produce. Rows 13-14 were rewritten by hand (disclosed at `DECISION-2-option2.md:72`).
+- **CONFIRMED** by mtimes and keys.
+- **Fix:** re-run the script; commit nothing hand-edited.
+
+**8. Low: Option 1's "declared floor 3.38" is wrong.**
+- **Where:** `run_eval.sh:509-510`; `DECISION-2-option1.md:134, 138, 189, 203`.
+- **Defect:** the native package declares `sdk: ^3.12.0` and `flutter: ">=3.44.0"`, so pub cannot resolve it on Flutter 3.38–3.43, and T1.8b step 4 asks for exactly those runs. Also, `android_libcpp_shared` 0.2.1 requires `hooks ^2.0.2`, so the effective hooks floor is 2.0.2, not 1.0.2. The Dart 3.10 floor still holds.
+- **CONFIRMED** from the pubspec and the pub-cache pubspecs.
+
+**9. Low: the Option 1 consumer is not "as `flutter create` wrote it".**
+- **Where:** `T1.8/eval/option1/README.md:58`.
+- **Defect:** `consumer/ios/Runner.xcodeproj/project.pbxproj` has 43 Pods references, and `ios/Podfile` and `Podfile.lock` sit in the tree. The in-place builds integrated CocoaPods, so step 1 never started from a clean checkout. Option 2's committed project has 0 Pods references.
+- **CONFIRMED** by grep.
+- **Fix:** restore the pristine project and build a staged copy.
+
+**10. Low: the analyze gate skips about 1,000 lines of Option 2 build-time Dart.**
+- **Where:** `T1.9/packages/wallet_core_flutter_native/analysis_options.yaml:4-5` (excludes `android/**` and `ios/**`, which includes `*/tool/*.dart`).
+- **CONFIRMED.** A copy with the excludes removed analyzes clean, so nothing is hidden today.
+- **Fix:** exclude only `android/build/**`, `ios/Frameworks/**` and `ios/.wcf_work/**`.
+
+**11. Low: both evals' offline rows measure a warm cache, not a clean offline install.**
+- **Where:** Option 1 `run_eval.sh:546-559` (in-place `.dart_tool` is never cleaned); Option 2 `run_eval.sh:186-188` (preflight pre-fills `$CACHE`, then `WCF_ARTIFACT_DIR=$CACHE`).
+- **Defect:** the vendored path is never exercised by the measured build. "No socket" is asserted from `--offline`, not observed. Option 2 would still write `pass` with "pub get online".
+- **Status:** CONFIRMED by reading.
+
+**12. Low: Option 1's duplicate-symbol scan covers 2 libraries.**
+- **Where:** `T1.8/eval/option1/run_eval.sh:682-683` (TrustWalletCore and Flutter only); Option 2 scans all 5 embedded frameworks.
+- **Effect:** the step-10 numbers aren't comparable between options. CONFIRMED.
+
+**13. Low: a missing Variant API silently packages no library.**
+- **Where:** `T1.9/packages/wallet_core_flutter_native/android/build.gradle:224`.
+- **Defect:** `jniLibs?.` skips the wiring with no error if the API is absent, and the build succeeds without the `.so`.
+- **Status:** PLAUSIBLE (Gradle not runnable here).
+- **Fix:** drop the `?` and fail.
+
+**14. Low: committed results contain the developer's home path, contrary to `eval_tool.dart:110-114`.**
+- `/Users/yossefebrahim/...` appears in 41 lines of `option1/results.jsonl`, 51 of its `table.md`, and 7 and 5 in Option 2's files. Disclosed in the README for harness-written rows. CONFIRMED.
+
+**15. Low: the macOS loader location is a working-directory-relative path.**
+- **Where:** `T1.8/packages/wallet_core_flutter_native/lib/src/code_asset_locations.dart:44-45`.
+- **Defect:** `NamedLibrary('TrustWalletCore.framework/TrustWalletCore')` on macOS may let dyld resolve it against the current directory, the TM-13 vector. iOS apps run with cwd `/`.
+- **Status:** PLAUSIBLE (dyld behaviour not tested); dev-host only.
+
+## Stale values in `DECISION-2-option1.md`
+
+**Embedded table (lines 55-71); "doc" value first, then what `results/table.md` says:**
+
+| Step | Target | Doc says | Results say |
+|---|---|---|---|
+| 1 | ios-sim/debug | unmeasured refused here | pass built |
+| 1 | ios-device/debug | unmeasured refused here | pass built, unsigned |
+| 1 | ios-device/release | unmeasured refused here | pass archived, unsigned |
+| 1 | macos-host/debug | unmeasured refused here | skip Podfile missing (no macOS plugin, SPM false) |
+| 1 | flutter-test-short-path | unmeasured cannot create /tmp/wcf-o1-91209 | pass built and ran (77-char path) |
+| 1 | flutter-test-tmpdir | pass built and ran (79-char path) | fail install_name_tool: header too small for a 112-char path |
+| 2 | ios-sim/debug | unmeasured no booted simulator | pass ran |
+| 2 | macos-host/debug | unmeasured not built here | skip no macOS app |
+| 4 symbols | ios-sim/debug | unmeasured | pass (arm64 464/464, 29434; x86_64 464/464, 30002) |
+| 4 symbols | macos-host/debug | unmeasured | skip |
+| 4 runtime | ios-sim/debug | unmeasured no booted simulator | pass all resolved |
+| 4 runtime | macos-host/debug | unmeasured not built here | skip |
+| 5 size | ios-sim/debug | unmeasured | pass 39.38 MiB (x86_64 20.53, arm64 18.83) |
+| 5 size | macos-host/debug | unmeasured | skip |
+| 5 delta | ios-sim/debug | unmeasured | pass +39.38 MiB (139.16 → 178.55 MiB) |
+| 5 delta | ios-device/release | unmeasured | pass +16.51 MiB (13.79 → 30.30 MiB) |
+| 6 floor | ios-sim/debug | unmeasured refused here | pass builds on 3.47.5 (only version tried) |
+| 6 floor | ios-device/release | unmeasured refused here | pass builds on 3.47.5 (only version tried) |
+| 6 floor | macos-host/debug | unmeasured refused here | skip |
+| 7 | ios-sim/debug | unmeasured wrong-digest build refused here | pass offline: built; wrong digest: build failed, both digests shown |
+| 7 | ios-device/release | unmeasured [54] | pass offline: built [55] |
+| 10 ios-archive | ios-sim/debug | unmeasured [68] | pass |
+| 10 archive-link | ios-device/release | unmeasured refused here | pass archive links |
+
+- The host `pass` cells in rows 4-symbols, 4-runtime, 5-size, 7 and 10 sit in the tmpdir column in the doc; in the results they are in the short-path column.
+- Footnotes shifted: the flipped-digest cell is [56] in the results, not [55], and the host offline cell is [55], not [56].
+
+**Prose:**
+- Line 50: "100 rows", "sandboxed macOS host". The results have 103 rows, from the unsandboxed run.
+- Lines 78-79 (§2.2): everything is attributed to this machine, and every `xcodebuild` to "refused".
+- Line 87 (step 1): "pass from a 79-character path … refused by the sandbox".
+- Line 90 (step 4): "packaged app binaries orchestrator-run".
+- Line 91 (step 5): "delta orchestrator-run".
+- Line 93 (step 7): "iOS app builds orchestrator-run".
+- Line 96 (step 10): "archive orchestrator-run". The results show it links; the framework holds `Info.plist`, `TrustWalletCore`, `_CodeSignature` and no `PrivacyInfo.xcprivacy`.
+- Line 113: "unconfirmed until the next unsandboxed run". The results now show Xcode surfacing the one-line `sha256 mismatch: expected 0603… found 6603…`.
+- Line 138: "count as measured once their step-1 builds pass". They passed.
+- Line 156: "79-character path passes" and "(78–80 characters)". The actual path is 77 characters; the arithmetic gives 74–78.
+- Line 193: "no app bundle, archive, simulator run or app-size delta was produced". All were produced.
+
+## Claims checked and found true
+- **Hook environment:** `hooks_runner` 1.1.1 and 1.5.0 launch hooks with `includeParentEnvironment: false` and a filtered environment, so `WCF_*` variables never reach a hook.
+- **User-defines:** the `user_defines.workspace_pubspec.defines` shape matches `hooks` 1.0.2 and 2.0.2, so the unknown-key rejection works.
+- **Slicing:** the hook's slice is byte-identical to `lipo -thin` for arm64 and x86_64 of the real macOS dylib.
+- **Header padding:** 56 B (arm64) and 104 B (x86_64). The 87-character install-name limit follows from that.
+- **Static linking:** the `StaticLinking` TODO is in `code_assets` 1.2.1.
+- **Versions:** resolved hooks 2.0.2, code_assets 1.2.1, android_libcpp_shared 0.2.1, native_toolchain_c 0.19.2, glob 2.2.0. `hooks` 1.0.2 requires Dart ≥3.10. `android_libcpp_shared` has no network code.
+- **Fetch tool:**
+  - A vendored file is hashed before copying and the copy is re-hashed.
+  - Downloads go to a temp file in the cache directory and are renamed into place only after verifying.
+  - A mismatching cache entry is deleted.
+  - No flag accepts a mismatch.
+  - Manifest keys cannot traverse paths: the logical-name grammar rejects `.`, `..` and `__`, Option 1's candidate names are hard-coded, and Option 2's jniLibs plan restricts ABIs.
+- **Option 2 two-pass copy-out:** does close the shared-cache gap. On Android the work directory really is private; on iOS it is not (finding 2).
+- **Option 2's document:** its embedded table matches `results/table.md` cell for cell. 78 rows: 34 pass / 0 fail / 3 skip / 41 unmeasured. Sizes match the results: 19,875,584 B, 41,290,144 B, +154,376 B, deltas +19.03 and +39.48 MiB. Consumer toolchain is AGP 9.1.0 / Kotlin 2.4.0 / Gradle 9.3.1, and the app template has `evaluationDependsOn(":app")`. The two `verified_acquisition.dart` copies are identical.
+- **Analysis:** `dart analyze --fatal-infos` is clean on the native package in both worktrees.
+- **AGENTS.md rules in the in-scope files:** no forbidden words, no runtime network, no public FFI or generated types.
+
+## Not reviewed or not run
+- **Tests:** `melos run test`, `test:native` and every `flutter test` could not run. The Flutter tool cannot write its cache in this sandbox, so no unit test was executed; tests were reviewed by reading.
+- **Native builds:** Gradle, Xcode, CocoaPods and device behaviour were reviewed by reading only.
+- **Harness and fetch-tool internals:** `tools/packaging_eval` and the W3 fetch tool beyond the paths the hook and prepare scripts call.
+- **`android_libcpp_shared`:** its source beyond a grep; pub-cache reads became permission-gated.
+- **Out of scope:** the bindings/memory code, the generated code, and the consumers' platform boilerplate.
+
+All experiments are throwaway scripts in the session scratchpad; nothing in the worktrees was modified.

@@ -1,0 +1,84 @@
+**Verdict: fix before commit.** No defect in the shipped default path exposes a key. But the C adapter's stated precondition is the wrong one, and both decision documents contain claims the code does not back.
+
+Gates (re-run): `melos run analyze` is clean. `flutter test` passes 269, `--tags native` passes 81, `--tags shim` passes 12. I did not re-run format:check, inventory:check or the bindings/native packages' tests.
+
+## Findings
+
+**1. Medium — `wcf_sign.h:65-70`, `wcf_sign.c:124-128` (same pattern in Approach A's `signing_core.dart:249-253`), and `DECISION-1-approach-b.md` §3 (L95-99).**
+- **Defect:** the contract only requires "field 9 absent". The property that actually matters is that the key-less input is a *complete, well-formed* message.
+- **Scenario:** take a key-less input that ends inside a length-delimited field (for example `transaction{transfer{data: len 34}}` with 0 bytes left), plus a planted `private_key`. The appended `4a 20 <key>` is swallowed as the transfer `data`. Upstream returns `error = 0` and a broadcastable transaction, signed by the planted key, whose calldata is the victim's private key.
+- **The opposite case is harmless:** a planted field 9 on a well-formed input is simply overridden, because the last occurrence wins and the real key signs. So the native "absence" check that §3 costs out guards the wrong thing.
+- **Why it is not exploitable today:** Dart's decode in `checkKeylessInput` rejects truncated input. That stays true only while every future caller (for example `RawSigningInput`) runs the decode.
+- **CONFIRMED:** C probe against the shim library (output decoded: calldata = `4a20 46…46`). A Dart probe confirmed the decode rejects that input.
+- **Fix:** *prepend* the key field instead of appending it, in both the C adapter and `secretDataFromParts`. I verified prepending produces byte-identical signatures for well-formed input and no key in the output for the truncated case. Also restate the precondition in `wcf_sign.h` and in §3.
+
+**2. Medium — `DECISION-1-approach-a.md` is stale after the seam change, and approach-b §11 item 6 (L243) wrongly says "its copy table is still right".**
+- L21: the handler no longer hands the core a view; `SyncSigningCore.sign` now calls `TWPrivateKeyData`.
+- L34: the file-map entry for `withDerivedKey` is wrong.
+- L52: #2's lifetime is no longer "same as #1, released just before it"; it is released in the core's `finally`, before the handler returns.
+- L59: the order line ("return to the handler → release #2") is wrong.
+- L81-83: line ranges are now handler 243–402, hd_wallet 283–333, signing_core 70–305.
+- L139 and L172: they cite a handler test showing a 32-byte key. That assertion was removed.
+- **CONFIRMED** by diffing against the T1.12 tree.
+- **Fix:** update those lines, and correct §11 item 6.
+
+**3. Low — approach-b L77.** The row "Native objects holding the key that this SDK causes to exist" reuses approach-a's label with different members.
+- Approach-a's "3" is {#1, #2, #4}. Approach-b's A = 3 is {#2, #3, #4}, and its B = 2 leaves out #1, which B also creates.
+- Counted consistently, it is A 4 (#1–#4) vs B 3 (#1, #2, #4).
+- **CONFIRMED** by reading both tables. **Fix:** count all four.
+
+**4. Low — `build_apple.sh:165-169, 186, 192`.**
+- **Defect:** `--with-shim` embeds the standard identity `as_4.8.0_000`, so `verifyIdentity` accepts the shim library wherever the standard one is expected. The shim tests pass using `hostIdentity` against the shim library.
+- **Defect:** the "out-dir contains shim" check runs on the raw argument, before the path is canonicalised at L192.
+- **Scenario:** `--out-dir $TMPDIR/shim/../wcf-native` passes the check and writes to the exact fallback path `run_native_tests.sh` loads. Standard native tests then silently run against a library with our C on the key path.
+- **CONFIRMED:** the identity part by the passing test; the guard bypass by code reading (I did not run a build).
+- **Fix:** canonicalise the path before checking, and give shim builds a distinct artifact-set id.
+
+**5. Low — `handler.dart:27-31` and approach-b L54/L56** claim the adapter "can only ever bind to the verified image" and that `DynamicLibrary.process()` was rejected.
+- On iOS, the loader tries `ProcessLibrary` first (`library_location.dart:204-205`). The adapter lookup and the `TWDataDelete` same-image comparison then both go through the process-wide handle, so the comparison can never fail.
+- **CONFIRMED** by code reading.
+- **Fix:** qualify the claim and add it to §5.3.
+
+**6. Low — `adapter_signing_core.dart:51-63, 188`.** The hand-written FFI signature types the key as `Pointer<Void>`, so swapping the two pointer arguments compiles. C would then read a `TWPrivateKey` as a `TWData`.
+- PLAUSIBLE: no current caller swaps them.
+- **Fix:** type the parameter as `Pointer<TWPrivateKey>`.
+
+**7. Low — test gaps.**
+- None of the adapter core's own guards is tested: the StateError for a wrong injection field, the `'signing-adapter'` UnsupportedOperationError, and the `bindAdapter` same-image StateError. Both libraries needed for the last one exist.
+- Approach A's production `sign` (handle) path has no tamper or wrong-coin test proving rejection happens before `TWPrivateKeyData`. Those tests were moved to `signWithKeyBytes`.
+- There is no test that a truncated key-less input never reaches the adapter (relevant given finding 1).
+- The shim tests are never run in CI: they skip silently and `WCF_NATIVE_SHIM_REQUIRED` is not wired in.
+- **CONFIRMED** by reading the tests.
+
+**8. Low — approach-b §5.1 (L114).**
+- The shim size 41,341,064 B (+368 B) comes from a different build than the hashed, tested library. That one (`c724bed2…`) is 41,341,096 B, so +400 B.
+- The "standard" column (41,340,696 B) is not the `third_party/wcf-native` library the header names. That library is 41,242,056 B with a different `__TEXT` size.
+- **CONFIRMED** by `stat`, `shasum` and `size`.
+
+**9. Low — docs say upstream's signing-time copies are "not verified".**
+- `RustCoinEntry.cpp:99` copies the whole keyed input into a Rust `TWData`. `tw_data.rs:75-78` frees it without wiping (there is no zeroize anywhere in `tw_memory`). This applies to both A and B.
+- `TWPrivateKeyCreateWithData` also leaves an unwiped `Data bytes` copy, which affects §9's imported-key claim.
+- **CONFIRMED** by reading the source. **Fix:** state these facts.
+
+## Claims checked and found true
+- The shim library's sha256 is `c724bed2…95360`.
+- Defined external symbols are 29,436 / 30,004, with 464 `TW*`, and `__TEXT` sizes are as stated.
+- The object's undefined references are the 7 listed `TW*` functions, `memcpy` and the stack protector.
+- The source citations are correct: `TWDataDelete` overwrites with `memzero` (`TWData.cpp:106-115`), and the `PrivateKey.h:93` / `PrivateKey.cpp:399-400` lines on `~PrivateKey`/`cleanup` are right.
+- The adapter returns NULL for NULL arguments, for 23 non-Ethereum-blockchain coins, and for out-of-enum values (0xFFFFFFFF, 0x80000000, 99999999).
+- Across all 60 EVM-family coins, Approach B's output is byte-identical to A's.
+- Neither the input nor the key is modified by the adapter. An empty input returns upstream's typed error rather than NULL.
+- No Dart code on the B path calls `TWPrivateKeyData`. `NativeResource` is `Finalizable`, so the key handle stays alive across the FFI call.
+- Approach B's lifetimes are as stated: #2 is deleted before `TWAnySignerSign`, #4 before Dart sees the output.
+- The provenance enum values match the validator and record script.
+- Test and line counts match: 3/10/2/2 tests plus 1; 674 test lines; 246 C lines; 218/128 Dart lines. The §7 line ranges are current.
+- No forbidden words; the disclaimer is present. `wallet_core_flutter.dart` is unchanged from T1.12.
+
+## Not reviewed
+- The mobile packaging analysis in §5.2/§5.3, beyond the iOS loader point; I did not read `build_android.sh`.
+- No shim rebuild, so wall time, the +368 B delta and the object sizes are unverified.
+- No fuzzing of the C.
+- T1.12 code outside the seam change (EVM encoder, session, protocol).
+- The bindings memory layer beyond `TWDataHandle`.
+
+All probes are in the scratchpad `rv/` directory; nothing in the worktree was modified.
