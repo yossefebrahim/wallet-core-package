@@ -1,0 +1,21 @@
+SYNTHETIC. No Android artifact exists anywhere — upstream publishes none and
+none has been built (DECISION-9 §4) — so no real Android build log of this
+collision can be captured yet. The wording below is the Android Gradle plugin's
+documented duplicate-file message, which is what the classifier keys on;
+replace this file with the real log the first time an evaluation produces one.
+
+> Task :app:mergeDebugNativeLibs FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:mergeDebugNativeLibs'.
+> A failure occurred while executing com.android.build.gradle.internal.tasks.MergeNativeLibsTask$MergeNativeLibsTaskWorkAction
+   > 2 files found with path 'lib/arm64-v8a/libc++_shared.so' from inputs:
+      - /Users/dev/.gradle/caches/8.14/transforms/aaaa/transformed/libcxx_plugin/jni/arm64-v8a/libc++_shared.so
+      - /Users/dev/.gradle/caches/8.14/transforms/bbbb/transformed/wallet_core_flutter_native/jni/arm64-v8a/libc++_shared.so
+     More than one file was found with OS independent path 'lib/arm64-v8a/libc++_shared.so'.
+     If you are using jniLibs and CMake IMPORTED targets, see
+     https://developer.android.com/r/tools/jniLibs-vs-imported-targets
+
+BUILD FAILED in 21s

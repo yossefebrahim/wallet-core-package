@@ -1,0 +1,3 @@
+class GeneratedThing {}
+
+class GeneratedBase {}

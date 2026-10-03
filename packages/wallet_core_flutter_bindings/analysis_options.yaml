@@ -1,1 +1,13 @@
 include: ../../analysis_options.yaml
+
+analyzer:
+  errors:
+    # protoc_plugin copies upstream's .proto comments verbatim into dartdoc.
+    # Sui.proto's "Coin<SUI> objects to stake." then reads as an HTML tag and
+    # trips `unintended_html_in_doc_comment` (lints/core.yaml) in
+    # lib/src/generated/proto/Sui.pb.dart. The text is upstream's and rule 1
+    # forbids hand-editing generated files, so the diagnostic is demoted rather
+    # than excluding lib/src/generated/** from analysis: every *other*
+    # diagnostic still applies to all 180 generated protobuf files. What is
+    # given up is dartdoc-rendering checks on this package's doc comments.
+    unintended_html_in_doc_comment: ignore

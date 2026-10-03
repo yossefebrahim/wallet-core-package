@@ -1,0 +1,3 @@
+class CleanClass {
+  void doNothing() {}
+}

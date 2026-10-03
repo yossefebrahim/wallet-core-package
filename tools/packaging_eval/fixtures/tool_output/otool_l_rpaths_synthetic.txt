@@ -1,0 +1,19 @@
+SYNTHETIC. Neither our relinked dylibs nor upstream's WalletCore.framework
+carries an LC_RPATH at 4.8.0 (measured 2026-09-08), so there is no real output
+to save for the rpath parser. These load commands are written by hand in
+`otool -l`'s exact shape; every other fixture in this directory is a real
+tool's real output.
+
+Load command 12
+          cmd LC_RPATH
+      cmdsize 40
+         path @executable_path/Frameworks (offset 12)
+Load command 13
+          cmd LC_RPATH
+      cmdsize 32
+         path @loader_path (offset 12)
+Load command 14
+          cmd LC_FUNCTION_STARTS
+      cmdsize 16
+      dataoff 19556352
+     datasize 68544

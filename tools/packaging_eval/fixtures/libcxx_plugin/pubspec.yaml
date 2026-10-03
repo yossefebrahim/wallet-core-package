@@ -1,0 +1,23 @@
+name: libcxx_plugin
+description: >-
+  Test fixture for PRD §12.2 step 9: a Flutter Android plugin that bundles
+  libc++_shared.so, so a consumer app that also depends on wallet_core_flutter
+  has two contributors of the same file and the packaging option has to resolve
+  it. Never published, never depended on by a shipped package.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: dev.wcf.eval.libcxx_plugin
+        pluginClass: LibcxxPlugin

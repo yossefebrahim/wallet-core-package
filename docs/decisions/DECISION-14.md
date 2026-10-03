@@ -190,8 +190,10 @@ Format `rs_<upstreamTag>_<3-digit sequence>`, e.g. `rs_4.8.0_001`. One release s
 
 ```dart
 const String releaseSetId   = 'rs_4.8.0_001';
-const String manifestSha256 = '<sha256 of the canonical JSON of compat_manifest.json>';
+const String manifestSha256 = '<sha256 of compat_manifest.json as committed, byte for byte>';
 ```
+
+`manifestSha256` is the sha256 of the manifest **file's bytes exactly as committed**, not of a re-serialisation of its JSON, because both sides of §2.3's comparison 2 hash bytes — the generator hashes the committed file and the runtime check hashes the byte copy shipped in `_native` — so the comparison is a statement about the file rather than about two encoders agreeing on a canonical form. *(amended 2026-09-08, T1.7a/T1.7b; the generator is `tools/manifest/bin/embed.dart`)*
 
 `_native` additionally ships the manifest itself as an asset (`packages/*_native/assets/compat_manifest.json`, T1.7). `initialize()` runs the four comparisons of §2.3.
 

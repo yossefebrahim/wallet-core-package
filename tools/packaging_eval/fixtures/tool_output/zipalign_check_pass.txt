@@ -1,0 +1,10 @@
+Verifying alignment of aligned.apk (4)...
+      34 lib/ (OK - directory)
+      78 lib/arm64-v8a/ (OK - directory)
+   16384 lib/arm64-v8a/libc++_shared.so (OK)
+ 9252777 lib/x86_64/ (OK - directory)
+ 9256960 lib/x86_64/libc++_shared.so (OK)
+18065676 AndroidManifest.xml (OK)
+18065740 classes.dex (OK)
+18065782 res/ (OK - directory)
+Verification successful

@@ -1,0 +1,10 @@
+# Test tags for this package — the bindings package's convention.
+#
+# `melos run test` runs `flutter test` with no tag filter, so the `native`
+# tests run too and skip themselves when the host library is absent (see
+# `test/support/host_library.dart`). Run them alone, with absence a failure,
+# as `WCF_NATIVE_REQUIRED=1 flutter test --tags native`.
+tags:
+  native:
+    # Loads the real libTrustWalletCore built from the pinned upstream commit.
+    # Needs `melos run native:host-lib` first, or WCF_NATIVE_LIB set.

@@ -13,12 +13,28 @@ workspace:
   - packages/wallet_core_flutter
   - packages/wallet_core_flutter_bindings
   - packages/wallet_core_flutter_native
+  - tools/inventory
   - tools/manifest
+  - tools/upstream
   - tools/vectors
+  - tools/gen
+  - tools/packaging_eval
+  - tools/probes
+  - tools/lint
 
 dev_dependencies:
   lints: ^6.0.0
   melos: 8.6.0
+
+# A pub workspace resolves to one version per package, and melos 8.6.0 needs
+# `cli_util ^0.5.0` while every published ffigen (through 21.0.0) still asks
+# for `^0.4.2` — disjoint ranges, so without this the workspace cannot hold
+# both the gate runner and the generator. cli_util 0.5.x is additive over the
+# one thing ffigen imports from it (`Ansi`, from `cli_logging.dart`); 0.5.0
+# added `BaseDirectories`, 0.5.1 the `cli_components` library, and removed
+# nothing ffigen touches. Drop this when ffigen widens its constraint.
+dependency_overrides:
+  cli_util: ^0.5.2
 
 melos:
   # `melos bootstrap` otherwise writes IntelliJ project files into the checkout
@@ -43,4 +59,119 @@ melos:
         - melos exec --flutter --dir-exists=test -- flutter test
         - melos exec --no-flutter --dir-exists=test -- dart test
     manifest:validate: dart run tools/manifest/bin/validate.dart compat_manifest.json
+    upstream:fetch:
+      description: >-
+        Put the pinned upstream source tree into third_party/wallet-core/,
+        record its schema digests in compat_manifest.json, and copy upstream's
+        licence text into THIRD_PARTY_NOTICES.md. Pass --from <archive> to
+        unpack a pre-fetched tarball instead of downloading.
+      run: dart run tools/upstream/bin/fetch.dart
+    native:host-lib:
+      description: >-
+        Relink upstream's macOS static archive into the host library that
+        `melos run test:native` loads (DECISION-9 Option A', T1.6). Build-time
+        tooling only; the output goes outside the repository. Needs the cached
+        upstream release asset under $WCF_UPSTREAM_CACHE (default
+        ~/.cache/wcf-upstream) and the commit pin T1.1 writes into
+        compat_manifest.json; until that pin exists, call
+        tools/native_build/build_apple.sh directly with --commit.
+      run: >-
+        tools/native_build/build_apple.sh
+        --cache-dir "${WCF_UPSTREAM_CACHE:-$HOME/.cache/wcf-upstream}"
+        --from-manifest compat_manifest.json
+        --slices macos-arm64_x86_64
+        --out-dir "${WCF_NATIVE_OUT:-${TMPDIR:-/tmp}/wcf-native}"
+        --expect-symbol-count 464
     vectors:validate: dart run tools/vectors/bin/validate.dart test_vectors
+
+    gen:ffi:
+      description: >-
+        Regenerate the Dart FFI bindings over upstream's public C API, refresh
+        the generated symbol inventory, and format the output so the committed
+        result passes format:check without an exclusion. Reads
+        third_party/wallet-core-dist/include/TrustWalletCore/ — the tagged
+        release asset's 143 headers, not the git tree's 67 — placed by
+        `melos run upstream:fetch -- --dist-only --from-dist <asset>`.
+      steps:
+        - melos exec --scope="wallet_core_flutter_bindings" -- dart run ffigen --config ffigen.yaml
+        - dart run tools/inventory/bin/symbols.dart
+        - dart format packages/wallet_core_flutter_bindings/lib/src/generated/ffi
+
+    inventory:check:
+      description: >-
+        Fail if any function or enum upstream's headers declare is missing from
+        the generated bindings, or if the committed inventory.json is stale
+        (PRD §9).
+      run: dart run tools/inventory/bin/symbols.dart --check
+
+    gen:all:
+      description: Every generator, in dependency order.
+      steps:
+        - melos run gen:ffi
+        - melos run gen:proto
+        - melos run gen:registry
+        - melos run gen:manifest
+
+    gen:check:
+      description: >-
+        Regenerate everything and fail on a diff, or on a generated file that
+        regeneration produced but nobody tracked — AGENTS.md rule 1, enforced
+        rather than reviewed.
+      steps:
+        - melos run gen:all
+        - git diff --exit-code -- "packages/*/lib/src/generated/" "docs/capability_matrix.*" "packages/wallet_core_flutter_native/assets/compat_manifest.json"
+        # `git diff` cannot see a file that is not tracked yet, so a pin bump
+        # that only *adds* a generated file (a new .proto upstream, say) would
+        # pass the step above. This one catches it.
+        - sh -c 'u=$(git ls-files --others --exclude-standard -- packages/*/lib/src/generated docs/capability_matrix.* packages/wallet_core_flutter_native/assets/compat_manifest.json); test -z "$u" || { echo "gen-check failed - generated but untracked"; echo "$u"; false; }'
+    gen:proto:
+      description: >-
+        Regenerate the protobuf classes under
+        packages/wallet_core_flutter_bindings/lib/src/generated/proto/ from
+        third_party/wallet-core/src/proto/ at the pinned upstream commit, plus
+        key_fields.json (PRD §11.4). Fails unless the protoc and
+        protoc-gen-dart on PATH are exactly the versions pinned in
+        compat_manifest.json. Needs `melos run upstream:fetch` first.
+      run: tools/gen/proto.sh
+    gen:registry: dart run tools/gen/bin/registry_transform.dart
+
+    test:native:
+      description: >-
+        The `native`-tagged unit tests of the bindings package (dart test) and
+        the SDK package (flutter test), against the real host library, with
+        WCF_NATIVE_REQUIRED=1 so an absent library is a failure here where
+        `melos run test` lets the same tests skip. WCF_NATIVE_LIB, unset,
+        defaults to third_party/wcf-native/macos/arm64_x86_64/libTrustWalletCore.dylib
+        when present and otherwise to the path native:host-lib writes to. See
+        tools/native_build/run_native_tests.sh.
+      run: bash tools/native_build/run_native_tests.sh
+    gen:manifest:
+      description: >-
+        Embed compat_manifest.json into wallet_core_flutter_native: the const
+        values the runtime identity check of DECISION-14 §2.3 compares against
+        (lib/src/generated/manifest.dart), and a byte-for-byte copy of the
+        manifest itself (assets/compat_manifest.json), which is what PRD §15.3
+        ships inside the package and what the build-time fetch tool reads.
+        Constants rather than the asset because the check runs in the worker
+        isolate during Init, where rootBundle is unavailable (DECISION-12 §5),
+        and because the loader must also work from a pure-Dart CLI. Both
+        outputs are diffed by gen:check, so neither can drift from the root
+        manifest. T3.11 extends this generator to the other two packages
+        (DECISION-14 §4.1).
+      run: dart run tools/manifest/bin/embed.dart
+    packaging:measure:
+      description: >-
+        Run every PRD §12.2 packaging measurement that has a real input on this
+        machine — the relinked artifacts under third_party/wcf-native-all/,
+        upstream's cached WalletCore.xcframework, the NDK's libc++_shared.so —
+        generate a hosted consumer app against a loopback package repository,
+        and print the results table the two DECISION-2 option documents embed.
+        Rows with no input on this machine (an Android .so, an APK, a built
+        consumer app) are reported `unmeasured` with the exact command T1.8/T1.9
+        will run. Build-time tooling: results are written under
+        $WCF_PACKAGING_OUT and nothing is written inside the repository.
+      run: >-
+        dart run tools/packaging_eval/bin/measure_all.dart
+        --out-dir "${WCF_PACKAGING_OUT:-${TMPDIR:-/tmp}/wcf-packaging}"
+    probe:sign-json: dart run tools/probes/bin/sign_json_probe.dart
+    lint:public-api: dart run tools/lint/bin/public_api_lint.dart

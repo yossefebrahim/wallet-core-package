@@ -1,0 +1,16 @@
+name: wcf_tool_packaging_eval
+description: >-
+  Measurement harness shared by the two DECISION-2 packaging evaluations (T1.8
+  build hooks, T1.9 Gradle/podspec). One set of commands that both run
+  unchanged over whatever artifacts and consumer apps they produce, and that
+  render the single results table both decision documents embed. Build-time
+  tooling; nothing here ships.
+publish_to: none
+resolution: workspace
+version: 0.0.1
+
+environment:
+  sdk: ^3.12.0
+
+dev_dependencies:
+  test: ^1.25.0

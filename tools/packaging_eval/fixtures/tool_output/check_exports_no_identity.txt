@@ -1,0 +1,11 @@
+
+== export-visibility gate: <tmp>/wcf-xcf/WalletCore.xcframework/ios-arm64/WalletCore.framework/WalletCore ==
+symbol list: <scratch>/symlist.txt (464 names, prefix '_')
++ <xcode-toolchain>/llvm-nm --defined-only --extern-only --arch=arm64 <tmp>/wcf-xcf/WalletCore.xcframework/ios-arm64/WalletCore.framework/WalletCore
+arch arm64: 57174 defined external symbols, 464 of them TW*
+arch arm64: expected 464, missing 0, unexpected 0
+arch arm64: _wcf_build_info exported: no
+arch arm64: build-identity symbol _wcf_build_info is NOT exported.
+  Either wcf_build_info.c was not linked in, or the link dropped it
+  (version script, --gc-sections, -fvisibility without the attribute).
+error: export-visibility gate FAILED for <tmp>/wcf-xcf/WalletCore.xcframework/ios-arm64/WalletCore.framework/WalletCore

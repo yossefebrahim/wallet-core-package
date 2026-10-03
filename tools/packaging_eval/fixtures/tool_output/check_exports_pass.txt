@@ -1,0 +1,12 @@
+
+== export-visibility gate: <repo>/third_party/wcf-native-all/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib ==
+symbol list: <scratch>/symlist.txt (464 names, prefix '_')
++ <xcode-toolchain>/llvm-nm --defined-only --extern-only --arch=x86_64 <repo>/third_party/wcf-native-all/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib
+arch x86_64: 30003 defined external symbols, 464 of them TW*
+arch x86_64: expected 464, missing 0, unexpected 0
+arch x86_64: _wcf_build_info exported: yes
++ <xcode-toolchain>/llvm-nm --defined-only --extern-only --arch=arm64 <repo>/third_party/wcf-native-all/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib
+arch arm64: 29435 defined external symbols, 464 of them TW*
+arch arm64: expected 464, missing 0, unexpected 0
+arch arm64: _wcf_build_info exported: yes
+export-visibility gate PASSED for <repo>/third_party/wcf-native-all/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib
