@@ -1,0 +1,17 @@
+# DECISION-2 Option 2 evaluation (T1.9). run_eval.sh builds under $TMPDIR, so
+# none of this should ever appear here; if the consumer is built in place by
+# hand, its native outputs and any copied artifact stay out of git.
+consumer/ios/Podfile
+consumer/ios/Podfile.lock
+consumer/ios/Pods/
+consumer/ios/.symlinks/
+consumer/android/local.properties
+*.xcframework
+*.framework
+*.xcarchive
+*.dylib
+*.so
+*.a
+*.apk
+*.aab
+*.ipa

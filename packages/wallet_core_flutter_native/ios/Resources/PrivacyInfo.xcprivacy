@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Privacy manifest of TrustWalletCore.framework, as packaged by
+  wallet_core_flutter_native (DECISION-2 Option 2, evaluation branch T1.9).
+
+  Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library.
+  Not affiliated with or endorsed by Trust Wallet.
+
+  PRD §12.2 step 10: every slice of the library imports APIs from two
+  required-reason categories (measured by tools/packaging_eval/bin/ios_archive.dart,
+  `nm -u` against Apple's list):
+    - file timestamp:   stat, fstat, lstat, fstatat
+    - system boot time: mach_absolute_time
+  The reasons below are the narrowest that match a library that reads
+  metadata only of files the app hands it inside its own container, and uses
+  the monotonic clock only to measure elapsed time. They are inferred from the
+  imported symbols, not from an audit of every call site upstream makes.
+
+  No tracking, no tracking domains, no collected data: the library makes no
+  network connection (PRD §16 S4).
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

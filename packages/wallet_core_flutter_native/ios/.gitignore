@@ -1,0 +1,8 @@
+# Never committed: written by the podspec at `pod install` from the verified
+# artifact cache (../tool/option2/prepare_xcframework.dart).
+/Frameworks/
+/.wcf_work/
+*.xcframework
+*.framework
+*.dylib
+*.a

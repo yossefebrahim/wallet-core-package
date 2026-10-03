@@ -1,0 +1,239 @@
+// wallet_core_flutter_native — Android packaging, DECISION-2 Option 2
+// (evaluation branch, T1.9).
+//
+// Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library.
+// Not affiliated with or endorsed by Trust Wallet.
+//
+// What this module does, and the only thing it does: for every variant, one
+// task obtains each `android/<abi>/<file>.so` that compat_manifest.json lists
+// through the package's own fetch tool (tool/fetch_artifacts.dart — sha256 and
+// size verified, no flag accepts a mismatch) and hands the result to AGP as a
+// *generated* jniLibs directory under build/. Nothing is written to the source
+// tree and nothing is compiled: there is no CMake or ndk-build step, because
+// the libraries are prebuilt and checksum-pinned (PRD §12.3).
+//
+// A mismatch, a blocked manifest (a `TBD-` digest), or a missing artifact
+// fails the task, and with it `merge<Variant>JniLibFolders` and the build, with
+// the fetch tool's own report in the Gradle error (PRD §12.2 step 7).
+//
+// Build-time inputs, each a Gradle property or else an environment variable.
+// None of them is read at run time; the loader opens `libTrustWalletCore.so`
+// by name from the APK and nothing else (threat model TM-13):
+//
+//   wcf.manifest     / WCF_MANIFEST       the manifest to verify against.
+//                                         Default: this package's
+//                                         assets/compat_manifest.json.
+//   wcf.vendoredDir  / WCF_VENDORED_DIR   a directory laid out by logical
+//                                         name (the tool's --vendored).
+//   wcf.offline      / WCF_OFFLINE=1      never open a socket (--offline).
+//   wcf.artifactDir  / WCF_ARTIFACT_DIR   the shared cache (--cache-dir).
+//
+// AGP: the plugin_ffi template of Flutter 3.44.1 pins 9.0.1 below; that
+// classpath is used only when this module is built on its own. Inside an app,
+// the app's own AGP applies (the template app: 9.0.1, Gradle 9.1.0).
+
+import javax.inject.Inject
+
+group = "dev.wcf.wallet_core_flutter_native"
+version = "0.0.1"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("com.android.tools.build:gradle:9.0.1")
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+
+android {
+    namespace = "dev.wcf.wallet_core_flutter_native"
+
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 24
+    }
+
+    // PRD §12.2 step 8. Uncompressed, page-aligned native libraries are what a
+    // 16 KB-page device can map in place. Stated here for this module's own
+    // outputs; the APK is packaged under the *application's* packaging
+    // options, where AGP defaults to exactly this for minSdk >= 23 and aligns
+    // uncompressed .so entries to 16 KB from AGP 8.5.1. `alignment-apk`
+    // (zipalign -c -P 16) is the check that the consumer's APK came out so.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+}
+
+/**
+ * Obtains one variant's native libraries through the fetch tool and lays them
+ * out as `<outputDir>/<abi>/<file>.so`. The verification is the tool's; this
+ * task only runs it and refuses to continue when it fails.
+ */
+abstract class WcfPrepareJniLibs extends DefaultTask {
+    @Inject
+    abstract ExecOperations getExecOperations()
+
+    /** `dart` from the app's Flutter SDK. */
+    @Input
+    abstract Property<String> getDartExecutable()
+
+    /** The consuming app's `.dart_tool/package_config.json`. */
+    @Input
+    abstract Property<String> getPackageConfigPath()
+
+    /** `tool/option2/prepare_jni_libs.dart` of this package. */
+    @Input
+    abstract Property<String> getScriptPath()
+
+    /** The prepare script and the fetch tool, so an edit to either reruns. */
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    abstract ConfigurableFileCollection getToolSources()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getManifest()
+
+    @Input
+    @Optional
+    abstract Property<String> getVendoredDir()
+
+    @Input
+    @Optional
+    abstract Property<String> getCacheDir()
+
+    @Input
+    abstract Property<Boolean> getOffline()
+
+    /** Set by AGP through addGeneratedSourceDirectory. */
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDir()
+
+    @TaskAction
+    void prepare() {
+        def packageConfig = new File(packageConfigPath.get())
+        if (!packageConfig.exists()) {
+            throw new GradleException(
+                "wallet_core_flutter_native: ${packageConfig} does not exist. " +
+                "Run `flutter pub get` in the app; the artifact step runs the " +
+                "package's Dart fetch tool and resolves it through the app's " +
+                "package configuration.")
+        }
+        def arguments = [
+            "--packages=${packageConfig.path}".toString(),
+            scriptPath.get(),
+            "--manifest", manifest.get().asFile.path,
+            "--out", outputDir.get().asFile.path,
+            "--work", temporaryDir.path,
+        ]
+        if (vendoredDir.present) {
+            arguments += ["--vendored", vendoredDir.get()]
+        }
+        if (cacheDir.present) {
+            arguments += ["--cache-dir", cacheDir.get()]
+        }
+        if (offline.get()) {
+            arguments += ["--offline"]
+        }
+
+        def log = new ByteArrayOutputStream()
+        def result = execOperations.exec { spec ->
+            spec.executable = dartExecutable.get()
+            spec.args = arguments
+            spec.standardOutput = log
+            spec.errorOutput = log
+            spec.ignoreExitValue = true
+        }
+        def text = log.toString("UTF-8").trim()
+        if (result.exitValue != 0) {
+            throw new GradleException(
+                "wallet_core_flutter_native: native artifact verification " +
+                "FAILED (exit ${result.exitValue}); no library was packaged.\n" +
+                "${dartExecutable.get()} ${arguments.join(' ')}\n${text}")
+        }
+        logger.lifecycle(text)
+    }
+}
+
+// Flutter's Gradle plugin loader includes this module with its projectDir set
+// to `<package root>/android` — the package's own directory, in the pub cache
+// for a hosted package, never a copy — so the parent is the package root and
+// tool/ is beside this directory.
+def wcfPackageDir = projectDir.parentFile
+def wcfAppDir = rootProject.projectDir.parentFile
+
+// Flutter writes the SDK location into the app's android/local.properties;
+// FLUTTER_ROOT is the fallback for a build driven outside the flutter tool.
+def wcfLocalProperties = new Properties()
+def wcfLocalPropertiesFile = rootProject.file("local.properties")
+if (wcfLocalPropertiesFile.exists()) {
+    wcfLocalPropertiesFile.withInputStream { wcfLocalProperties.load(it) }
+}
+def wcfFlutterSdk = wcfLocalProperties.getProperty("flutter.sdk") ?: System.getenv("FLUTTER_ROOT")
+def wcfIsWindows = System.getProperty("os.name").toLowerCase().contains("windows")
+def wcfDart = wcfFlutterSdk
+    ? new File(wcfFlutterSdk, "bin/" + (wcfIsWindows ? "dart.bat" : "dart")).path
+    : "dart"
+
+def wcfSetting = { String property, String variable ->
+    providers.gradleProperty(property).orElse(providers.environmentVariable(variable))
+}
+def wcfManifestPath = wcfSetting("wcf.manifest", "WCF_MANIFEST")
+    .orElse(new File(wcfPackageDir, "assets/compat_manifest.json").path)
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        def prepare = tasks.register(
+            "wcfPrepare${variant.name.capitalize()}JniLibs",
+            WcfPrepareJniLibs
+        ) { t ->
+            t.description = "Fetches and verifies the native libraries " +
+                "compat_manifest.json lists for the ${variant.name} variant."
+            t.dartExecutable.set(wcfDart)
+            t.packageConfigPath.set(new File(wcfAppDir, ".dart_tool/package_config.json").path)
+            t.scriptPath.set(new File(wcfPackageDir, "tool/option2/prepare_jni_libs.dart").path)
+            // tool/ holds the prepare script (tool/option2/) and the fetch
+            // tool it calls (tool/fetch_artifacts.dart, tool/src/).
+            t.toolSources.from(fileTree(new File(wcfPackageDir, "tool")))
+            t.manifest.set(layout.projectDirectory.file(wcfManifestPath))
+            t.vendoredDir.set(wcfSetting("wcf.vendoredDir", "WCF_VENDORED_DIR"))
+            t.cacheDir.set(wcfSetting("wcf.artifactDir", "WCF_ARTIFACT_DIR"))
+            t.offline.set(
+                wcfSetting("wcf.offline", "WCF_OFFLINE")
+                    .map { it == "1" || it == "true" }
+                    .orElse(false))
+        }
+        // Registers the task's output as a jniLibs source of this variant and
+        // wires the dependency, so merge<Variant>JniLibFolders runs after it.
+        // The Variant API declares `sources.jniLibs` nullable; without it the
+        // build would succeed with no native library in the APK, so refuse.
+        def jniLibs = variant.sources.jniLibs
+        if (jniLibs == null) {
+            throw new GradleException(
+                "wallet_core_flutter_native: variant ${variant.name} has no " +
+                "jniLibs sources (AGP Variant API variant.sources.jniLibs), so " +
+                "the verified native libraries cannot be packaged.")
+        }
+        jniLibs.addGeneratedSourceDirectory(prepare) { it.outputDir }
+    }
+}

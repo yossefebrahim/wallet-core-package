@@ -1,4 +1,10 @@
 analyzer:
   exclude:
+    # `flutter pub get` rewrites this file and adds android/** and ios/**
+    # (Flutter 3.47.5), so no Dart lives there: the build-time Dart the
+    # platform builds run is under tool/option2/, which is analyzed
+    # (test/packaging/build_time_analysis_test.dart).
     - build/**
+    - android/**
+    - ios/**
 include: ../../analysis_options.yaml

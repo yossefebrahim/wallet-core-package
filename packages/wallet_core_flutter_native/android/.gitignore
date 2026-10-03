@@ -1,0 +1,8 @@
+*.iml
+.gradle
+/local.properties
+/build
+/.cxx
+# Never committed: the jniLibs this module packages are generated under build/
+# by the wcfPrepare<Variant>JniLibs task from the verified artifact cache.
+*.so

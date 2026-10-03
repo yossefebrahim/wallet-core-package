@@ -26,6 +26,23 @@ dev_dependencies:
   lints: ^6.0.0
 
 flutter:
+  # DECISION-2 Option 2 (evaluation branch, T1.9): conventional platform
+  # packaging. An FFI plugin has no method channel and no plugin class; the
+  # platform declarations exist so Flutter's tooling includes android/ as a
+  # Gradle subproject and ios/ as a CocoaPods pod of the consuming app.
+  #   android/build.gradle — a per-variant task obtains every android/<abi>/*.so
+  #     the manifest lists through tool/fetch_artifacts.dart and adds it as a
+  #     generated jniLibs directory (never the source tree).
+  #   ios/wallet_core_flutter_native.podspec — at `pod install`, obtains the
+  #     iOS rows through the same tool and vendors TrustWalletCore.xcframework.
+  # `ffiPlugin: true` is the platform key Flutter introduced with the
+  # plugin_ffi template in Flutter 3.0; it is not what sets the floor below.
+  plugin:
+    platforms:
+      android:
+        ffiPlugin: true
+      ios:
+        ffiPlugin: true
   assets:
     # A byte-for-byte copy of the repository's compat_manifest.json, written
     # by `melos run gen:manifest` and diffed by `gen:check`. PRD §15.3 ships
