@@ -8,3 +8,12 @@ tags:
   native:
     # Loads the real libTrustWalletCore built from the pinned upstream commit.
     # Needs `melos run native:host-lib` first, or WCF_NATIVE_LIB set.
+  shim:
+    # T1.13, DECISION-1 evaluation: loads the host library built with
+    # `tools/native_build/build_apple.sh --with-shim`, which also exports the
+    # Approach B adapter wcf_sign_ethereum. Every shim test is tagged native
+    # too. Skips when that library is absent (test/signing/adapter/
+    # shim_library.dart); run with absence a failure as
+    # `WCF_NATIVE_SHIM_REQUIRED=1 flutter test --tags shim`, with
+    # WCF_NATIVE_SHIM_LIB set or the library at
+    # third_party/wcf-native-shim/macos/arm64_x86_64/.

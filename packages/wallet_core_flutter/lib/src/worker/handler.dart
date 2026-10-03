@@ -25,8 +25,16 @@ import '../signing/signing_core.dart';
 import 'protocol.dart';
 
 /// Builds the [SigningCore] an [EngineRequestHandler] signs through, over the
-/// context its `Init` loaded.
-typedef SigningCoreFactory = SigningCore Function(NativeContext context);
+/// context its `Init` loaded and the [library] behind that context — the
+/// library `Init` located, opened and verified the identity of. A core that
+/// needs a symbol the generated bindings do not cover (T1.13's adapter) looks
+/// it up in [library]. Where [library] is one opened file — macOS, Android,
+/// the host tests — that binds it to the verified image. On iOS the loader
+/// may return `DynamicLibrary.process()`, whose lookups search every loaded
+/// image, so there the binding is to the first image exporting the symbol,
+/// which the identity check does not cover (DECISION-1-approach-b.md §5.3).
+typedef SigningCoreFactory =
+    SigningCore Function(NativeContext context, DynamicLibrary library);
 
 /// Builds the bindings an [EngineRequestHandler] calls through, over the
 /// library its `Init` loaded and verified.
@@ -126,9 +134,11 @@ final class EngineRequestHandler implements RequestHandler {
   ///
   /// [signingCore] builds the core [Sign] is signed through, once [Init] has
   /// a context: [SyncSigningCore] — Approach A of DECISION-1 — unless a test,
-  /// or T1.13's Approach B, supplies another. Everything in front of the core
-  /// (locator resolution, validation, encoding, key derivation) and the
-  /// reply behind it stay as they are whichever core signs.
+  /// or T1.13's Approach B (`AdapterSigningCore.new`), supplies another.
+  /// Everything in front of the core (locator resolution, validation,
+  /// encoding, key derivation) and the reply behind it stay as they are
+  /// whichever core signs. A factory that throws fails [Init], and nothing
+  /// is left to release.
   ///
   /// [bindings] replaces the bindings over the loaded library — a test seam,
   /// for driving the soft-native-failure path with an upstream function that
@@ -136,8 +146,11 @@ final class EngineRequestHandler implements RequestHandler {
   EngineRequestHandler({
     SigningCoreFactory? signingCore,
     BindingsFactory? bindings,
-  }) : _signingCoreFactory = signingCore ?? SyncSigningCore.new,
+  }) : _signingCoreFactory = signingCore ?? _approachA,
        _bindingsFactory = bindings ?? WalletCoreBindings.new;
+
+  static SigningCore _approachA(NativeContext context, DynamicLibrary _) =>
+      SyncSigningCore(context);
 
   final SigningCoreFactory _signingCoreFactory;
   final BindingsFactory _bindingsFactory;
@@ -288,7 +301,7 @@ final class EngineRequestHandler implements RequestHandler {
       _bindingsFactory(library),
       observer: LeakTracker.maybeCreate() ?? const NoopResourceObserver(),
     );
-    _signingCore = _signingCoreFactory(context);
+    _signingCore = _signingCoreFactory(context, library);
     _sessionToken = request.sessionToken;
     _engine = WalletEngine(context);
     return InitOk(request.id, symbolCount: symbols.length);
@@ -312,14 +325,16 @@ final class EngineRequestHandler implements RequestHandler {
   ///    so that a defective encoder fails before a key is derived. The core
   ///    runs the check again; the core does not rely on its caller either.
   /// 5. **Derive** the key ([withDerivedKey]): `TWHDWalletGetKey` into a
-  ///    `TWPrivateKey`, `TWPrivateKeyData` into a `TWData`, and a
-  ///    `Uint8List` *view* over that `TWData`'s native buffer handed on —
-  ///    **no Dart-heap copy of the key is made on this path**.
-  /// 6. **Sign** with [core] ([SigningCore.sign]), which borrows the view,
-  ///    injects it, calls upstream, and parses the output — parse before
-  ///    release.
-  /// 7. **Release**, in `withDerivedKey`'s `finally`, on every path: the key's
-  ///    `TWData` (`TWDataDelete`, which overwrites it with zeros) and the
+  ///    `TWPrivateKey`, owned by a `PrivateKeyHandle` and handed on as that
+  ///    handle — **this method and `withDerivedKey` read none of its bytes**.
+  /// 6. **Sign** with [core] ([SigningCore.sign]), which borrows the handle,
+  ///    injects the key, calls upstream, and parses the output — parse before
+  ///    release. Approach A ([SyncSigningCore]) reads the key's bytes through
+  ///    `TWPrivateKeyData` into a native `TWData` and a view over it, and
+  ///    releases that `TWData` before returning; Approach B
+  ///    (`AdapterSigningCore`) passes only the handle's pointer to native
+  ///    code.
+  /// 7. **Release**, in `withDerivedKey`'s `finally`, on every path: the
   ///    `TWPrivateKey` (`TWPrivateKeyDelete`, whose destructor overwrites its
   ///    bytes). Only after that does this return, and only after this
   ///    returns is the reply posted — release before reply (DECISION-12

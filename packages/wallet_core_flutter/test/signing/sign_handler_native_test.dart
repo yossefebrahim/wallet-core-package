@@ -1,8 +1,8 @@
 /// The executor's signing path against the real host library, driven at the
 /// handler with a recording signing core: every resolution and validation
 /// failure is typed, and none of them derives a key or reaches the core; a
-/// valid request derives exactly one key, hands the core a 32-byte key, and
-/// leaves nothing undisposed.
+/// valid request derives exactly one key, hands the core its live handle,
+/// disposes it before the reply, and leaves nothing undisposed.
 ///
 /// Skips when the library is absent; `WCF_NATIVE_REQUIRED=1` turns that into
 /// a failure (see `../support/host_library.dart`).
@@ -48,7 +48,7 @@ void main() {
 
     setUp(() {
       handler = EngineRequestHandler(
-        signingCore: (context) =>
+        signingCore: (context, _) =>
             core = RecordingCore(SyncSigningCore(context)),
       );
       expect(
@@ -109,8 +109,8 @@ void main() {
     Matcher invalid(String inputName) =>
         isA<InvalidInputError>().having((e) => e.inputName, 'input', inputName);
 
-    test('a valid request derives one key, hands the core 32 bytes, and '
-        'returns the parsed result with no locators on the wire', () {
+    test('a valid request derives one key, hands the core its live handle, '
+        'and returns the parsed result with no locators on the wire', () {
       final reply = sign({hd()});
       expect(reply, isA<Signed>());
       final result = (reply as Signed).result as EvmSignResult;
@@ -119,7 +119,8 @@ void main() {
       expect(result.usedKeys, isEmpty);
       expect(handler.keysDerived, 1);
       expect(core.calls, 1);
-      expect(core.lastKeyLength, 32);
+      expect(core.lastKeyWasLive, isTrue);
+      expect(core.lastKey!.isDisposed, isTrue, reason: 'released before reply');
       expect(core.lastCoin, Coin.ethereum);
       // Only the wallet is left: the key, its bytes, the keyed input, the
       // output and every string were released before the reply was made.

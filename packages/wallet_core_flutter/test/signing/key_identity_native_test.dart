@@ -26,6 +26,7 @@ import 'package:wallet_core_flutter/advanced.dart'
         NativeContext,
         TWCoinType,
         TWDataHandle,
+        TWPrivateKey,
         TWStringHandle,
         WalletCoreBindings;
 import 'package:wallet_core_flutter/src/engine/hd_wallet.dart'
@@ -72,12 +73,9 @@ void main() {
     });
 
     /// The uncompressed secp256k1 public key and the Ethereum address of the
-    /// key [privateKey], straight through the bindings.
-    (String, String) publicIdentity(Uint8List privateKey) {
-      final data = TWDataHandle.fromBytes(context, privateKey);
-      final key = bindings.TWPrivateKeyCreateWithData(data.pointer);
-      data.dispose();
-      expect(key, isNot(nullptr));
+    /// key object [key] — the shape the signing seam hands a core since
+    /// T1.13 — straight through the bindings, without reading its bytes.
+    (String, String) publicIdentityOf(Pointer<TWPrivateKey> key) {
       final publicKey = bindings.TWPrivateKeyGetPublicKeySecp256k1(key, false);
       final publicData = TWDataHandle.adopt(
         context,
@@ -98,6 +96,18 @@ void main() {
         bindings.TWAnyAddressDelete(anyAddress);
         publicData.dispose();
         bindings.TWPublicKeyDelete(publicKey);
+      }
+    }
+
+    /// [publicIdentityOf] the key whose bytes are [privateKey].
+    (String, String) publicIdentity(Uint8List privateKey) {
+      final data = TWDataHandle.fromBytes(context, privateKey);
+      final key = bindings.TWPrivateKeyCreateWithData(data.pointer);
+      data.dispose();
+      expect(key, isNot(nullptr));
+      try {
+        return publicIdentityOf(key);
+      } finally {
         bindings.TWPrivateKeyDelete(key);
       }
     }
@@ -145,7 +155,7 @@ void main() {
           wallet,
           Coin.ethereum,
           path,
-          (key) => publicIdentity(key),
+          (key) => publicIdentityOf(key.pointer),
         );
         expect(publicKey, publicKeyHex);
         expect(derivedAddress, address);
@@ -178,7 +188,7 @@ void main() {
       final key = independentKey();
       try {
         expect(publicIdentity(key).$1, publicKeyHex);
-        final reference = SyncSigningCore(context).sign(
+        final reference = SyncSigningCore(context).signWithKeyBytes(
           evmFamily.encodeKeylessInput(request),
           family: evmFamily,
           coin: Coin.ethereum,

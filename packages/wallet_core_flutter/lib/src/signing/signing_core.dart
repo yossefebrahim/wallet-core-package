@@ -4,10 +4,15 @@
 ///
 /// [SigningCore] is the seam DECISION-1 turns on. [SyncSigningCore] is
 /// Approach A — Dart injects the key into the serialized protobuf and calls
-/// `TWAnySignerSign` in the caller's isolate. Approach B (T1.13) implements the
-/// same interface with the injection moved into a C adapter; everything in
-/// front of the seam (locator resolution, encoding) and behind it (the
-/// family's parser) stays as it is.
+/// `TWAnySignerSign` in the caller's isolate. Approach B (T1.13,
+/// `adapter/adapter_signing_core.dart`) implements the same interface with the
+/// injection moved into a C adapter; everything in front of the seam (locator
+/// resolution, encoding) and behind it (the family's parser) stays as it is.
+///
+/// The seam hands a core the key as upstream's own object — a
+/// [PrivateKeyHandle] — and not as bytes, because that is the one shape both
+/// approaches can take: Approach A reads the bytes itself, Approach B passes
+/// the handle's pointer on to native code and reads nothing.
 library;
 
 import 'dart:ffi';
@@ -18,7 +23,9 @@ import 'package:wallet_core_flutter_bindings/wallet_core_flutter_bindings.dart'
 
 import '../coin/coin.dart';
 import '../engine/coin_bridge.dart';
+import '../engine/handles.dart';
 import '../engine/secret_buffers.dart';
+import '../errors/boundary.dart';
 import '../errors/errors.dart';
 import '../families/family.dart';
 import '../requests/requests.dart';
@@ -28,9 +35,10 @@ import 'sign_result.dart';
 
 /// Signs serialized key-less input with one private key.
 abstract interface class SigningCore {
-  /// Checks [keylessInput] against [family]'s key-field list, injects
-  /// [privateKey] for [KeyRole.primary], has upstream sign it for [coin], and
-  /// parses the output with [family], reporting [usedKeys] in the result.
+  /// Checks [keylessInput] against [family]'s key-field list, injects the key
+  /// [privateKey] holds for [KeyRole.primary], has upstream sign it for
+  /// [coin], and parses the output with [family], reporting [usedKeys] in the
+  /// result.
   ///
   /// **Precondition, enforced here and by every implementation:**
   /// [keylessInput] is a complete, well-formed serialized message of
@@ -38,14 +46,18 @@ abstract interface class SigningCore {
   /// [checkKeylessInput]'s decode is what establishes well-formedness, and no
   /// implementation and no caller may skip it: the injection works on bytes,
   /// and bytes that are not one complete message give the injected key a
-  /// meaning nobody chose.
+  /// meaning nobody chose. Every implementation **prepends** the key field
+  /// ([keyedInputParts] here; `wcf_sign.c` for the C adapter), so that even
+  /// bytes that slipped past the check cannot swallow the key into another
+  /// field.
   ///
-  /// [privateKey] is **borrowed**: it is read during this call only, never
-  /// modified, never retained. The caller owns it and overwrites it.
+  /// [privateKey] is **borrowed**: used during this call only, never disposed
+  /// and never retained. The caller owns it and disposes it — upstream's
+  /// `TWPrivateKeyDelete` overwrites the key — after this returns or throws.
   ///
   /// Throws [InvalidInputError] when [coin] is not in [family]'s chain family
   /// (`inputName: 'coin'`) or when [keylessInput] fails the key-field check
-  /// (`inputName: 'signingInput'`) — both before the key is read;
+  /// (`inputName: 'signingInput'`) — both before the key is used;
   /// [UnsupportedOperationError] for a coin upstream removed; and
   /// [SigningError] for upstream's failure or an output that cannot be
   /// accepted.
@@ -53,7 +65,7 @@ abstract interface class SigningCore {
     Uint8List keylessInput, {
     required TransactionFamily<TransactionRequest, S> family,
     required Coin coin,
-    required Uint8List privateKey,
+    required PrivateKeyHandle privateKey,
     required Set<KeyLocator> usedKeys,
   });
 }
@@ -85,9 +97,70 @@ final class SyncSigningCore implements SigningCore {
   ///
   /// 1. [coin] is checked against [family] and mapped to upstream's coin type.
   /// 2. [keylessInput] is decoded and checked for every field of
-  ///    [TransactionFamily.keyFields] ([checkKeylessInput]). Bytes that do not
-  ///    decode as one complete message, or that carry a key field, fail the
-  ///    call here, before [privateKey] is read and before any native call.
+  ///    [TransactionFamily.keyFields] ([checkKeylessInput]). A key field
+  ///    present, or bytes that are not one complete message, fail the call
+  ///    here, before [privateKey] is used and before any native call.
+  /// 3. `TWPrivateKeyData(privateKey)` copies the key's bytes into a new
+  ///    upstream `TWData`, and a `Uint8List` *view* over that `TWData`'s
+  ///    native buffer — no Dart-heap copy — goes to [signWithKeyBytes]'s
+  ///    steps 3–6 below. In a `finally`, on every path, that `TWData` is
+  ///    disposed; `TWDataDelete` overwrites it with zeros before freeing it.
+  ///    A null result, an out-of-range or zero size, or a null buffer is a
+  ///    `NativeResultError` — a soft native failure the handler reports as
+  ///    this one operation's `SigningError` (DECISION-12 §3.10) — not a
+  ///    `StateError` that would end the session.
+  ///
+  /// This is the code that used to sit in `withDerivedKey`; T1.13 moved it
+  /// behind the seam so that a core which reads no key bytes can exist.
+  @override
+  S sign<S extends SignResult>(
+    Uint8List keylessInput, {
+    required TransactionFamily<TransactionRequest, S> family,
+    required Coin coin,
+    required PrivateKeyHandle privateKey,
+    required Set<KeyLocator> usedKeys,
+  }) {
+    final (coinType, field) = _checkBeforeKey(keylessInput, family, coin);
+    final bindings = context.bindings;
+    final dataPointer = bindings.TWPrivateKeyData(privateKey.pointer);
+    if (dataPointer == nullptr) {
+      throw const NativeResultError('TWPrivateKeyData returned nullptr');
+    }
+    final keyData = TWDataHandle.adopt(context, dataPointer);
+    try {
+      final length = readNative('TWPrivateKeyData', () => keyData.length);
+      if (length == 0) {
+        throw const NativeResultError('TWPrivateKeyData returned no bytes');
+      }
+      final bytes = bindings.TWDataBytes(keyData.pointer);
+      if (bytes == nullptr) {
+        throw const NativeResultError('TWDataBytes returned nullptr');
+      }
+      return _injectAndSign(
+        keylessInput,
+        family: family,
+        coin: coin,
+        coinType: coinType,
+        field: field,
+        privateKey: bytes.asTypedList(length),
+        usedKeys: usedKeys,
+      );
+    } finally {
+      keyData.dispose();
+    }
+  }
+
+  /// Approach A's injection with the key given as bytes — the body of
+  /// [sign] after it has read the key out of its handle, and what [sign]
+  /// was before T1.13 changed the seam. Kept callable so that the tests of
+  /// byte-level behaviour (keys upstream rejects, a key that is a view over
+  /// native memory, the caller's buffer left as it was) still run: a
+  /// `TWPrivateKey` holding a malformed key cannot be constructed.
+  ///
+  /// In this order:
+  ///
+  /// 1. and 2. As [sign]: the coin, then the key-field check, both before
+  ///    [privateKey] is read.
   /// 3. The key is injected by **prepending** one length-delimited field — the
   ///    tag of [TransactionFamily.injectionField], the key's length, the key —
   ///    to the key-less bytes ([keyedInputParts]). A serialized message is a
@@ -147,14 +220,31 @@ final class SyncSigningCore implements SigningCore {
   ///
   /// Never logs, never retains anything, and never puts key bytes in an
   /// error.
-  @override
-  S sign<S extends SignResult>(
+  S signWithKeyBytes<S extends SignResult>(
     Uint8List keylessInput, {
     required TransactionFamily<TransactionRequest, S> family,
     required Coin coin,
     required Uint8List privateKey,
     required Set<KeyLocator> usedKeys,
   }) {
+    final (coinType, field) = _checkBeforeKey(keylessInput, family, coin);
+    return _injectAndSign(
+      keylessInput,
+      family: family,
+      coin: coin,
+      coinType: coinType,
+      field: field,
+      privateKey: privateKey,
+      usedKeys: usedKeys,
+    );
+  }
+
+  /// Steps 1 and 2: everything that must fail before a key is touched.
+  (TWCoinType, KeyFieldEntry) _checkBeforeKey(
+    Uint8List keylessInput,
+    TransactionFamily<TransactionRequest, SignResult> family,
+    Coin coin,
+  ) {
     if (coin.family != family.chainFamily) {
       throw InvalidInputError(
         '${coin.id} is not in the ${family.chainFamily.id} family',
@@ -170,6 +260,19 @@ final class SyncSigningCore implements SigningCore {
         'a field of ${family.signingInputMessage}',
       );
     }
+    return (coinType, field);
+  }
+
+  /// Steps 3–6 of [signWithKeyBytes].
+  S _injectAndSign<S extends SignResult>(
+    Uint8List keylessInput, {
+    required TransactionFamily<TransactionRequest, S> family,
+    required Coin coin,
+    required TWCoinType coinType,
+    required KeyFieldEntry field,
+    required Uint8List privateKey,
+    required Set<KeyLocator> usedKeys,
+  }) {
     TWDataHandle? input;
     TWDataHandle? output;
     try {
@@ -209,7 +312,10 @@ final class SyncSigningCore implements SigningCore {
 
 /// The parts of the keyed signing input, in order: [field]'s tag and the key's
 /// length, [privateKey], then [keylessInput] — the key field **prepended**
-/// (see [SyncSigningCore.sign] step 3 for why).
+/// (see [SyncSigningCore.signWithKeyBytes] step 3 for why). The one place in
+/// Dart that decides the layout; the C adapter's one place is the body of
+/// `wcf_sign_ethereum`, and `test/signing/keyed_layout_native_test.dart`
+/// holds both to the same layout.
 ///
 /// Only references are listed; nothing is copied. The caller copies the parts
 /// into native memory ([secretDataFromParts]) and must already have run

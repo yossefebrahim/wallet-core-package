@@ -9,6 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Status** | **Evidence only.** DECISION-1 is the owner's to decide at M0 exit; nothing here decides it. |
 | **Pinned upstream** | tag `4.8.0`, commit `d692ac27749d0c615e17c751b70ab4f0aa75c59b`; host library `third_party/wcf-native/macos/arm64_x86_64/libTrustWalletCore.dylib` (artifact set `as_4.8.0_000`, built locally) |
 | **Date** | 2026-10-02; revised the same day after two reviews (T1.12 delta 1): the key field is now **prepended**, not appended (§1, §5) |
+| **This copy** | The `eval/approach-b` branch's. T1.13 changed the `SigningCore` seam here: the core receives the key as a `PrivateKeyHandle`, and `SyncSigningCore` itself reads the key's bytes with `TWPrivateKeyData`. Sections 1, 1.1, 2, 3, 4, 7 and 8 describe Approach A *as it is in this tree*; the T1.12 tree's copy describes the seam before that change |
 
 ---
 
@@ -20,7 +21,7 @@ PRD §11.4 sketches Approach A as "build the `SigningInput` in Dart, inject `pri
 - **The precondition, and what enforces it.** The key-less input must be a *complete, well-formed* message of the family's signing-input type with *every key field absent*. `checkKeylessInput` enforces both: its decode rejects bytes that are not one complete message, and its walk rejects a key field at any depth. No caller may skip it — the handler runs it, and the core runs it again.
 - **Why prepend (REVIEW B finding 1).** The first build *appended* the field. Appended, the key lands wherever the key-less bytes leave the parser: after bytes that end inside a length-delimited field — a contract call's calldata, say — it is read as that field's payload, and upstream signs a broadcastable transaction carrying the key in its calldata (the reviewer measured this against the Approach B adapter, which shares the technique). The decode in `checkKeylessInput` rejects such bytes, so the path was not exploitable, but only while every caller decodes. Prepended, the key is always a complete field of its own at the start of the message, whatever follows. The decode stays required for the opposite reason: a key field present *after* the prepended one would win (for a singular field the last occurrence is the one parsed), so absence still has to be proved.
 - **The keyed input is assembled outside the Dart heap.** The three parts are copied straight into one `calloc` buffer, which becomes a `TWData`; the buffer is overwritten with zeros and freed in a `finally`.
-- **The key reaches the core as a view over upstream's own buffer.** The handler derives the key with `TWHDWalletGetKey`, asks `TWPrivateKeyData` for its bytes, and hands the core `TWDataBytes(...).asTypedList(length)` — a `Uint8List` whose storage *is* that `TWData`.
+- **The key reaches the core as a handle, and the core reads it through a view over upstream's own buffer.** The handler derives the key with `TWHDWalletGetKey` and hands the core the `PrivateKeyHandle` (`withDerivedKey`). `SyncSigningCore.sign`, after its coin and key-field checks, asks `TWPrivateKeyData` for the key's bytes and injects from `TWDataBytes(...).asTypedList(length)` — a `Uint8List` whose storage *is* that `TWData`. A null or empty result there is a `NativeResultError`, reported as that one operation's `SigningError`; the session survives.
 
 So the "Dart-managed secret copies" row of the PRD §11.4 table — "protobuf message field, serialized bytes, possibly builder intermediates" — does not describe what was built: on this path there is no protobuf message holding the key, no Dart-heap serialized buffer holding it, and no builder intermediate holding it (§2).
 
@@ -33,11 +34,11 @@ So the "Dart-managed secret copies" row of the PRD §11.4 table — "protobuf me
 | `signing/key_locator.dart`, `signing/sign_result.dart`, `requests/` | Public value types: locators, sealed results, key-less requests |
 | `worker/protocol.dart` | `Sign` (request + `LocatorSpec`s) and `Signed` (result); no key crosses |
 | `worker/handler.dart` | `EngineRequestHandler._sign` and `_resolveKeys`: the executor's order of checks, the key's derivation and release, the `SigningCore` seam |
-| `engine/hd_wallet.dart` | `withDerivedKey`: `TWHDWalletGetKey` → `TWPrivateKeyData` → view → `finally` release |
+| `engine/hd_wallet.dart` | `withDerivedKey`: `TWHDWalletGetKey` → `PrivateKeyHandle` handed to the core → `finally` release; reads no key byte |
 | `engine/engine.dart` | `checkRecipient`: upstream's address validation plus the EIP-55 comparison |
 | `families/family.dart`, `families/families.dart`, `families/evm/` | Family boundary; EVM key-less encoder, output parser, reviewed key-field list |
 | `signing/key_field_check.dart` | The key-field check on key-less bytes |
-| `signing/signing_core.dart` | `SigningCore` (the DECISION-1 seam), `SyncSigningCore` (Approach A): check, prepend, sign, parse, release; `keyedInputParts` |
+| `signing/signing_core.dart` | `SigningCore` (the DECISION-1 seam, taking a `PrivateKeyHandle`), `SyncSigningCore` (Approach A): check, `TWPrivateKeyData` → view, prepend, sign, parse, release; `signWithKeyBytes` (the same injection from bytes, for byte-level tests); `keyedInputParts` |
 | `errors/boundary.dart` | `NativeResultError` / `readNative`: a null or out-of-range value from upstream becomes a typed error of the one operation (DECISION-12 §3.10), on the signing path as `SigningError` |
 | `engine/secret_buffers.dart` | `secretDataFromParts`: the one Dart-allocated buffer that holds the key |
 
@@ -46,34 +47,34 @@ So the "Dart-managed secret copies" row of the PRD §11.4 table — "protobuf me
 Counted from the code, for one `wc.signer.sign(request, {KeyLocator.hdPath(...)})` on the EVM path.
 
 **Copies of the key on the Dart heap: 0.**
-**Dart-allocated native buffers holding the key: 1.**
-**Native objects holding the key that this SDK causes to exist: 3.**
+**Dart-allocated native buffers holding the key: 1** (#3).
+**Native objects holding the key that this SDK causes to exist: 4** (#1–#4; #3 is the Dart-allocated one, the others are upstream objects). `DECISION-1-approach-b.md` §2.1 counts Approach B the same way: 3 (#1, #2, #4).
 
 | # | Where the key is | Created by | Lifetime | What becomes of it |
 |---|---|---|---|---|
-| 1 | Upstream `TWPrivateKey` (a C++ `PrivateKey`) | `TWHDWalletGetKey`, in `withDerivedKey` | From derivation until `withDerivedKey`'s `finally`, after the core has parsed upstream's output | `TWPrivateKeyDelete`. At the pinned commit `~PrivateKey() { cleanup(); }` and `cleanup()` is `memzero(bytes)` (`src/PrivateKey.h:93`, `src/PrivateKey.cpp:399–400`) — read from the source, not observed at run time |
-| 2 | Upstream `TWData` holding the key's bytes | `TWPrivateKeyData` (which is `TWDataCreateWithBytes(pk->impl.bytes…)`) | Same as #1; released just before it | `TWDataDelete`, which overwrites the buffer with zeros before freeing it (PRD §11.1, verified) |
-| — | A `Uint8List` **view** over #2's buffer | `TWDataBytes(...).asTypedList(length)` | Passed to the core for one call; dangling once #2 is released, and never retained | Not a copy: no bytes are on the Dart heap. Nothing to overwrite |
+| 1 | Upstream `TWPrivateKey` (a C++ `PrivateKey`) | `TWHDWalletGetKey`, in `withDerivedKey` | From derivation until `withDerivedKey`'s `finally`, after the core has returned | `TWPrivateKeyDelete`. At the pinned commit `~PrivateKey() { cleanup(); }` and `cleanup()` is `memzero(bytes)` (`src/PrivateKey.h:93`, `src/PrivateKey.cpp:399–400`) — read from the source, not observed at run time |
+| 2 | Upstream `TWData` holding the key's bytes | `TWPrivateKeyData` (which is `TWDataCreateWithBytes(pk->impl.bytes…)`), called by `SyncSigningCore.sign` after its checks | From just before staging until `SyncSigningCore.sign`'s `finally` — after the output was parsed and #4 released, before the core returns to the handler | `TWDataDelete`, which overwrites the buffer with zeros before freeing it (PRD §11.1, verified) |
+| — | A `Uint8List` **view** over #2's buffer | `TWDataBytes(...).asTypedList(length)`, in `SyncSigningCore.sign` | Used by the core's own injection step for one call; dangling once #2 is released, and never retained | Not a copy: no bytes are on the Dart heap. Nothing to overwrite |
 | 3 | `calloc` staging buffer: tag-and-length ‖ key ‖ key-less input | `secretDataFromParts`, inside `SyncSigningCore.sign` | Microseconds: allocated, filled, copied by `TWDataCreateWithBytes`, then released — before `TWAnySignerSign` is called | **Overwritten with zeros by this SDK and freed**, in a `finally`, whether or not `TWDataCreateWithBytes` succeeded |
 | 4 | Upstream `TWData`: the keyed signing input | `TWDataCreateWithBytes`, from #3 | From injection until `SyncSigningCore.sign`'s `finally`, after the output was parsed | `TWDataDelete` (overwrites with zeros) |
 
 The tag-and-length header holds the key's *length*, not its bytes. The key-less input, the decoded key-less message the key-field check walks, the request, the locators and the reply hold no key.
 
-**Order** (handler `_sign`, then core `sign`): resolve → path → recipient → encode → key-field check → derive (#1, #2, view) → stage (#3) → keyed `TWData` (#4) → free #3 → `TWAnySignerSign` → copy and parse the output → release #4 and the output → return to the handler → release #2, #1 → return the reply. Parse before release, release before reply (DECISION-12 §3.9). If the operation's deadline passed while it ran, the executor then drops the parsed result unposted and posts a key-less `Failed(OperationTimeoutError)` instead (DECISION-12 §3.9); nothing about the key's lifetime changes.
+**Order** (handler `_sign`, then core `sign`): resolve → path → recipient → encode → key-field check → derive (#1) → core: coin and key-field checks again → key bytes (#2, view) → stage (#3) → keyed `TWData` (#4) → free #3 → `TWAnySignerSign` → copy and parse the output → release #4 and the output → release #2 → return to the handler → release #1 → return the reply. Parse before release, release before reply (DECISION-12 §3.9). If the operation's deadline passed while it ran, the executor then drops the parsed result unposted and posts a key-less `Failed(OperationTimeoutError)` instead (DECISION-12 §3.9); nothing about the key's lifetime changes.
 
 ### 2.1 What cannot be overwritten by this SDK
 
-- **Copies upstream makes while signing.** `TWAnySignerSign` passes the input by reference into `TW::anyCoinSign`, which hands it to upstream's Rust EVM signer; whatever that path copies, decodes, or derives (its own `Data`, its protobuf parse, its private-key value) is upstream's to wipe or not. Not reachable from Dart, not verified here.
+- **Copies upstream makes while signing — one of them confirmed unwiped.** `TWAnySignerSign` passes the input by reference into `TW::anyCoinSign`. Ethereum's `Entry` is a `Rust::RustCoinEntry` (`src/Ethereum/Entry.h:13`), whose `sign` copies **the whole keyed input** into a Rust `TWData` with `tw_data_create_with_bytes` (`src/rust/RustCoinEntry.cpp:98–103`). That `TWData` is a `Vec<u8>` (`rust/tw_memory/src/ffi/tw_data.rs:14`, filled by `to_vec()` at :24) and `tw_data_delete` frees it by dropping the box (:75–78): `TWData` has no `Drop` implementation, and no file in `rust/tw_memory` uses `memzero` or a Rust memory-wiping crate. **So a copy of the key-carrying input is freed without being overwritten on every signing operation**, read from the source at the pinned commit. Whatever the Rust signer copies, decodes or derives beyond that (its protobuf parse, its private-key value) is upstream's and was not traced here. This applies to Approach B identically: the adapter calls the same `TWAnySignerSign`.
 - **Copies upstream makes while deriving.** `TWHDWalletGetKey` derives through trezor-crypto's HD node; its intermediates are upstream's.
 - **The wallet's seed.** It lives in the `TWHDWallet` for as long as the wallet is open, not per operation; `Wallet.close()` and `shutdown()` release it.
 - **A process killed mid-operation.** #1–#4 stay as they were. A native finalizer runs only in a live process.
 - **Anything the caller put on the Dart heap.** The mnemonic a caller imported is a `String` (PRD §11.3).
 
-These are limits, stated as such; this document makes no claim about upstream's internal handling beyond the two lines of source cited in the table.
+These are limits, stated as such; this document makes no claim about upstream's internal handling beyond the source lines cited in the table and above.
 
 ## 3. Native calls involved
 
-`TWStringCreateWithUTF8Bytes` (the path; the recipient), `TWAnyAddressIsValid` (recipient), `TWAnyAddressCreateWithString` + `TWAnyAddressDescription` + `TWStringSize` + `TWStringUTF8Bytes` + `TWAnyAddressDelete` (EIP-55 comparison, mixed-case recipients only: the rendering is read back as a string), `TWHDWalletGetKey`, `TWPrivateKeyData`, `TWDataSize`, `TWDataBytes`, `TWDataCreateWithBytes`, `TWAnySignerSign`, `TWDataDelete` (×3: output, keyed input, key bytes), `TWPrivateKeyDelete`, `TWStringDelete`. No new symbol: `TWPrivateKeyDelete` was already one of the engine's native-finalizer callbacks (`engine/handles.dart`), so `ffigen.yaml` and the generated bindings are unchanged.
+`TWStringCreateWithUTF8Bytes` (the path; the recipient), `TWAnyAddressIsValid` (recipient), `TWAnyAddressCreateWithString` + `TWAnyAddressDescription` + `TWStringSize` + `TWStringUTF8Bytes` + `TWAnyAddressDelete` (EIP-55 comparison, mixed-case recipients only: the rendering is read back as a string), `TWHDWalletGetKey` (handler), `TWPrivateKeyData`, `TWDataSize`, `TWDataBytes`, `TWDataCreateWithBytes`, `TWAnySignerSign` (core), `TWDataDelete` (×3: output, keyed input, key bytes — all in the core), `TWPrivateKeyDelete` (handler), `TWStringDelete`. No new symbol: `TWPrivateKeyDelete` was already one of the engine's native-finalizer callbacks (`engine/handles.dart`), so `ffigen.yaml` and the generated bindings are unchanged.
 
 ## 4. Review scope
 
@@ -81,9 +82,9 @@ What a reviewer must read to check every claim in §2 (line numbers at the time 
 
 | File | Lines | What |
 |---|---|---|
-| `worker/handler.dart` | 297–456 (160) | `_sign`, `_resolveKeys`: order of checks, the one derivation, the core call |
-| `engine/hd_wallet.dart` | 296–369 (74) | `withDerivedKey`: derivation, the view, the `finally` |
-| `signing/signing_core.dart` | 84–249 (166) | `SyncSigningCore.sign`, `keyedInputParts`, `lengthDelimitedHeader` |
+| `worker/handler.dart` | 310–472 (163) | `_sign`, `_resolveKeys`: order of checks, the one derivation, the core call |
+| `engine/hd_wallet.dart` | 296–353 (58) | `withDerivedKey`: derivation, the handle, the `finally` |
+| `signing/signing_core.dart` | 78–355 (278) | `SyncSigningCore.sign` (the `TWPrivateKeyData` read and the view), `signWithKeyBytes`, `keyedInputParts`, `lengthDelimitedHeader` |
 | `engine/secret_buffers.dart` | 100–141 (42) | `secretDataFromParts` |
 | `signing/key_field_check.dart` | 19–117 (99) | the key-field check, and its refusal of groups and unknown fields |
 | `families/family.dart` | 94–146 (53) | `KeyFieldList.presentIn` |
@@ -92,7 +93,7 @@ What a reviewer must read to check every claim in §2 (line numbers at the time 
 | `engine/handles.dart` | 59–85 (27) | `PrivateKeyHandle` |
 | `errors/boundary.dart` | 21–61 (41) | `NativeResultError`, `readNative` |
 
-833 lines of Dart, doc comments included, plus the bindings' `TWDataHandle` and `ResourceScope` (`wallet_core_flutter_bindings/lib/src/memory/`), which earlier tasks reviewed. No C or C++ of this project's is in scope. The session side (`signing/local_signer.dart`, `session/session.dart`) never touches a key and is out of scope for the key's lifetime.
+About 930 lines of Dart in this tree, doc comments included (the seam change moved the key read into `signing_core.dart` and added `signWithKeyBytes` and its documentation), plus the bindings' `TWDataHandle` and `ResourceScope` (`wallet_core_flutter_bindings/lib/src/memory/`), which earlier tasks reviewed. No C or C++ of this project's is in scope. The session side (`signing/local_signer.dart`, `session/session.dart`) never touches a key and is out of scope for the key's lifetime.
 
 ## 5. Generalizing: Bitcoin's repeated field, Solana's three fields
 
@@ -147,15 +148,20 @@ It could serve as a cross-check in tests (sign the same request both ways, compa
 
 ## 7. Test evidence
 
-New tests: `test/signing/sign_handler_native_test.dart` (15: every resolution and validation failure is typed, derives no key — `EngineRequestHandler.keysDerived` stays 0 — and never reaches a recording core; a valid request derives exactly one 32-byte key and leaves only the wallet live), `test/signing/signer_native_test.dart` (5: the public flow import → derive → request → sign equals the engine-level core's result for the same path, `usedKeys` is the locator set; closed wallet → `ClosedError`; second-session reference → `foreignRef`; wrong coin and bad EIP-55 checksum → typed errors before derivation; 20 signs leave zero undisposed), `test/signing/signer_session_test.dart` (11: what crosses in `Sign`, the queue bound and deadline applied to signing, checks before submission), `test/signing/sign_protocol_test.dart` (5). The byte-for-byte vector `ethereum-sign-eip1559-1` stays covered at core level by `test/signing/signing_core_native_test.dart` (12).
+New tests: `test/signing/sign_handler_native_test.dart` (15: every resolution and validation failure is typed, derives no key — `EngineRequestHandler.keysDerived` stays 0 — and never reaches a recording core; a valid request derives exactly one key, hands the core its live handle, disposes it before the reply, and leaves only the wallet live — in this tree the core receives a handle, so the test no longer sees, and no longer asserts, the key's 32-byte length), `test/signing/signer_native_test.dart` (5: the public flow import → derive → request → sign equals the engine-level core's result for the same path, `usedKeys` is the locator set; closed wallet → `ClosedError`; second-session reference → `foreignRef`; wrong coin and bad EIP-55 checksum → typed errors before derivation; 20 signs leave zero undisposed), `test/signing/signer_session_test.dart` (11: what crosses in `Sign`, the queue bound and deadline applied to signing, checks before submission), `test/signing/sign_protocol_test.dart` (5). The byte-for-byte vector `ethereum-sign-eip1559-1` stays covered at core level by `test/signing/signing_core_native_test.dart` (12 in the T1.12 tree; 16 in this one, see below).
 
 Added in the delta-1 revision:
 
 - `signing_core_native_test.dart` +3: the keyed bytes upstream receives are tag ‖ key ‖ key-less bytes, the vector still byte for byte (fails on the appending build); a key-less input that ends inside a length-delimited field is rejected before any staging buffer or `TWData` exists; and, with the check bypassed by building the bytes directly from `keyedInputParts`, the first field on the wire is `private_key` holding the key, the appended layout would have decoded with the key as calldata, and upstream's output for the prepended bytes does not contain the key.
 - `key_identity_native_test.dart` (2): `withDerivedKey` at the `ethereum-address-n/a-1` path yields the vector's public key and address, computed straight through the bindings; the public flow's signature is reproduced with a key obtained through a different upstream entry point (`TWHDWalletGetDerivedKey`), and `TWPublicKeyRecover` recovers the vector's public key from `r ‖ s ‖ v` and the reported pre-hash.
-- `test/engine/soft_native_failure_native_test.dart` (3): `TWPrivateKeyData` returning null while signing is a `SigningError` with the key still released, and the session stays ready (DECISION-12 §3.10).
+- `test/engine/soft_native_failure_native_test.dart` (3): `TWPrivateKeyData` returning null while signing is a `SigningError` with the key still released, and the session stays ready (DECISION-12 §3.10). In this tree that null is injected into, and reported by, `SyncSigningCore.sign`, which is where `TWPrivateKeyData` is called.
 
-Gate tails, 2026-10-02 (delta 1):
+Added on `eval/approach-b` (T1.13 and its delta 1), for this tree's seam:
+
+- `signing_core_native_test.dart`: the vector through the seam as a `PrivateKeyHandle`; and through that production entry point, a planted key field, a coin outside the family, and a truncated key-less input are each rejected with no native object created by the core — `TWPrivateKeyData` is never reached. The byte-level tests run through `signWithKeyBytes`.
+- `keyed_layout_native_test.dart` (4): the layout probes shared with Approach B's adapter (`keyed_layout_probes.dart`) against `keyedInputParts`.
+
+Gate tails, 2026-10-02 (delta 1). These are the **T1.12 tree's**; this tree's tails, with the tests above, are in `DECISION-1-approach-b.md` §10:
 
 ```
 $ melos run analyze
@@ -186,7 +192,7 @@ packages/wallet_core_flutter_bindings/lib/src/generated/inventory.json: up to da
 
 ## 8. Open items for DECISION-1
 
-1. **Key-length checking.** Upstream signs with a 31-byte key at the pinned tag (T1.12a's core test); it rejects empty, 33-, 64-byte and all-zero keys with a typed `SigningError`. The core does not judge key lengths, and on this path every key comes from `TWHDWalletGetKey`, which the handler test shows is 32 bytes. Whether the core should reject a non-32-byte key for secp256k1/ed25519 families — relevant once imported keys exist (`KeyLocator.imported`, T3.4) — is open.
+1. **Key-length checking.** Upstream signs with a 31-byte key at the pinned tag (T1.12a's core test); it rejects empty, 33-, 64-byte and all-zero keys with a typed `SigningError`. The core does not judge key lengths, and on this path every key comes from `TWHDWalletGetKey`; `key_identity_native_test.dart` shows it is the vector's key (its public key and address match). Whether the core should reject a non-32-byte key for secp256k1/ed25519 families — relevant once imported keys exist (`KeyLocator.imported`, T3.4) — is open. An imported key becomes a `TWPrivateKey` through `TWPrivateKeyCreateWithData` (`src/interface/TWPrivateKey.cpp:32–42`): it copies the bytes into a `Data` that is *moved* into the key when upstream accepts it, but is freed without being overwritten when upstream rejects the key (`TWDataCopyBytes` failing, or `PrivateKey::isValid` false).
 2. **`Signer.plan`.** Omitted: no `UtxoTransactionRequest` exists yet (T2.5). `signing.md` §1 declares it; the interface gains it with the UTXO family, which is additive.
 3. **`nonceAccount` role.** DECISION-13 §4.2 lists `nonceAccount` among the roles; `signing.md` §2 and the built `KeyRole` have `primary`, `feePayer`, `input(n)` only. Consistent with DECISION-13 §5 keeping the nonce-account key unexposed in v1, but the two documents disagree on the role list; §5 above shows what supporting it would require.
 4. **Multi-key injection.** `SigningCore.sign` takes one key for `KeyRole.primary`; Solana's fee payer and Bitcoin's inputs need one key per role. An internal interface change, for whichever approach is chosen.

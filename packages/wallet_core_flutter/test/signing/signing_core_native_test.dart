@@ -1,7 +1,10 @@
 /// The Approach A signing core against the real host library: the T1.10
-/// vector byte for byte, the tamper check before any key reaches native code,
-/// upstream failures as typed errors, the caller's key left as it was, and
-/// zero undisposed resources after every call.
+/// vector byte for byte — with the key as bytes (`signWithKeyBytes`) and
+/// through the seam as a `PrivateKeyHandle` (`sign`) — the tamper check, the
+/// coin check and the well-formedness check before any key reaches native
+/// code (on both entry points), upstream failures as typed errors, the
+/// caller's key left as it was, and zero undisposed resources after every
+/// call.
 ///
 /// Skips when the library is absent; `WCF_NATIVE_REQUIRED=1` turns that into
 /// a failure (see `../support/host_library.dart`).
@@ -27,6 +30,7 @@ import 'package:wallet_core_flutter/wallet_core_flutter.dart' show Coin;
 import '../support/fixtures.dart';
 import '../support/host_library.dart';
 import 'evm_vector.dart';
+import 'signing_support.dart' show truncatedKeylessInput, withKeyHandle;
 
 const String _vectorId = 'ethereum-sign-eip1559-1';
 
@@ -100,7 +104,7 @@ void main() {
 
     test("reproduces the vector's encoded, v, r and s byte for byte", () {
       final keyless = evmFamily.encodeKeylessInput(vectorRequest(input));
-      final result = core.sign(
+      final result = core.signWithKeyBytes(
         keyless,
         family: evmFamily,
         coin: Coin.ethereum,
@@ -118,10 +122,96 @@ void main() {
       expect(tracker.report.disposed, 2);
     });
 
+    test('through the seam — a PrivateKeyHandle — reproduces the same vector, '
+        "with the key's TWData released too", () {
+      final keyless = evmFamily.encodeKeylessInput(vectorRequest(input));
+      final result = withKeyHandle(
+        core.context,
+        vectorKey(),
+        (key) => core.sign(
+          keyless,
+          family: evmFamily,
+          coin: Coin.ethereum,
+          privateKey: key,
+          usedKeys: usedKeys,
+        ),
+      );
+      expect(_hex(result.encoded), expected['encoded']);
+      expect(_hex(result.v), expected['v']);
+      expect(_hex(result.r), expected['r']);
+      expect(_hex(result.s), expected['s']);
+      expect(nativeSignCalls, 1);
+      // The test's staging TWData and key, then the core's key TWData, keyed
+      // input and output: all five created, all five disposed.
+      expect(tracker.report.disposed, 5);
+    });
+
+    group('through the seam, rejected before TWPrivateKeyData is called', () {
+      // Each case: the test's own staging TWData and key are the only native
+      // objects; the core created none — TWPrivateKeyData would have made a
+      // tracked TWData — and upstream's signer was not called.
+      void expectRejected(Uint8List keyless, Coin coin, String inputName) {
+        Object? caught;
+        withKeyHandle(core.context, vectorKey(), (key) {
+          try {
+            core.sign(
+              keyless,
+              family: evmFamily,
+              coin: coin,
+              privateKey: key,
+              usedKeys: usedKeys,
+            );
+          } on Object catch (error) {
+            caught = error;
+          }
+        });
+        expect(
+          caught,
+          isA<InvalidInputError>().having(
+            (e) => e.inputName,
+            'inputName',
+            inputName,
+          ),
+        );
+        expect(nativeSignCalls, 0);
+        expect(tracker.report.disposed, 2);
+      }
+
+      test('key-less bytes carrying private_key', () {
+        final keyless = evmFamily.encodeKeylessInput(vectorRequest(input));
+        final planted = Uint8List(32)..fillRange(0, 32, 0x11);
+        expectRejected(
+          Uint8List.fromList([
+            ...lengthDelimitedHeader(9, planted.length),
+            ...planted,
+            ...keyless,
+          ]),
+          Coin.ethereum,
+          'signingInput',
+        );
+      });
+
+      test('a coin outside the family', () {
+        expectRejected(
+          evmFamily.encodeKeylessInput(vectorRequest(input)),
+          Coin.bitcoin,
+          'coin',
+        );
+      });
+
+      test('a truncated key-less input', () {
+        expectRejected(
+          truncatedKeylessInput(input['to_address'] as String),
+          Coin.ethereum,
+          'signingInput',
+        );
+      });
+    });
+
     test("leaves the caller's key buffer exactly as it was", () {
       final key = vectorKey();
       final before = Uint8List.fromList(key);
-      core.sign(
+      core.signWithKeyBytes(
         evmFamily.encodeKeylessInput(vectorRequest(input)),
         family: evmFamily,
         coin: Coin.ethereum,
@@ -140,7 +230,7 @@ void main() {
         final view = bindings.TWDataBytes(
           staged.pointer,
         ).asTypedList(staged.length);
-        final result = core.sign(
+        final result = core.signWithKeyBytes(
           evmFamily.encodeKeylessInput(vectorRequest(input)),
           family: evmFamily,
           coin: Coin.ethereum,
@@ -168,7 +258,7 @@ void main() {
       );
       final keyless = evmFamily.encodeKeylessInput(vectorRequest(input));
       final key = vectorKey();
-      final result = capturing.sign(
+      final result = capturing.signWithKeyBytes(
         keyless,
         family: evmFamily,
         coin: Coin.ethereum,
@@ -228,7 +318,7 @@ void main() {
 
       test('is rejected before the key is read or copied anywhere', () {
         expect(
-          () => core.sign(
+          () => core.signWithKeyBytes(
             truncated,
             family: evmFamily,
             coin: Coin.ethereum,
@@ -309,7 +399,7 @@ void main() {
       ]);
       Object? caught;
       try {
-        core.sign(
+        core.signWithKeyBytes(
           tampered,
           family: evmFamily,
           coin: Coin.ethereum,
@@ -336,7 +426,7 @@ void main() {
 
     test('a coin outside the family is rejected before any native call', () {
       expect(
-        () => core.sign(
+        () => core.signWithKeyBytes(
           evmFamily.encodeKeylessInput(vectorRequest(input)),
           family: evmFamily,
           coin: Coin.bitcoin,
@@ -369,7 +459,7 @@ void main() {
         final key = keyOf(vectorKey());
         Object? caught;
         try {
-          core.sign(
+          core.signWithKeyBytes(
             evmFamily.encodeKeylessInput(vectorRequest(input)),
             family: evmFamily,
             coin: Coin.ethereum,

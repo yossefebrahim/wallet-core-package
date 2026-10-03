@@ -56,6 +56,11 @@ Options:
                          toolchains/llvm/prebuilt/<host>/bin/llvm-nm, because
                          neither nm nor llvm-nm is on PATH on a macOS runner.
   --identity-symbol NAME Default wcf_build_info.
+  --require-symbol NAME  Also require NAME (unprefixed) to be a defined
+                         external symbol. Repeatable. Used by build_apple.sh
+                         --with-shim for the DECISION-1 evaluation adapter,
+                         wcf_sign_ethereum (T1.13). A name starting with TW
+                         is refused: those belong in the symbol list.
   --max-report N         How many missing/extra names to print. Default 20.
   -h, --help             This text.
 EOF
@@ -67,9 +72,11 @@ format=''
 nm_bin=''
 identity_symbol='wcf_build_info'
 max_report=20
+required_symbols=()
 
 while (($#)); do
   case $1 in
+    --require-symbol) required_symbols+=("${2:?--require-symbol needs a value}"); shift 2 ;;
     --binary) binary=${2:?--binary needs a value}; shift 2 ;;
     --symbol-list) symbol_list=${2:?--symbol-list needs a value}; shift 2 ;;
     --format) format=${2:?--format needs a value}; shift 2 ;;
@@ -86,6 +93,12 @@ done
 [[ -n $format ]] || { usage >&2; wcf_die '--format is required'; }
 [[ -f $binary ]] || wcf_die "not a file: $binary"
 [[ -f $symbol_list ]] || wcf_die "not a file: $symbol_list"
+for required in ${required_symbols[@]+"${required_symbols[@]}"}; do
+  [[ $required =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] ||
+    wcf_die "--require-symbol is not a C identifier: $required"
+  [[ $required != TW* ]] ||
+    wcf_die "--require-symbol $required: TW* names belong in the symbol list"
+done
 
 case $format in
   macho) prefix='_' ;;
@@ -180,6 +193,14 @@ for arch in "${archs[@]}"; do
     wcf_log "  (version script, --gc-sections, -fvisibility without the attribute)."
     failed=1
   fi
+  for required in ${required_symbols[@]+"${required_symbols[@]}"}; do
+    if grep -qxF "${prefix}${required}" "$all"; then
+      wcf_log "arch $local_label: required symbol ${prefix}${required} exported: yes"
+    else
+      wcf_log "arch $local_label: required symbol ${prefix}${required} is NOT exported."
+      failed=1
+    fi
+  done
 done
 
 if (( failed )); then

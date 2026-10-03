@@ -294,9 +294,9 @@ final class HDWallet extends NativeResource {
 }
 
 /// Derives the private key of [wallet] for [coin] at [derivationPath], runs
-/// [use] with a read-only **view over upstream's native bytes** of it, and
-/// releases the key before returning or throwing. **Internal**: the signing
-/// path's only door to a key; never exported, not even by `advanced.dart`.
+/// [use] with the **handle** of upstream's key object, and releases the key
+/// before returning or throwing. **Internal**: the signing path's only door to
+/// a key; never exported, not even by `advanced.dart`.
 ///
 /// [derivationPath] must already have passed `checkDerivationPath`; the
 /// caller validates before deriving, so that nothing is derived for a request
@@ -306,29 +306,27 @@ final class HDWallet extends NativeResource {
 ///
 /// 1. `TWHDWalletGetKey(wallet, coin, path)` — upstream derives the key into
 ///    a new `TWPrivateKey`, owned from here by a [PrivateKeyHandle].
-/// 2. `TWPrivateKeyData(key)` — upstream copies the key's bytes into a new
-///    `TWData`, owned from here by a [TWDataHandle].
-/// 3. [use] runs with `TWDataBytes(data).asTypedList(length)`: a `Uint8List`
-///    whose storage *is* that `TWData`'s buffer. No Dart-heap copy of the key
-///    is made here, and [use] must make none and must not retain the view —
-///    it is dangling once this returns.
-/// 4. In a `finally`, on every path: the `TWData` is disposed —
-///    `TWDataDelete` overwrites its buffer with zeros before freeing it — and
-///    then the key — `TWPrivateKeyDelete`, whose `PrivateKey` destructor
-///    overwrites its bytes with zeros at the pinned commit
-///    (`src/PrivateKey.h`, `~PrivateKey() { cleanup(); }`).
+/// 2. [use] runs with that handle, **borrowed**: it must not dispose it and
+///    must not retain it. This function reads none of the key's bytes; the
+///    signing core decides whether anything in Dart does (Approach A reads
+///    them through `TWPrivateKeyData`, Approach B does not — T1.13).
+/// 3. In a `finally`, on every path: the key is disposed —
+///    `TWPrivateKeyDelete`, whose `PrivateKey` destructor overwrites its
+///    bytes with zeros at the pinned commit (`src/PrivateKey.h`,
+///    `~PrivateKey() { cleanup(); }`).
 ///
 /// Throws [DisposedError] after [wallet] was disposed, before any native
 /// call; [InvalidInputError] (`inputName: 'derivationPath'`) when upstream
-/// derives no key at the path; and `NativeResultError` when upstream returns
-/// no key bytes or a size out of range — a soft native failure of this one
-/// operation (DECISION-12 §3.10). The key handle is released on those paths
-/// too.
+/// derives no key at the path; and `NativeResultError` when upstream cannot
+/// make the path string — a soft native failure of this one operation
+/// (DECISION-12 §3.10). A null or empty `TWPrivateKeyData` is the signing
+/// core's to report, since only the core reads the key's bytes; the key
+/// handle is released on every one of those paths too.
 T withDerivedKey<T>(
   HDWallet wallet,
   Coin coin,
   String derivationPath,
-  T Function(Uint8List privateKey) use,
+  T Function(PrivateKeyHandle privateKey) use,
 ) {
   final pointer = wallet._wallet;
   final context = wallet.context;
@@ -350,20 +348,6 @@ T withDerivedKey<T>(
         inputName: 'derivationPath',
       );
     }
-    final key = scope.use(PrivateKeyHandle.adopt(context, keyPointer));
-    final dataPointer = bindings.TWPrivateKeyData(key.pointer);
-    if (dataPointer == nullptr) {
-      throw const NativeResultError('TWPrivateKeyData returned nullptr');
-    }
-    final data = scope.use(TWDataHandle.adopt(context, dataPointer));
-    final length = readNative('TWPrivateKeyData', () => data.length);
-    if (length == 0) {
-      throw const NativeResultError('TWPrivateKeyData returned no bytes');
-    }
-    final bytes = bindings.TWDataBytes(data.pointer);
-    if (bytes == nullptr) {
-      throw const NativeResultError('TWDataBytes returned nullptr');
-    }
-    return use(bytes.asTypedList(length));
+    return use(scope.use(PrivateKeyHandle.adopt(context, keyPointer)));
   });
 }

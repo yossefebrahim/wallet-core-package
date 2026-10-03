@@ -30,6 +30,22 @@
 #   <out-dir>/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib
 # — is what `melos run test:native` loads (T1.6). It is the highest-value
 # output of this script and the reason DECISION-9 chose A′ for Phase 1.
+#
+# --with-shim (T1.13, DECISION-1 evaluation only). Also compiles
+# packages/wallet_core_flutter_native/src/shim/wcf_sign.c — the Approach B
+# signing adapter — into the macOS host library and gates its one export,
+# wcf_sign_ethereum. Opt-in and off by default: without the flag nothing below
+# behaves differently. With it the script refuses every slice but
+# macos-arm64_x86_64; refuses, before creating anything, an --out-dir with . or
+# .. components, or whose own name, once symlinks are resolved, does not
+# contain "shim" (so a shim library is never written over a standard one);
+# identifies the library as
+# artifact set as_<tag>-shim_<nnn>, never the standard as_<tag>_<nnn> (so the
+# runtime identity check refuses it where a standard library is expected);
+# and writes no
+# manifest record and no uploadable: the result is not upstream's object code
+# plus an identity object any more, and the record format has no provenance
+# value that says so.
 
 set -euo pipefail
 # shellcheck source=lib/common.sh
@@ -46,6 +62,7 @@ Usage: build_apple.sh (--tarball FILE | --cache-dir DIR) --out-dir DIR
                       [--expect-symbol-count N] [--expected-tarball-sha256 SHA]
                       [--ios-min VERSION] [--macos-min VERSION]
                       [--install-name NAME] [--work-dir DIR] [--keep-work]
+                      [--with-shim]
 
 Relinks upstream's Apple static archives with packages/wallet_core_flutter_native/
 src/identity/wcf_build_info.c into one dynamic library per slice, emits a dSYM
@@ -95,6 +112,13 @@ Optional:
                         @rpath/libTrustWalletCore.dylib.
   --work-dir DIR        Scratch directory, default a fresh mktemp -d.
   --keep-work           Do not delete the scratch directory.
+  --with-shim           DECISION-1 evaluation (T1.13): also compile and export
+                        the Approach B adapter src/shim/wcf_sign.c. Only with
+                        --slices macos-arm64_x86_64 and an --out-dir whose own
+                        name, resolved, contains "shim". Artifact set id
+                        defaults to as_<tag>-shim_000 and must match
+                        as_<tag>-shim_<nnn>. Writes no record and no
+                        uploadable.
   -h, --help            This text.
 
 Outputs under --out-dir:
@@ -112,6 +136,7 @@ symbol_list='' expect_symbol_count='' expected_tarball_sha256=''
 ios_min='13.0' macos_min='11.0'
 install_name='@rpath/libTrustWalletCore.dylib'
 work_dir='' keep_work=0
+with_shim=0
 
 while (($#)); do
   case $1 in
@@ -132,6 +157,7 @@ while (($#)); do
     --install-name) install_name=${2:?}; shift 2 ;;
     --work-dir) work_dir=${2:?}; shift 2 ;;
     --keep-work) keep_work=1; shift ;;
+    --with-shim) with_shim=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; wcf_die "unknown argument: $1" ;;
   esac
@@ -143,6 +169,27 @@ if [[ -n $tarball && -n $cache_dir ]]; then
 fi
 [[ -n $tarball || -n $cache_dir ]] ||
   { usage >&2; wcf_die 'one of --tarball or --cache-dir is required'; }
+if (( with_shim )); then
+  [[ $slices == macos-arm64_x86_64 ]] ||
+    wcf_die '--with-shim builds the macOS host library only: pass --slices macos-arm64_x86_64 (mobile packaging of the adapter is pending D1a)'
+  case /$out_dir/ in
+    */../*|*/./*) wcf_die "--with-shim refuses an --out-dir with . or .. components; got: $out_dir" ;;
+  esac
+  # The name the library would land under, refused before anything is
+  # created: an existing directory's own name with symlinks resolved; for one
+  # that does not exist yet, its last component — every directory mkdir -p
+  # creates is new, so none of them can be a symlink.
+  if [[ -e $out_dir ]]; then
+    landing=$(cd -- "$out_dir" 2>/dev/null && pwd -P) ||
+      wcf_die "--with-shim needs an --out-dir that is a directory; got: $out_dir"
+  elif [[ -L $out_dir ]]; then
+    wcf_die "--with-shim refuses an --out-dir that is a dangling symlink; got: $out_dir"
+  else
+    landing=$out_dir
+  fi
+  [[ $(basename -- "$landing") == *shim* ]] ||
+    wcf_die "--with-shim needs an --out-dir whose own name contains \"shim\" once resolved, so a shim library never lands where a standard one is expected; got: $out_dir"
+fi
 
 [[ $(uname -s) == Darwin ]] || wcf_die 'build_apple.sh needs macOS: it uses lipo, clang, dsymutil and the Apple SDKs'
 wcf_require_cmd tar lipo clang dsymutil ditto xcrun jq
@@ -159,6 +206,14 @@ if [[ -n $cache_dir ]]; then
   tarball="$cache_dir/$tag/TrustWalletCore-$tag.tar.xz"
 fi
 [[ -f $tarball ]] || wcf_die "not a file: $tarball"
+if (( with_shim )); then
+  # A shim library states that it is one: its identity is never the standard
+  # artifact set's, so verifyIdentity refuses it wherever a standard library
+  # is expected, and a test that loads it names the shim identity explicitly.
+  [[ -n $set_id ]] || set_id="as_${tag}-shim_000"
+  [[ $set_id == *-shim_[0-9][0-9][0-9] ]] ||
+    wcf_die "--with-shim needs an artifact set id of the form as_<tag>-shim_<nnn>, so a shim library never carries a standard identity; got: $set_id"
+fi
 [[ -n $set_id ]] || set_id="as_${tag}_000"
 [[ -n $build_workflow ]] || build_workflow='local'
 
@@ -166,6 +221,13 @@ wcf_require_identity_values "$commit" "$set_id" "$build_workflow"
 
 mkdir -p -- "$out_dir"
 out_dir=$(cd -- "$out_dir" && pwd)
+if (( with_shim )); then
+  # Symlinks resolved, so the files land where the check above looked; checked
+  # again on the created directory.
+  out_dir=$(cd -- "$out_dir" && pwd -P)
+  [[ $(basename -- "$out_dir") == *shim* ]] ||
+    wcf_die "--with-shim needs an --out-dir whose own name contains \"shim\" once resolved, so a shim library never lands where a standard one is expected; got: $out_dir"
+fi
 mkdir -p -- "$out_dir/artifacts" "$out_dir/records" "$out_dir/upload"
 
 if [[ -z $work_dir ]]; then work_dir=$(wcf_mktemp_dir); fi
@@ -290,6 +352,13 @@ while IFS= read -r define_flag; do
   identity_defines+=("$define_flag")
 done < <(wcf_identity_defines "$commit" "$set_id" "$build_workflow")
 
+shim_source=''
+if (( with_shim )); then
+  shim_source="$(wcf_repo_root)/packages/wallet_core_flutter_native/src/shim/wcf_sign.c"
+  [[ -f $shim_source ]] || wcf_die "shim source not found: $shim_source"
+  wcf_log "with-shim: compiling $shim_source into the host library (DECISION-1 evaluation)"
+fi
+
 IFS=',' read -r -a slice_ids <<<"$slices"
 
 for slice in "${slice_ids[@]}"; do
@@ -359,6 +428,20 @@ for slice in "${slice_ids[@]}"; do
         "${identity_defines[@]}" \
         -o "$identity_object" "$identity_source"
 
+      # --with-shim: the adapter, compiled the same way and against the
+      # tarball's own headers, so it is built against exactly the API it links
+      # to. Its export comes from WCF_SIGN_EXPORT, not from the flags.
+      shim_objects=()
+      if (( with_shim )); then
+        shim_object="$work_dir/${slice}-${arch}-wcf_sign.o"
+        wcf_run clang \
+          -target "$triple" -isysroot "$sdk_path" \
+          -c -std=c11 -O2 -g -fvisibility=hidden -Wall -Wextra -Werror \
+          -I "$extracted/include" \
+          -o "$shim_object" "$shim_source"
+        shim_objects=("$shim_object")
+      fi
+
       thin_dylib="$work_dir/${slice}-${arch}.dylib"
       wcf_run clang \
         -target "$triple" \
@@ -368,6 +451,7 @@ for slice in "${slice_ids[@]}"; do
         -o "$thin_dylib" \
         "@$uflags" \
         "$identity_object" \
+        ${shim_objects[@]+"${shim_objects[@]}"} \
         "$thin_archive" \
         -lc++ -framework Foundation -framework Security -framework CoreFoundation \
         2>"$link_log"
@@ -424,10 +508,19 @@ for slice in "${slice_ids[@]}"; do
   fi
 
   # Gate: export visibility, on the artifact we are about to publish.
-  wcf_run "$here/check_exports.sh" \
+  exports_gate=("$here/check_exports.sh" \
     --binary "$final" \
     --symbol-list "$symbol_list" \
-    --format macho
+    --format macho)
+  if (( with_shim )); then exports_gate+=(--require-symbol wcf_sign_ethereum); fi
+  wcf_run "${exports_gate[@]}"
+
+  if (( with_shim )); then
+    # An evaluation library: no DECISION-14 record (its provenance is neither
+    # value the record allows) and nothing to upload.
+    wcf_log "with-shim: sha256 $(wcf_sha256 "$final") (evaluation artifact; no record, no uploadable)"
+    continue
+  fi
 
   toolchain_json=$(jq -n \
     --arg xcode "$xcode_build" \
@@ -467,6 +560,7 @@ done
 # Digest listing over everything that will be uploaded
 # ---------------------------------------------------------------------------
 
+if (( ! with_shim )); then
 wcf_section 'digests'
 (
   cd -- "$out_dir/upload"
@@ -477,12 +571,17 @@ wcf_section 'digests'
   fi
 )
 cat "$out_dir/SHA256SUMS" >&2
+fi
 
 wcf_section 'done'
 wcf_log "artifacts:  $out_dir/artifacts"
 wcf_log "records:    $out_dir/records"
 wcf_log "upload:     $out_dir/upload"
-if [[ -f $out_dir/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib ]]; then
+if (( with_shim )); then
+  wcf_log "shim host library for the shim-tagged tests (T1.13) — copy it to"
+  wcf_log "third_party/wcf-native-shim/macos/arm64_x86_64/ or point WCF_NATIVE_SHIM_LIB at it:"
+  wcf_log "  $out_dir/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib"
+elif [[ -f $out_dir/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib ]]; then
   wcf_log "host library for melos run test:native (T1.6):"
   wcf_log "  $out_dir/artifacts/macos/arm64_x86_64/libTrustWalletCore.dylib"
 fi

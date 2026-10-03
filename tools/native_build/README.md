@@ -19,6 +19,7 @@ reachable from `wallet_core_flutter`, `wallet_core_flutter_bindings` or
 | `check_exports.sh` | Export-visibility gate. Runs on every artifact, on both platforms. |
 | `check_alignment.sh` | 16 KB page-alignment gate. 64-bit ELF only. |
 | `emit_artifact_record.sh` | The fourteen-field per-artifact record of DECISION-14 §5.1. |
+| `run_shim_tests.sh` | DECISION-1 evaluation only: the `shim`-tagged SDK tests against the `--with-shim` host library, with absence or any skip a failure. |
 | `lib/common.sh` | Shared helpers. Sourced, never executed. |
 
 ## The macOS host library for `melos run test:native`
@@ -55,6 +56,39 @@ A local build is identified as `as_<tag>_000` with `build_workflow` `local`.
 **Sequence `000` is reserved for local builds and is never uploaded** — the
 script warns that an artifact built that way must not be published, and the
 manifest validator rejects a non-URL `build_workflow` on a populated record.
+
+## The shim host library (DECISION-1 evaluation only, T1.13)
+
+`build_apple.sh --with-shim` also compiles the Approach B signing adapter,
+`packages/wallet_core_flutter_native/src/shim/wcf_sign.c`, into the macOS host
+library and gates its one export, `wcf_sign_ethereum`. It is never part of an
+artifact set:
+
+```
+tools/native_build/build_apple.sh \
+  --tarball ~/.cache/wcf-upstream/4.8.0/TrustWalletCore-4.8.0.tar.xz \
+  --commit d692ac27749d0c615e17c751b70ab4f0aa75c59b \
+  --slices macos-arm64_x86_64 \
+  --out-dir "$TMPDIR/wcf-native-shim" \
+  --expect-symbol-count 464 \
+  --with-shim
+```
+
+It refuses any other slice; an `--out-dir` with `.` or `..` components, or
+whose own name, symlinks resolved, does not contain `shim`; and an artifact set
+id other than `as_<tag>-shim_<nnn>` (default `as_<tag>-shim_000`), so the
+runtime identity check refuses a shim library where the standard one is
+expected. It writes no record and no uploadable. Copy the library to
+`third_party/wcf-native-shim/macos/arm64_x86_64/` (git-ignored) or point
+`WCF_NATIVE_SHIM_LIB` at it, then run the `shim`-tagged tests with
+
+```
+bash tools/native_build/run_shim_tests.sh
+```
+
+which sets `WCF_NATIVE_SHIM_REQUIRED=1` and fails if the library is absent, if
+any test fails, or if any test was skipped — a shim run cannot pass by
+skipping. `melos run test` and `melos run test:native` let the shim tests skip.
 
 ## The two gates, and the exact command each runs
 

@@ -3,8 +3,13 @@
 /// request and locators the tests sign with.
 library;
 
+import 'dart:ffi';
 import 'dart:typed_data';
 
+import 'package:wallet_core_flutter/advanced.dart' show NativeContext;
+import 'package:wallet_core_flutter/src/engine/handles.dart';
+import 'package:wallet_core_flutter/src/engine/secret_buffers.dart';
+import 'package:wallet_core_flutter/src/families/evm/evm_family.dart';
 import 'package:wallet_core_flutter/src/families/family.dart';
 import 'package:wallet_core_flutter/src/requests/requests.dart';
 import 'package:wallet_core_flutter/src/signing/key_locator.dart';
@@ -22,7 +27,8 @@ const ManifestIdentity hostIdentity = ManifestIdentity(
 );
 
 /// A [SigningCore] that counts its calls and records what it was given —
-/// never the key itself, only its length — and signs through [delegate].
+/// never the key's bytes, only its handle and whether that handle was live —
+/// and signs through [delegate].
 final class RecordingCore implements SigningCore {
   /// Records, then signs through [delegate].
   RecordingCore(this.delegate);
@@ -33,8 +39,12 @@ final class RecordingCore implements SigningCore {
   /// How many times [sign] was called.
   int calls = 0;
 
-  /// The length of the last key handed in.
-  int? lastKeyLength;
+  /// The last key handle handed in. Kept only so a test can check, after the
+  /// reply, that the handler disposed it; never read through.
+  PrivateKeyHandle? lastKey;
+
+  /// Whether [lastKey] was live (not yet disposed) when it was handed in.
+  bool? lastKeyWasLive;
 
   /// The coin of the last call.
   Coin? lastCoin;
@@ -47,11 +57,12 @@ final class RecordingCore implements SigningCore {
     Uint8List keylessInput, {
     required TransactionFamily<TransactionRequest, S> family,
     required Coin coin,
-    required Uint8List privateKey,
+    required PrivateKeyHandle privateKey,
     required Set<KeyLocator> usedKeys,
   }) {
     calls++;
-    lastKeyLength = privateKey.length;
+    lastKey = privateKey;
+    lastKeyWasLive = !privateKey.isDisposed;
     lastCoin = coin;
     lastUsedKeys = usedKeys;
     return delegate.sign(
@@ -62,6 +73,73 @@ final class RecordingCore implements SigningCore {
       usedKeys: usedKeys,
     );
   }
+}
+
+/// Runs [use] with a `TWPrivateKey` made from [keyBytes] by upstream's
+/// `TWPrivateKeyCreateWithData`, and releases it — and the `TWData` it was
+/// made from — before returning or throwing. For the core tests, which sign
+/// a published vector's key rather than a derived one.
+///
+/// Throws [StateError] when upstream rejects [keyBytes] as a key; the message
+/// names no byte of it.
+T withKeyHandle<T>(
+  NativeContext context,
+  Uint8List keyBytes,
+  T Function(PrivateKeyHandle key) use,
+) {
+  final data = secretData(context, keyBytes);
+  PrivateKeyHandle? key;
+  try {
+    final pointer = context.bindings.TWPrivateKeyCreateWithData(data.pointer);
+    if (pointer == nullptr) {
+      throw StateError('upstream rejected the test key');
+    }
+    key = PrivateKeyHandle.adopt(context, pointer);
+    return use(key);
+  } finally {
+    key?.dispose();
+    data.dispose();
+  }
+}
+
+/// Whether [haystack] contains [needle] as a contiguous run. A boolean, so a
+/// failing assertion prints neither.
+bool containsRun(List<int> haystack, List<int> needle) {
+  for (var i = 0; i + needle.length <= haystack.length; i++) {
+    var match = true;
+    for (var j = 0; j < needle.length; j++) {
+      if (haystack[i + j] != needle[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return true;
+  }
+  return false;
+}
+
+/// The length of the key field for a 32-byte key: tag, length, key.
+final int keyFieldLength = lengthDelimitedHeader(9, 32).length + 32;
+
+/// REVIEW B finding 1's input: the key-less bytes of a contract call to [to]
+/// whose calldata is exactly as long as the key field, cut so that the bytes
+/// end right after the calldata's length prefix. A key field *appended* to
+/// these bytes becomes the calldata — a signed, broadcastable transaction
+/// carrying the key; prepended, it stays a field of its own.
+Uint8List truncatedKeylessInput(String to) {
+  final complete = evmFamily.encodeKeylessInput(
+    EvmTransactionRequest.contractCall(
+      coin: Coin.ethereum,
+      chainId: 1,
+      nonce: BigInt.one,
+      to: to,
+      data: Uint8List(keyFieldLength)..fillRange(0, keyFieldLength, 0xaa),
+      maxFeePerGas: BigInt.one,
+      maxPriorityFeePerGas: BigInt.one,
+      gasLimit: BigInt.from(60000),
+    ),
+  );
+  return Uint8List.sublistView(complete, 0, complete.length - keyFieldLength);
 }
 
 /// An EIP-1559 Ethereum transfer to [to] — the shape of
