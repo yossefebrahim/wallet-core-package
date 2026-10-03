@@ -15,20 +15,22 @@
 # THIS SCRIPT RUNS UPSTREAM'S OWN BUILD TOOLING — tools/install-*,
 # tools/generate-files, and Gradle — against a source tree we did not review.
 # That is inherent in building from source. The tree is treated as data: this
-# script reads it, copies two files into it, and executes exactly the entry
-# points upstream's own android-ci.yml executes, in the same order. Nothing in
-# the tree is consulted for instructions about what to do.
+# script reads it, copies two files into it, makes one patch to its Gradle
+# module, and executes exactly the entry points upstream's own android-ci.yml
+# executes, in the same order. Nothing in the tree is consulted for
+# instructions about what to do.
 #
-# HOW THE IDENTITY OBJECT GETS IN, WITHOUT PATCHING UPSTREAM'S BUILD.
+# HOW THE IDENTITY OBJECT GETS IN, WITH ALMOST NO BUILD PATCHES.
 # Upstream's root CMakeLists.txt gathers Android sources with
 #   file(GLOB_RECURSE core_sources src/*.c src/*.cc src/*.cpp src/*.h ...)
 # so a .c file placed under src/ is compiled into libTrustWalletCore.so with no
 # edit to any build file. We therefore write ONE generated file into src/ that
 # #defines the three identity values and #includes our wcf_build_info.c from a
 # directory the glob does not reach. The reviewed source stays the file in
-# packages/wallet_core_flutter_native/src/identity/, and no CMake, Gradle or
-# NDK configuration is patched — which matters because every such patch is
-# something that silently stops applying at the next upstream tag.
+# packages/wallet_core_flutter_native/src/identity/. The only build file we
+# patch is android/wallet-core/build.gradle, just to pass -DFLUTTER=ON so the
+# C API is exported (which matters because every such patch is something that
+# silently stops applying at the next upstream tag).
 #
 # UNRUN. This script has never been executed: it needs an Android SDK, NDK,
 # JDK, Gradle, a Rust toolchain and boost, none of which were available where
@@ -351,6 +353,23 @@ wcf_section 'generate upstream sources'
   cd -- "$source_dir"
   wcf_run tools/generate-files android
 )
+
+# Upstream hides every C symbol on Android unless CMake sees FLUTTER=ON
+# (cmake/StandardSettings.cmake: CMAKE_CXX_VISIBILITY_PRESET hidden) — its
+# AAR serves the JNI binding, which never needed the TW* C API exported,
+# and only TWData/TWString/TWCardano carry TW_VISIBILITY_DEFAULT (27 of 464;
+# build-native run 37155340955). dart:ffi needs all of them, so pass the
+# same switch upstream's own tools/flutter-build passes. This is the one
+# edit we make to upstream's build files; the identity object is the only
+# other change to the tree, and both are stated in the record's notes.
+gradle_module="$source_dir/android/wallet-core/build.gradle"
+[[ -f $gradle_module ]] || wcf_die "no Gradle module at $gradle_module"
+if ! grep -q -- '-DFLUTTER=ON' "$gradle_module"; then
+  wcf_run sed -i.wcf-orig 's/"-DTW_UNITY_BUILD=ON"/"-DTW_UNITY_BUILD=ON", "-DFLUTTER=ON"/' "$gradle_module"
+  grep -q -- '-DFLUTTER=ON' "$gradle_module" || wcf_die "could not add -DFLUTTER=ON to $gradle_module (upstream's cmake arguments line changed?)"
+  rm -f -- "$gradle_module.wcf-orig"
+fi
+wcf_log "gradle cmake arguments: $(grep -o 'arguments .*' "$gradle_module" | head -1)"
 
 wcf_section 'gradle assembleRelease'
 (

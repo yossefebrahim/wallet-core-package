@@ -14,7 +14,7 @@ reachable from `wallet_core_flutter`, `wallet_core_flutter_bindings` or
 | Script | What it does |
 |---|---|
 | `build_apple.sh` | DECISION-9 Option A′: relink upstream's release-asset static archives with our identity object into one dynamic library per Apple slice, emit a dSYM, run the export gate, write the manifest record. Links with `-headerpad_max_install_names` so `install_name_tool` can rewrite the id from long CI checkout paths. |
-| `build_android.sh` | DECISION-9 Option B: build upstream's git tree at the pinned commit with our identity object linked in, extract one `.so` per ABI, run both gates, write the manifest record. |
+| `build_android.sh` | DECISION-9 Option B: build upstream's git tree at the pinned commit with our identity object linked in, passes `-DFLUTTER=ON` so the TW* C API is exported (upstream hides it on Android by default), extract one `.so` per ABI, run both gates, write the manifest record. |
 | `generate_symbol_list.sh` | The canonical list of exported `TW*` C functions, derived from the tag's own headers. |
 | `check_exports.sh` | Export-visibility gate. Runs on every artifact, on both platforms. |
 | `check_alignment.sh` | 16 KB page-alignment gate. 64-bit ELF only. |
