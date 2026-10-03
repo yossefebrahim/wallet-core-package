@@ -17,6 +17,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "12.1.0"
+  android_libcpp_shared:
+    dependency: transitive
+    description:
+      name: android_libcpp_shared
+      sha256: eefa60d36972d1b12f566ff94431a97f2666a6c28bd6fa6184e81f88968708e5
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   ansi_styles:
     dependency: transitive
     description:

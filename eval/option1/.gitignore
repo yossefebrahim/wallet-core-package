@@ -1,0 +1,16 @@
+# Evaluation branch: nothing binary is committed here (repo constraint 7).
+# Build output stays in the consumer's own ignored build/ and .dart_tool/;
+# these lines also catch a binary copied in by hand.
+*.dylib
+*.so
+*.a
+*.framework/
+*.xcframework/
+*.xcarchive/
+*.dSYM/
+*.apk
+*.aab
+*.ipa
+*.zip
+consumer/build/
+consumer/.dart_tool/

@@ -22,6 +22,7 @@
 library;
 
 export 'src/build_identity.dart' show BuildIdentity;
+export 'src/code_asset_locations.dart' show codeAssetLocations;
 export 'src/errors.dart'
     show
         LibraryLoadAttempt,
