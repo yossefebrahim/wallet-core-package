@@ -17,11 +17,14 @@ import 'package:wallet_core_flutter_bindings/wallet_core_flutter_bindings.dart'
 
 import '../account/account.dart';
 import '../address/address.dart';
+import '../coin/chain_family.dart';
 import '../coin/coin.dart';
 import '../coin/network.dart';
 import '../core/input_checks.dart';
+import '../errors/boundary.dart';
 import '../errors/errors.dart';
 import 'coin_bridge.dart';
+import 'handles.dart';
 import 'hd_wallet.dart';
 import 'secret_buffers.dart';
 
@@ -106,13 +109,13 @@ final class WalletEngine {
     if (network == Network.mainnet && hasTestnetPrefix) return false;
     final bindings = context.bindings;
     return runScope(context, (scope) {
-      final address = scope.string(value);
+      final address = _string(scope, value);
       if (bindings.TWAnyAddressIsValid(address.pointer, coinType)) return true;
       if (network != Network.testnet) return false;
       return bindings.TWAnyAddressIsValidBech32(
         address.pointer,
         coinType,
-        scope.string(testnetHrp!).pointer,
+        _string(scope, testnetHrp!).pointer,
       );
     });
   }
@@ -134,6 +137,57 @@ final class WalletEngine {
       );
     }
     return validatedAddress(value, coin, network);
+  }
+
+  /// Rejects [value] as the recipient of a transaction on [coin] with
+  /// [InvalidInputError] (`inputName: 'to'`) unless upstream accepts it.
+  ///
+  /// Two checks, both upstream's:
+  ///
+  /// 1. [isValidAddress] on [network].
+  /// 2. For an EVM coin, the EIP-55 checksum. Upstream's `TWAnyAddressIsValid`
+  ///    checks an EVM address's length and hex digits only — at the pinned
+  ///    commit neither `Ethereum::Address::isValid` nor `tw_evm`'s parser
+  ///    reads its letter case — so a mistyped mixed-case address would be
+  ///    signed. Following EIP-55, an address written in one case asserts no
+  ///    checksum and passes; one in mixed case must equal, character for
+  ///    character, the form upstream renders for it (`TWAnyAddressDescription`,
+  ///    which applies the checksum). The checksum's hash is computed by
+  ///    upstream; this only compares two strings.
+  ///
+  /// Throws [UnsupportedOperationError] when [coin] has no [network].
+  void checkRecipient(
+    String value,
+    Coin coin, {
+    Network network = Network.mainnet,
+  }) {
+    if (!isValidAddress(value, coin, network: network)) {
+      throw InvalidInputError(
+        'not a valid ${coin.id} address on ${network.id}',
+        inputName: 'to',
+      );
+    }
+    if (coin.family != ChainFamily.evm || !_hasMixedCase(value)) return;
+    final coinType = twCoinTypeOf(coin);
+    final bindings = context.bindings;
+    final rendered = runScope(context, (scope) {
+      final pointer = bindings.TWAnyAddressCreateWithString(
+        _string(scope, value).pointer,
+        coinType,
+      );
+      if (pointer == nullptr) return null;
+      final address = scope.use(AnyAddressHandle.adopt(context, pointer));
+      final description = bindings.TWAnyAddressDescription(address.pointer);
+      if (description == nullptr) return null;
+      final text = scope.use(TWStringHandle.adopt(context, description));
+      return readNative('TWAnyAddressDescription', text.toDartString);
+    });
+    if (rendered != value) {
+      throw InvalidInputError(
+        'the mixed-case ${coin.id} address does not match its EIP-55 checksum',
+        inputName: 'to',
+      );
+    }
   }
 
   // --- mnemonics ------------------------------------------------------------
@@ -197,4 +251,23 @@ final class WalletEngine {
       );
     });
   }
+}
+
+/// A native copy of the public text [value], registered with [scope]; a null
+/// from upstream is a `NativeResultError` (DECISION-12 §3.10).
+TWStringHandle _string(ResourceScope scope, String value) =>
+    readNative('TWStringCreateWithUTF8Bytes', () => scope.string(value));
+
+/// Whether [value], after a leading `0x`, contains both a lower-case and an
+/// upper-case ASCII letter. The prefix's `x` is not a digit and asserts
+/// nothing about case.
+bool _hasMixedCase(String value) {
+  var lower = false;
+  var upper = false;
+  final digits = value.startsWith('0x') ? value.substring(2) : value;
+  for (final unit in digits.codeUnits) {
+    if (unit >= 0x61 && unit <= 0x7A) lower = true;
+    if (unit >= 0x41 && unit <= 0x5A) upper = true;
+  }
+  return lower && upper;
 }

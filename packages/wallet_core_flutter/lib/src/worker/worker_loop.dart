@@ -55,6 +55,16 @@ final class WorkerFault implements Exception {
 ///   [controlReserve]. The operation count is asserted against `queueLimit`
 ///   too. A failed assertion is a bug in the session's admission, and the
 ///   loop fails rather than grows.
+/// * **Deadlines** (DECISION-12 §3.5, §3.9). An operation received with an
+///   [OperationDeadline] that has passed when its turn comes is not run. One
+///   whose deadline passes while it runs finishes — native work cannot be
+///   aborted — and the handler's `finally` releases its temporaries and any
+///   key as usual; then **its result is dropped without being posted**: the
+///   handler [RequestHandler.discard]s whatever the result named (a new
+///   wallet), and the reply posted in its place is a key-less
+///   `Failed(OperationTimeoutError)`, so that the session's accounting closes
+///   and nothing a late caller would no longer receive — a mnemonic
+///   included — ever crosses.
 /// * **The fault rule.** When the handler rethrows an error it could not map,
 ///   the loop stops for good: it releases every handle the handler owns
 ///   (best effort), answers nothing more — neither the request that faulted
@@ -84,6 +94,9 @@ final class WorkerLoop {
 
   final Queue<WorkerRequest> _queue = Queue<WorkerRequest>();
 
+  /// The deadline of each queued operation that has one, by request id.
+  final Map<int, OperationDeadline> _deadlines = <int, OperationDeadline>{};
+
   /// Extra request ids folded into the one pending `DisposeRef` per reference.
   final Map<int, List<int>> _pendingDisposals = <int, List<int>>{};
 
@@ -99,8 +112,9 @@ final class WorkerLoop {
   /// How many requests are waiting, operations and `DisposeRef`s together.
   int get queuedCount => _queue.length;
 
-  /// Accepts one arriving request.
-  void receive(WorkerRequest request) {
+  /// Accepts one arriving request, and an operation's [deadline] with it.
+  /// A control message has no deadline and any given is ignored.
+  void receive(WorkerRequest request, {OperationDeadline? deadline}) {
     if (_finished) {
       // After shutdown, or once dead, nothing is answered (§3.7): a worker
       // isolate would have exited and the runtime would drop the message.
@@ -142,6 +156,7 @@ final class WorkerLoop {
         }
         if (request is Init) _queueLimit = request.queueLimit;
         _queue.add(request);
+        if (deadline != null) _deadlines[request.id] = deadline;
         if (_operationCount > _queueLimit) {
           _fault(StateError('operation bound exceeded'), SessionState.ready);
           return;
@@ -174,6 +189,7 @@ final class WorkerLoop {
       return;
     }
     _queue.remove(queued);
+    _deadlines.remove(target);
     overwriteOwnedSecrets(queued);
     post(Failed(target, OperationCancelledError(target)));
     post(Cancelled(request.id, target: target));
@@ -195,6 +211,7 @@ final class WorkerLoop {
           SessionStateError(SessionState.closing, attempted: queued.operation),
         ),
       );
+      _deadlines.remove(queued.id);
       overwriteOwnedSecrets(queued);
     }
     _queue
@@ -213,6 +230,14 @@ final class WorkerLoop {
     _drainScheduled = false;
     if (_finished || _queue.isEmpty) return;
     final request = _queue.removeFirst();
+    final deadline = _deadlines.remove(request.id);
+    if (deadline != null && deadline.hasPassed) {
+      // Its caller already has OperationTimeoutError: it need never run.
+      overwriteOwnedSecrets(request);
+      post(_expired(request, deadline));
+      _scheduleDrain();
+      return;
+    }
     final WorkerReply reply;
     try {
       reply = _handler.handle(request);
@@ -222,9 +247,19 @@ final class WorkerLoop {
         request is Init ? SessionState.initializing : SessionState.ready,
       );
       return;
+    } finally {
+      // The executor's copy. The engine-backed handler already did; a
+      // handler that did not is not trusted to.
+      overwriteOwnedSecrets(request);
     }
     // The handler has parsed and released; only now is the reply posted
-    // (DECISION-12 §3.9).
+    // (DECISION-12 §3.9) — or, past the deadline, dropped unposted.
+    if (deadline != null && deadline.hasPassed) {
+      if (reply is! Failed) _handler.discard(reply);
+      post(_expired(request, deadline));
+      _scheduleDrain();
+      return;
+    }
     post(reply);
     switch (request) {
       case DisposeRef(:final walletRef):
@@ -244,6 +279,14 @@ final class WorkerLoop {
     _scheduleDrain();
   }
 
+  /// The key-less reply posted in place of [request]'s result once its
+  /// [deadline] has passed.
+  static Failed _expired(WorkerRequest request, OperationDeadline deadline) =>
+      Failed(
+        request.id,
+        OperationTimeoutError(request.operation, deadline.timeout),
+      );
+
   void _fault(Object error, SessionState during) {
     _stop();
     onFault(
@@ -262,6 +305,7 @@ final class WorkerLoop {
       overwriteOwnedSecrets(queued);
     }
     _queue.clear();
+    _deadlines.clear();
     _pendingDisposals.clear();
     _handler.releaseAll();
   }

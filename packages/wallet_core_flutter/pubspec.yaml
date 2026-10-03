@@ -18,6 +18,11 @@ dependencies:
   ffi: ^2.1.0
   flutter:
     sdk: flutter
+  # The runtime of the generated protobuf classes, named by the family code
+  # (`GeneratedMessage`, `InvalidProtocolBufferException`) for the key-field
+  # walk and output parsing (lib/src/families/). Exactly the bindings
+  # package's pin: the generated classes and their runtime are a matched pair.
+  protobuf: 6.0.0
   # Exact pins, never ranges: the three packages release as one verified set
   # (PRD §15.4).
   wallet_core_flutter_bindings: 0.0.1

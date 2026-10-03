@@ -47,6 +47,35 @@ void main() {
     expect(handler.releaseAll(), 0);
   });
 
+  test('Sign before Init is a typed SessionStateError and derives nothing', () {
+    final handler = EngineRequestHandler();
+    final reply = handler.handle(
+      Sign(
+        1,
+        request: EvmTransactionRequest.transfer(
+          coin: Coin.ethereum,
+          chainId: 1,
+          nonce: BigInt.zero,
+          to: '0x${'0' * 40}',
+          valueWei: BigInt.zero,
+          maxFeePerGas: BigInt.one,
+          maxPriorityFeePerGas: BigInt.one,
+          gasLimit: BigInt.from(21000),
+        ),
+        keys: const {},
+      ),
+    );
+    expect(
+      reply,
+      isA<Failed>().having(
+        (r) => r.error,
+        'error',
+        isA<SessionStateError>().having((e) => e.attempted, 'op', 'sign'),
+      ),
+    );
+    expect(handler.keysDerived, 0);
+  });
+
   test('ImportWallet.entropy is overwritten once handled, even on failure', () {
     final handler = EngineRequestHandler();
     final request = ImportWallet.entropy(1, Uint8List(16)..fillRange(0, 16, 7));

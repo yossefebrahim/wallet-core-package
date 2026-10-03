@@ -33,15 +33,12 @@ final class ChainFamily {
   /// may still have no vector and no tested operation. Read the capability
   /// matrix to learn what works.
   ///
-  /// `false` for every family at this version: no request builder has been
-  /// written yet.
+  /// `true` for [evm] alone at this version, whose `EvmTransactionRequest` is
+  /// the one request builder written so far.
   final bool hasRequestBuilders;
 
   /// Chains whose pinned registry entry is an Ethereum-family chain.
-  static const ChainFamily evm = ChainFamily._(
-    'evm',
-    hasRequestBuilders: false,
-  );
+  static const ChainFamily evm = ChainFamily._('evm', hasRequestBuilders: true);
 
   /// Bitcoin-family chains.
   static const ChainFamily utxo = ChainFamily._(

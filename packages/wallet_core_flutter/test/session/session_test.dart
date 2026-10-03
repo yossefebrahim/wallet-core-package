@@ -10,10 +10,12 @@ import 'package:wallet_core_flutter/src/session/session.dart';
 import 'package:wallet_core_flutter/src/session/testing.dart';
 import 'package:wallet_core_flutter/src/wallet/wallet.dart';
 import 'package:wallet_core_flutter/src/worker/protocol.dart';
+import 'package:wallet_core_flutter/src/worker/transport.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart';
 
 import '../support/fake_handler.dart';
 import '../support/fixtures.dart';
+import '../support/recording_transport.dart';
 
 const String _mnemonic =
     'zebra cabbage orbit velvet hammer quantum lantern meadow pistol saddle '
@@ -125,10 +127,15 @@ void main() {
       );
     });
 
+    // A genuinely unexpected error — a broken invariant of the SDK's own
+    // code. A soft native failure (a null or a corrupt size from upstream)
+    // is not this: the engine-backed handler types it per operation and the
+    // session stays ready (DECISION-12 §3.10;
+    // ../engine/soft_native_failure_native_test.dart).
     test('an unmapped error in an operation moves ready → failed, fails it '
         'and everything pending, and every later call', () async {
       final (core, fake) = await _start();
-      fake.throwOn['exportMnemonic'] = RangeError('corrupt size');
+      fake.throwOn['exportMnemonic'] = StateError('broken invariant');
       final failures = <SessionState>[];
       core.states.listen(failures.add);
       final wallet = await core.wallets.create();
@@ -150,6 +157,29 @@ void main() {
       // failed → closed without a round trip.
       await core.shutdown();
       expect(core.state, SessionState.closed);
+    });
+
+    test('close() first called after failed → closed still completes with '
+        'the termination error: nothing confirmed the release', () async {
+      final (core, fake) = await _start();
+      final first = await core.wallets.create();
+      final second = await core.wallets.create();
+      fake.throwOn['exportMnemonic'] = StateError('broken invariant');
+      final terminated = isA<WorkerTerminatedError>().having(
+        (e) => e.kind,
+        'kind',
+        WorkerTerminationKind.uncaughtDartError,
+      );
+      await expectLater(first.exportMnemonic(), throwsA(terminated));
+      expect(core.state, SessionState.failed);
+      await expectLater(first.close(), throwsA(terminated));
+      await core.shutdown();
+      expect(core.state, SessionState.closed);
+      // Never closed before the session ended: the executor died first, so
+      // this release was not confirmed either.
+      await expectLater(second.close(), throwsA(terminated));
+      expect(second.isClosed, isTrue);
+      await expectLater(second.close(), throwsA(terminated));
     });
 
     test('closing rejects new operations with SessionStateError at once; '
@@ -228,6 +258,81 @@ void main() {
       await core.shutdown();
       expect(await export, startsWith('fake mnemonic'));
     });
+
+    test('close() issued while closing completes with WorkerTerminatedError '
+        'when shutdown had to force the executor down', () async {
+      final (core, fake) = await _start(
+        timeouts: const OperationTimeouts(
+          shutdownGrace: Duration(milliseconds: 50),
+        ),
+      );
+      final first = await core.wallets.create();
+      final second = await core.wallets.create();
+      // A release that outlasts the grace period.
+      fake.blockFor['close'] = const Duration(milliseconds: 120);
+      final firstClose = first.close();
+      final shutdown = core.shutdown();
+      expect(core.state, SessionState.closing);
+      // The first close was acknowledged before the kill; the second never
+      // was, and must not report a release nobody confirmed.
+      final secondClose = expectLater(
+        second.close(),
+        throwsA(
+          isA<WorkerTerminatedError>().having(
+            (e) => e.kind,
+            'kind',
+            WorkerTerminationKind.isolateExited,
+          ),
+        ),
+      );
+      await shutdown;
+      expect(core.forcedTermination, isTrue);
+      expect(core.state, SessionState.closed);
+      await firstClose;
+      await secondClose;
+      // After closed, the same answer.
+      await expectLater(second.close(), throwsA(isA<WorkerTerminatedError>()));
+    });
+  });
+
+  group('secret buffers at the transport (A-7)', () {
+    test("send overwrites the sender's entropy copy at once; the executor "
+        'works on its own copy', () async {
+      final fake = FakeHandler();
+      final transport = InProcessTransport(
+        fake,
+        onReply: (_) {},
+        onTerminated: (_) {},
+      );
+      transport.send(Init(1, queueLimit: 4));
+      final request = ImportWallet.entropy(
+        2,
+        Uint8List.fromList(List<int>.filled(16, 7)),
+      );
+      transport.send(request);
+      expect(request.entropy, everyElement(0));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(fake.entropySeen.single, List<int>.filled(16, 7));
+      final delivered = fake.handled.whereType<ImportWallet>().single;
+      expect(delivered, isNot(same(request)));
+      expect(delivered.entropy, everyElement(0), reason: 'executor side');
+      transport.close();
+    });
+
+    test('a request sent after the transport closed is overwritten, not '
+        'kept', () {
+      final transport = InProcessTransport(
+        FakeHandler(),
+        onReply: (_) {},
+        onTerminated: (_) {},
+      )..close();
+      final request = ImportWallet.entropy(
+        1,
+        Uint8List.fromList(List<int>.filled(16, 7)),
+      );
+      transport.send(request);
+      expect(request.entropy, everyElement(0));
+    });
   });
 
   group('the queue bound (§3.4)', () {
@@ -288,9 +393,11 @@ void main() {
   });
 
   group('deadlines (§3.5)', () {
-    test('a deadline runs from submission; a late result is discarded and '
-        'the work was not aborted', () async {
-      final (core, fake) = await _start(
+    test('a deadline runs from submission; the work was not aborted, and its '
+        'late result is dropped by the executor, never posted', () async {
+      final fake = FakeHandler();
+      final (core, posted) = await startRecordingSession(
+        fake,
         timeouts: const OperationTimeouts(
           derivation: Duration(milliseconds: 40),
         ),
@@ -311,8 +418,42 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(fake.operations.where((o) => o == 'account'), hasLength(1));
+      // DECISION-12 §3.9: dropped without being posted, not posted and
+      // ignored. A key-less Failed closes the session's accounting instead.
+      expect(posted.whereType<AddressDerived>(), isEmpty);
+      final accountId = fake.handled.whereType<DeriveAddress>().single.id;
+      expect(
+        posted.where((r) => r.id == accountId).single,
+        isA<Failed>().having(
+          (r) => r.error,
+          'error',
+          isA<OperationTimeoutError>(),
+        ),
+      );
+      expect(fake.discarded, ['AddressDerived']);
       expect(core.outstandingOperations, 0);
       expect(core.state, SessionState.ready);
+      await core.shutdown();
+    });
+
+    test('a mnemonic exported past its deadline never crosses', () async {
+      final fake = FakeHandler();
+      final (core, posted) = await startRecordingSession(
+        fake,
+        timeouts: const OperationTimeouts(
+          walletOperation: Duration(milliseconds: 40),
+        ),
+      );
+      final wallet = await core.wallets.create();
+      fake.blockFor['exportMnemonic'] = const Duration(milliseconds: 100);
+      await expectLater(
+        wallet.exportMnemonic(),
+        throwsA(isA<OperationTimeoutError>()),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(posted.whereType<MnemonicExported>(), isEmpty);
+      expect(fake.discarded, ['MnemonicExported']);
+      expect(core.outstandingOperations, 0);
       await core.shutdown();
     });
 
@@ -334,9 +475,11 @@ void main() {
       await core.shutdown();
     });
 
-    test('a wallet created after its caller timed out is released, not '
-        'left until shutdown', () async {
-      final (core, fake) = await _start(
+    test('a wallet created after its caller timed out is released by the '
+        'executor, not posted and not left until shutdown', () async {
+      final fake = FakeHandler();
+      final (core, posted) = await startRecordingSession(
+        fake,
         timeouts: const OperationTimeouts(
           walletOperation: Duration(milliseconds: 30),
         ),
@@ -347,8 +490,31 @@ void main() {
         throwsA(isA<OperationTimeoutError>()),
       );
       await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(fake.disposedRefs, [1]);
+      expect(posted.whereType<WalletCreated>(), isEmpty);
+      expect(fake.discarded, ['WalletCreated']);
       expect(fake.liveRefCount, 0);
+      await core.shutdown();
+    });
+
+    test('a timeout too long to add to the clock means never, not already '
+        'passed: the operation runs and succeeds', () async {
+      const never = Duration(microseconds: 0x7FFFFFFFFFFFFFFF);
+      final fake = FakeHandler();
+      final (core, posted) = await startRecordingSession(
+        fake,
+        timeouts: const OperationTimeouts(
+          walletOperation: never,
+          derivation: never,
+        ),
+      );
+      final wallet = await core.wallets.create();
+      final account = await wallet.account(Coin.ethereum);
+      expect(account.coin, Coin.ethereum);
+      expect(fake.operations, containsAllInOrder(['createWallet', 'account']));
+      expect(posted.whereType<Failed>(), isEmpty);
+      expect(fake.discarded, isEmpty);
+      expect(core.outstandingOperations, 0);
+      await wallet.close();
       await core.shutdown();
     });
 
@@ -453,9 +619,22 @@ void main() {
       expect(resolveWalletRef(a, wallet.ref), 1);
       expect(
         () => resolveWalletRef(b, wallet.ref),
-        throwsA(isA<KeyResolutionError>()),
+        throwsA(
+          isA<KeyResolutionError>().having(
+            (e) => e.reason,
+            'reason',
+            KeyResolutionReason.foreignRef,
+          ),
+        ),
       );
       expect(wallet.ref.toString(), 'WalletRef(#1)');
+      await wallet.close();
+      expect(
+        () => resolveWalletRef(a, wallet.ref),
+        throwsA(
+          isA<ClosedError>().having((e) => e.resourceType, 'type', 'Wallet'),
+        ),
+      );
       await a.shutdown();
       await b.shutdown();
     });

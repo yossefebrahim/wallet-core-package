@@ -27,8 +27,15 @@
 ///    memory contract this SDK upholds elsewhere.**
 ///
 /// At this version the re-export covers the foreign-function bindings, the
-/// bindings' memory wrappers, and the coin registry; the protobuf
-/// serialization classes join it with the signing path.
+/// bindings' memory wrappers, and the coin registry. The protobuf
+/// serialization classes are **not** re-exported: the signing path exists,
+/// but its family code uses them internally, and the raw-protobuf signing
+/// entry point (`RawSigningInput`, `docs/architecture/signing.md` §6) that
+/// would bring them here is not written yet.
+///
+/// [HDWallet] reports a null or out-of-range value from upstream as
+/// [NativeResultError], which is exported here for that reason; the session
+/// converts the same failure into a typed `WalletCoreException`.
 ///
 /// Two names of the bindings barrel are hidden to keep this library usable
 /// next to the default import: `packageName`, and the bindings' own
@@ -42,3 +49,4 @@ export 'package:wallet_core_flutter_bindings/wallet_core_flutter_bindings.dart'
     hide DisposedError, packageName;
 
 export 'src/engine/hd_wallet.dart' show HDWallet;
+export 'src/errors/boundary.dart' show NativeResultError;

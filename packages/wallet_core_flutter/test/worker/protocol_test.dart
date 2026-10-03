@@ -8,6 +8,7 @@ import 'package:wallet_core_flutter/src/worker/protocol.dart';
 import 'package:wallet_core_flutter/src/worker/worker_loop.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart';
 
+import '../support/fake_handler.dart';
 import '../support/fixtures.dart';
 
 const String _mnemonic =
@@ -77,17 +78,29 @@ void main() {
       expect(reply.toString(), contains('InvalidInputError'));
     });
 
-    test('a WorkerFault names the error type and nothing it carried', () {
-      final fault = WorkerFault(
-        FormatException('bad', _mnemonic).runtimeType.toString(),
-      );
-      _expectNoSecret(fault, [_mnemonic]);
-      final error = WorkerTerminatedError(
-        WorkerTerminationKind.uncaughtDartError,
-        cause: fault,
+    test('an executor dying of an error that quotes a mnemonic reports its '
+        'type and nothing it carried', () async {
+      final handler = FakeHandler()
+        ..throwOn['exportMnemonic'] = FormatException('bad', _mnemonic);
+      final faults = <WorkerTerminatedError>[];
+      final loop = WorkerLoop(handler, post: (_) {}, onFault: faults.add)
+        ..receive(Init(1, queueLimit: 4))
+        ..receive(const CreateWallet(2, strength: 128))
+        ..receive(const ExportMnemonic(3, walletRef: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(loop.isFinished, isTrue);
+      final error = faults.single;
+      expect(
+        error.cause,
+        isA<WorkerFault>().having(
+          (f) => f.errorType,
+          'type',
+          'FormatException',
+        ),
       );
       _expectNoSecret(error, [_mnemonic]);
-      expect(fault.toString(), contains('FormatException'));
+      _expectNoSecret(error.cause!, [_mnemonic]);
+      expectRedacted(error, [_mnemonic]);
     });
   });
 
@@ -176,6 +189,33 @@ void main() {
         reply.toString(),
         contains('0x9858EfFD232B4033E47d90003D41EC34EcaEda94'),
       );
+    });
+  });
+
+  group('OperationDeadline', () {
+    test('saturates: a timeout too long to add to the clock never passes', () {
+      const never = Duration(microseconds: 0x7FFFFFFFFFFFFFFF);
+      final deadline = OperationDeadline.after(never);
+      expect(deadline.atMicros, OperationDeadline.neverMicros);
+      expect(deadline.hasPassed, isFalse);
+      expect(deadline.timeout, never);
+      // Just past the edge, too: the sum would wrap negative.
+      final edge = OperationDeadline.after(
+        Duration(microseconds: OperationDeadline.neverMicros - 1),
+      );
+      expect(edge.atMicros, OperationDeadline.neverMicros);
+      expect(edge.hasPassed, isFalse);
+    });
+
+    test('an ordinary timeout is measured from now', () {
+      final before = monotonicMicros();
+      final deadline = OperationDeadline.after(const Duration(seconds: 5));
+      final after = monotonicMicros();
+      expect(
+        deadline.atMicros,
+        inInclusiveRange(before + 5000000, after + 5000000),
+      );
+      expect(deadline.hasPassed, isFalse);
     });
   });
 }

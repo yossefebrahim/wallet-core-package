@@ -32,6 +32,13 @@ final class FakeHandler implements RequestHandler {
   /// How many times [releaseAll] ran.
   int releaseAllCalls = 0;
 
+  /// Every reply the loop dropped past its deadline, by type name.
+  final List<String> discarded = <String>[];
+
+  /// A copy of each `ImportWallet.entropy` as it was when handled — before
+  /// the executor overwrote its copy.
+  final List<Uint8List> entropySeen = <Uint8List>[];
+
   /// The operation names of [handled], in order.
   List<String> get operations => [for (final r in handled) r.operation];
 
@@ -47,6 +54,9 @@ final class FakeHandler implements RequestHandler {
   @override
   WorkerReply handle(WorkerRequest request) {
     handled.add(request);
+    if (request case ImportWallet(:final entropy?)) {
+      entropySeen.add(Uint8List.fromList(entropy));
+    }
     final block = blockFor[request.operation];
     if (block != null) sleep(block);
     final failure = throwOn[request.operation];
@@ -86,10 +96,27 @@ final class FakeHandler implements RequestHandler {
         id,
         ['${prefix}one', '${prefix}two'],
       ),
+      Sign(:final id, :final request) => Signed(
+        id,
+        EvmSignResult(
+          coin: request.coin,
+          encoded: Uint8List.fromList([0x02, id]),
+          v: Uint8List(1),
+          r: Uint8List(32),
+          s: Uint8List(32),
+          usedKeys: const <KeyLocator>{},
+        ),
+      ),
       DisposeRef(:final id, :final walletRef) => _dispose(id, walletRef),
       Cancel(:final id, :final target) => NotCancellable(id, target: target),
       Shutdown(:final id) => _shutdown(id),
     };
+  }
+
+  @override
+  void discard(WorkerReply reply) {
+    discarded.add(reply.runtimeType.toString());
+    if (reply is WalletCreated) _live.remove(reply.walletRef);
   }
 
   WorkerReply _create(int id) {

@@ -55,8 +55,12 @@ abstract interface class WalletFacade {
 /// released: its finalizer asks the owner to free it, while the session is
 /// ready (PRD §11.2 item 8). Closing explicitly is the primary path.
 abstract interface class Wallet {
-  /// Opaque, session-scoped identity of this wallet. It is not a capability
-  /// to key material and carries no key.
+  /// Opaque, session-scoped identity of this wallet. Used to name keys when
+  /// signing (`KeyLocator.hdPath(wallet.ref, coin, path)`). It is not a
+  /// capability to key material and carries no key.
+  ///
+  /// Readable after [close]; a locator naming a closed wallet fails with
+  /// [ClosedError] when it is used to sign.
   WalletRef get ref;
 
   /// Whether [close] has been called — `true` from the moment it is called,
@@ -82,9 +86,11 @@ abstract interface class Wallet {
   /// string lives until it is collected and cannot be erased. Display it once
   /// and drop the reference.
   ///
-  /// This is the **only** payload that carries key material *back* across
-  /// the isolate boundary (DECISION-12 §3.2). A wallet made by
-  /// [WalletFacade.create] surrenders its mnemonic here too, and nowhere else.
+  /// This is one of the two replies that carry key material *back* across
+  /// the isolate boundary (the other is `MnemonicWordsSuggested`), and the
+  /// only one that carries a whole mnemonic (DECISION-12 §3.2). A wallet
+  /// made by [WalletFacade.create] surrenders its mnemonic here too, and
+  /// nowhere else.
   Future<String> exportMnemonic();
 
   /// Releases this wallet in the owning isolate and awaits the
@@ -98,8 +104,13 @@ abstract interface class Wallet {
   /// **This wait has no deadline**, and there is no timeout setting for it
   /// (DECISION-12 §3.5). It completes when the acknowledgement arrives, or
   /// with [WorkerTerminatedError] if the session's isolate ends first — never
-  /// with [OperationTimeoutError]. After `WalletCore.shutdown()` it completes
-  /// at once: shutdown released everything.
+  /// with [OperationTimeoutError]. Called while the session shuts down, it
+  /// completes with shutdown's acknowledgement; after
+  /// `WalletCore.shutdown()` it completes at once: shutdown released
+  /// everything. In both cases, when shutdown had to force the owning isolate
+  /// down — nothing acknowledged the release — it completes with
+  /// [WorkerTerminatedError] instead; so does it, with the session's
+  /// termination error, after a session that failed before it was shut down.
   Future<void> close();
 }
 
@@ -114,9 +125,9 @@ final class WalletRef {
   final WalletCoreSession _session;
   final int _id;
 
-  /// The proxy this names. Never read; held so that the proxy, and with it
-  /// the handle, lives at least as long as anything that names it.
-  // ignore: unused_field
+  /// The proxy this names: held so that the proxy, and with it the handle,
+  /// lives at least as long as anything that names it, and read only to tell
+  /// whether it was closed.
   late final Wallet _wallet;
 
   /// The reference's number within its session. Not a secret, not a key.
@@ -125,20 +136,34 @@ final class WalletRef {
 }
 
 /// The executor-issued id [ref] carries, once [ref] has been checked to
-/// belong to [session]. **Internal.**
+/// belong to [session] and to name a wallet that is still open.
+/// **Internal.**
 ///
-/// Throws [KeyResolutionError] for a reference from another session
-/// (DECISION-12 §3.3, DECISION-13 §Q5): there is no way to hand a reference
-/// from one session to another. T1.12's signer calls this for every wallet a
-/// `KeyLocator` names.
+/// Throws [KeyResolutionError] with [KeyResolutionReason.foreignRef] for a
+/// reference from another session (DECISION-12 §3.3, DECISION-13 §Q5): there
+/// is no way to hand a reference from one session to another. Throws
+/// [ClosedError] (`'Wallet'`) once the wallet's `close()` has been called —
+/// the same error every member of the closed proxy throws, and the one the
+/// executor answers for a released reference.
+///
+/// The signer calls this for every wallet a `KeyLocator` names, as a check
+/// before submission. The executor repeats both checks itself
+/// ([walletRefSpec] carries what it needs) and does not rely on this one.
 int resolveWalletRef(WalletCoreSession session, WalletRef ref) {
   if (!identical(ref._session, session)) {
     throw const KeyResolutionError(
       'the wallet reference belongs to another session',
+      reason: KeyResolutionReason.foreignRef,
     );
   }
+  if (ref._wallet.isClosed) throw const ClosedError('Wallet');
   return ref._id;
 }
+
+/// The token of the session that issued [ref], and its number there — the
+/// plain values a wallet reference crosses to the executor as. **Internal.**
+({int sessionToken, int walletRef}) walletRefSpec(WalletRef ref) =>
+    (sessionToken: ref._session.sessionToken, walletRef: ref._id);
 
 /// The [WalletFacade] of [WalletCoreSession]. **Internal.**
 final class WalletFacadeImpl implements WalletFacade {

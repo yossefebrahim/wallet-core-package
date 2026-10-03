@@ -33,9 +33,17 @@ typedef TransportFactory =
 /// `uncaughtDartError` and `isolateExited`. Neither the session nor the
 /// protocol changes.
 abstract interface class WorkerTransport {
-  /// Posts [request]. Never handles it synchronously, never throws, and
-  /// does nothing once the transport is closed.
-  void send(WorkerRequest request);
+  /// Posts [request], and the [deadline] of an operation with it, so that the
+  /// executor can drop a result that would arrive too late (DECISION-12
+  /// §3.9). Never handles it synchronously, never throws.
+  ///
+  /// **The executor receives its own copy** of any secret buffer [request]
+  /// owns ([executorCopy]) — an isolate boundary copies, and the in-process
+  /// transport copies to match — and **the sender's copy is overwritten
+  /// before this returns** ([overwriteOwnedSecrets]), on the delivered path
+  /// and on the closed path alike. The executor overwrites its own copy once
+  /// it has handled or dropped the request.
+  void send(WorkerRequest request, {OperationDeadline? deadline});
 
   /// Forces the executor down without waiting for it: the expiry of the
   /// shutdown grace period (DECISION-12 §3.8 step 4). Idempotent.
@@ -57,9 +65,9 @@ abstract interface class WorkerTransport {
 ///
 /// What it cannot emulate: native work blocks the calling isolate while it
 /// runs, so no timer fires during it. Deadlines are therefore also checked
-/// when the reply arrives (see the session), which is the one place M0 and
-/// T2.1 differ in timing rather than in behaviour. And [kill] can still
-/// release what the executor owned, which a killed isolate cannot.
+/// by the executor itself, before an operation starts and after it ends, and
+/// by the session when the reply arrives. And [kill] can still release what
+/// the executor owned, which a killed isolate cannot.
 final class InProcessTransport implements WorkerTransport {
   /// Creates a transport whose executor runs [handler].
   InProcessTransport(
@@ -87,11 +95,20 @@ final class InProcessTransport implements WorkerTransport {
   bool _closed = false;
 
   @override
-  void send(WorkerRequest request) {
-    if (_closed) return;
+  void send(WorkerRequest request, {OperationDeadline? deadline}) {
+    if (_closed) {
+      overwriteOwnedSecrets(request);
+      return;
+    }
+    final delivered = executorCopy(request);
+    // The sender's copy, now that the executor has its own.
+    overwriteOwnedSecrets(request);
     scheduleMicrotask(() {
-      if (_closed) return;
-      _loop.receive(request);
+      if (_closed) {
+        overwriteOwnedSecrets(delivered);
+        return;
+      }
+      _loop.receive(delivered, deadline: deadline);
     });
   }
 

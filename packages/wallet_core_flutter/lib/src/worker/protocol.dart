@@ -2,18 +2,25 @@
 /// (`docs/architecture/lifecycle.md` §6, DECISION-12 §3.2). **Internal**:
 /// never exported from either public library.
 ///
-/// The M0 subset: everything a session needs except signing. `Sign`,
-/// `SignMessage`, `Plan`, `ImportKey` and their replies (`Signed`,
-/// `MessageSigned`, `Planned`, `KeyImported`) join these families with the
-/// signing path (T1.12, T2.0, T3.4); both families are `sealed`, so adding one
-/// is a compile error at every `switch` that must handle it — the handler and
-/// the session — which is the point.
+/// The M0 subset, with transaction signing ([Sign], [Signed]). `SignMessage`,
+/// `Plan`, `ImportKey` and their replies (`MessageSigned`, `Planned`,
+/// `KeyImported`) join these families later (T2.7, T2.5, T3.4); both families
+/// are `sealed`, so adding one is a compile error at every `switch` that must
+/// handle it — the handler and the session — which is the point.
 ///
 /// Every type here is a plain immutable value: no native pointer, no handle,
 /// nothing that cannot cross an isolate boundary by copy. The values they hold
-/// — `int`s, `String`s, [Coin], [Network], [AddressStyle], [Account], typed
+/// — `int`s, `String`s, [Coin], [Network], [AddressStyle], [Account],
+/// [TransactionRequest]s, [SignResult]s, [LocatorSpec]s, typed
 /// [WalletCoreException]s — are themselves plain values that compare by
 /// content, so a copy that crossed an isolate equals the original.
+///
+/// That is why [Sign] carries [LocatorSpec]s and not the caller's
+/// [KeyLocator]s: a locator's `WalletRef` holds its session and its `Wallet`
+/// proxy, which cannot cross an isolate, so the session sends the names a
+/// locator carries — the issuing session's token, the wallet reference's
+/// number, the coin, the path, the role — exactly as [DeriveAddress] carries a
+/// wallet reference's number rather than the `WalletRef`.
 ///
 /// **Request ids** are allocated by the session, start at 1, increase by one
 /// per request, and are never reused within a session. Every request receives
@@ -21,19 +28,19 @@
 /// names: a [DisposeRef] posted by a proxy's finalizer and a [Cancel] posted
 /// on a deadline are answered, but nobody awaits the answer.
 ///
-/// **Secret-bearing payloads.** DECISION-12 §3.2 closes the set at four:
-/// [CreateWallet] (a passphrase), [ImportWallet] (a mnemonic or entropy, and a
-/// passphrase), `ImportKey` (not in M0), and the one reply [MnemonicExported].
-/// This file adds three more requests that carry *fragments of* a mnemonic —
-/// [ValidateMnemonic] (a whole candidate mnemonic), [ValidateMnemonicWord]
-/// (one word), [SuggestMnemonicWords] (a word prefix) — and the reply
-/// [MnemonicWordsSuggested], whose words share the caller's prefix. They are
-/// handled exactly like the enumerated four, and DECISION-12 §8 trigger 6 says
-/// such an addition reopens that record; the task report raises it. Every
-/// secret-bearing type's `toString()` names the fields it carries and never
-/// their values, and no type here puts a secret into an error.
+/// **Secret-bearing payloads.** DECISION-12 §3.2 (amended 2026-10-03) closes
+/// the set at eight. Requests: [CreateWallet] (a passphrase), [ImportWallet]
+/// (a mnemonic or entropy, and a passphrase), `ImportKey` (planned, T3.4; not
+/// declared here), [ValidateMnemonic] (a whole candidate mnemonic),
+/// [ValidateMnemonicWord] (one word), [SuggestMnemonicWords] (a word prefix).
+/// Replies: [MnemonicExported] (the mnemonic) and [MnemonicWordsSuggested]
+/// (words sharing the caller's prefix). A ninth reopens that record
+/// (DECISION-12 §8 trigger 6). Every secret-bearing type's `toString()` names
+/// the fields it carries and never their values, and no type here puts a
+/// secret into an error.
 library;
 
+import 'dart:developer' show Timeline;
 import 'dart:typed_data';
 
 import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
@@ -43,9 +50,62 @@ import '../account/account.dart';
 import '../coin/coin.dart';
 import '../coin/network.dart';
 import '../errors/errors.dart';
+import '../requests/requests.dart';
+import '../signing/key_locator.dart';
+import '../signing/sign_result.dart';
 
 /// What `toString()` prints in place of a secret.
 const String redacted = '<redacted>';
+
+/// Microseconds on the process's monotonic clock — the clock `Timeline` uses,
+/// which every isolate of the process reads alike, so a deadline taken in the
+/// session's isolate means the same instant in the executor's.
+int monotonicMicros() => Timeline.now;
+
+/// When an operation's deadline passes (DECISION-12 §3.5): its [timeout], and
+/// the instant [atMicros] on [monotonicMicros]'s clock, measured from
+/// submission.
+///
+/// Sent beside each operation (`WorkerTransport.send`) so that the executor
+/// can drop a result nobody will receive *before* posting it — DECISION-12
+/// §3.9: "dropped without being posted, not posted and ignored" — instead of
+/// relying on the session to throw it away after it crossed. A plain value.
+final class OperationDeadline {
+  /// A deadline [atMicros] on the shared clock, for an operation given
+  /// [timeout].
+  const OperationDeadline(this.timeout, this.atMicros);
+
+  /// A deadline [timeout] from now.
+  ///
+  /// **Saturating**: a [timeout] too long to add to the clock without
+  /// overflowing 64 bits — `Duration(microseconds: 0x7FFFFFFFFFFFFFFF)` given
+  /// as "never time out" — gives [neverMicros], a deadline that never passes,
+  /// rather than a wrapped negative instant that has always passed.
+  factory OperationDeadline.after(Duration timeout) {
+    final now = monotonicMicros();
+    final micros = timeout.inMicroseconds;
+    return OperationDeadline(
+      timeout,
+      micros > neverMicros - now ? neverMicros : now + micros,
+    );
+  }
+
+  /// The largest instant the clock can name: a deadline at it never passes.
+  static const int neverMicros = 0x7FFFFFFFFFFFFFFF;
+
+  /// The operation's timeout, as [OperationTimeoutError.timeout] reports it.
+  final Duration timeout;
+
+  /// The instant it expires, in [monotonicMicros]; at most [neverMicros].
+  final int atMicros;
+
+  /// Whether the deadline has passed.
+  bool get hasPassed => monotonicMicros() > atMicros;
+
+  @override
+  String toString() =>
+      'OperationDeadline(${timeout.inMilliseconds} ms, at $atMicros µs)';
+}
 
 // --- requests ---------------------------------------------------------------
 
@@ -82,6 +142,7 @@ final class Init extends WorkerRequest {
     this.expectedIdentity = ManifestIdentity.embedded,
     Uint8List? manifestBytes,
     this.hostLibraryPath,
+    this.sessionToken = 0,
   }) : manifestBytes = manifestBytes == null
            ? null
            : Uint8List.fromList(manifestBytes).asUnmodifiableView();
@@ -89,6 +150,12 @@ final class Init extends WorkerRequest {
   /// The session's operation bound, from which the executor sizes its
   /// reserved control capacity (DECISION-12 §3.4 rule 3).
   final int queueLimit;
+
+  /// The token of the session this executor serves, which every
+  /// [HdLocatorSpec] it accepts must carry (`KeyResolutionReason.foreignRef`
+  /// otherwise). Sessions number themselves from 1; the default 0 names no
+  /// session, so an executor initialized without one accepts no locator.
+  final int sessionToken;
 
   /// The manifest snapshot comparisons 3 and 4 check the loaded library's
   /// identity against. [ManifestIdentity.embedded] unless a test injects one.
@@ -110,7 +177,7 @@ final class Init extends WorkerRequest {
   String toString() =>
       'Init(#$id, queueLimit: $queueLimit, $expectedIdentity, '
       'manifestBytes: ${manifestBytes?.length}, '
-      'hostLibraryPath: $hostLibraryPath)';
+      'hostLibraryPath: $hostLibraryPath, session: $sessionToken)';
 }
 
 /// Creates a wallet with a new random mnemonic. Reply: [WalletCreated], which
@@ -173,7 +240,8 @@ final class ImportWallet extends WorkerRequest {
 }
 
 /// Asks for a wallet's mnemonic. Key-less itself; its reply,
-/// [MnemonicExported], is the one reply that carries key material.
+/// [MnemonicExported], is one of the two replies that carry key material,
+/// with [MnemonicWordsSuggested].
 final class ExportMnemonic extends WorkerRequest {
   /// Creates the request for the wallet [walletRef].
   const ExportMnemonic(super.id, {required this.walletRef});
@@ -309,6 +377,135 @@ final class SuggestMnemonicWords extends WorkerRequest {
   String toString() => 'SuggestMnemonicWords(#$id, prefix: $redacted)';
 }
 
+/// Signs a transaction with the keys [keys] name. Reply: [Signed].
+///
+/// **Key-less**, like the request it carries (AGENTS.md rule 6): [request]
+/// says what to sign and [keys] says with what, by name. The key itself
+/// exists only inside the executor, for the duration of the one operation
+/// that derives it, and never crosses the protocol in either direction.
+///
+/// An operation like any other: counted against the queue bound and given the
+/// `signing` deadline (DECISION-12 §3.4, §3.5).
+final class Sign extends WorkerRequest {
+  /// Creates the request; [keys] is copied into an unmodifiable set.
+  Sign(super.id, {required this.request, required Set<LocatorSpec> keys})
+    : keys = Set<LocatorSpec>.unmodifiable(keys);
+
+  /// What to sign. Validated when it was constructed.
+  final TransactionRequest request;
+
+  /// The names of the keys to sign with. The executor resolves them itself
+  /// and does not rely on any check the session made first.
+  final Set<LocatorSpec> keys;
+
+  @override
+  String get operation => 'sign';
+
+  /// The request and every locator's names. Nothing here is a secret.
+  @override
+  String toString() => 'Sign(#$id, $request, keys: ${keys.join(', ')})';
+}
+
+/// How a [KeyLocator] crosses to the executor: the names it carries, as plain
+/// values, with nothing that holds a session or a proxy.
+///
+/// Equal by content, so a duplicate the session did not fold is folded by the
+/// executor.
+sealed class LocatorSpec {
+  const LocatorSpec({this.role});
+
+  /// The slot the caller assigned, or `null` for the family's only slot.
+  final KeyRole? role;
+}
+
+/// An [HdKeyLocator]: a wallet reference's number, the token of the session
+/// that issued it, the coin, and the path.
+final class HdLocatorSpec extends LocatorSpec {
+  /// Creates the spec.
+  const HdLocatorSpec({
+    required this.sessionToken,
+    required this.walletRef,
+    required this.coin,
+    required this.derivationPath,
+    super.role,
+  });
+
+  /// The token of the session whose `WalletRef` this came from.
+  final int sessionToken;
+
+  /// The executor-issued id of the wallet, within that session.
+  final int walletRef;
+
+  /// The coin the key is derived for.
+  final Coin coin;
+
+  /// The full BIP-32 path. Not a secret.
+  final String derivationPath;
+
+  @override
+  bool operator ==(Object other) =>
+      other is HdLocatorSpec &&
+      other.sessionToken == sessionToken &&
+      other.walletRef == walletRef &&
+      other.coin == coin &&
+      other.derivationPath == derivationPath &&
+      other.role == role;
+
+  @override
+  int get hashCode =>
+      Object.hash(sessionToken, walletRef, coin, derivationPath, role);
+
+  @override
+  String toString() =>
+      'hdPath(session: $sessionToken, wallet: $walletRef, ${coin.id}, '
+      '$derivationPath${role == null ? '' : ', role: ${role!.id}'})';
+}
+
+/// An [ImportedKeyLocator]: the imported key's reference number.
+final class ImportedLocatorSpec extends LocatorSpec {
+  /// Creates the spec.
+  const ImportedLocatorSpec({required this.keyRef, super.role});
+
+  /// The session-scoped number of the imported key's `KeyRef`.
+  final int keyRef;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ImportedLocatorSpec &&
+      other.keyRef == keyRef &&
+      other.role == role;
+
+  @override
+  int get hashCode => Object.hash(keyRef, role);
+
+  @override
+  String toString() =>
+      'imported(key: $keyRef${role == null ? '' : ', role: ${role!.id}'})';
+}
+
+/// An [ExternalKeyLocator]: the device id. The public key is not carried —
+/// no executor of this version signs with an external device.
+final class ExternalLocatorSpec extends LocatorSpec {
+  /// Creates the spec.
+  const ExternalLocatorSpec({required this.deviceId, super.role});
+
+  /// The device's identifier.
+  final String deviceId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ExternalLocatorSpec &&
+      other.deviceId == deviceId &&
+      other.role == role;
+
+  @override
+  int get hashCode => Object.hash(deviceId, role);
+
+  @override
+  String toString() =>
+      'external($deviceId${role == null ? '' : ', role: ${role!.id}'})';
+}
+
 /// Releases one wallet. Reply: [Disposed], for an unknown, already-disposed,
 /// or shutdown-freed reference too (DECISION-12 §3.7).
 ///
@@ -385,6 +582,20 @@ void overwriteOwnedSecrets(WorkerRequest request) {
   }
 }
 
+/// The executor's own copy of [request], as an isolate boundary would make
+/// it: a request that owns a secret buffer ([ImportWallet]'s entropy) is
+/// copied with a buffer of its own; every other request is shared, since it
+/// owns nothing that is overwritten.
+///
+/// With it the in-process transport behaves as an isolate transport does:
+/// the sender overwrites its copy as soon as the request is handed over, and
+/// the executor overwrites its copy once the request is handled.
+WorkerRequest executorCopy(WorkerRequest request) => switch (request) {
+  ImportWallet(:final id, :final entropy?, :final passphrase) =>
+    ImportWallet.entropy(id, entropy, passphrase: passphrase),
+  _ => request,
+};
+
 // --- replies ----------------------------------------------------------------
 
 /// A message from the executor to the session: the one reply to the request
@@ -426,7 +637,8 @@ final class WalletCreated extends WorkerReply {
 
 /// The wallet's mnemonic.
 ///
-/// **The one reply that carries key material** (DECISION-12 §3.2). Produced
+/// **One of the two replies that carry key material**, with
+/// [MnemonicWordsSuggested] (DECISION-12 §3.2). Produced
 /// only for an explicit [ExportMnemonic], never logged, never put into an
 /// error, never kept by the executor after it is posted.
 final class MnemonicExported extends WorkerReply {
@@ -503,6 +715,28 @@ final class MnemonicWordsSuggested extends WorkerReply {
   @override
   String toString() =>
       'MnemonicWordsSuggested(#$id, ${words.length} words: $redacted)';
+}
+
+/// Upstream's signed transaction, parsed — and every key the operation
+/// derived already released — before this reply was made (DECISION-12 §3.9).
+///
+/// **Not key-bearing**: a signed transaction carries signatures and public
+/// data, never the private key that produced them.
+///
+/// [result]'s `usedKeys` is **empty on the wire**: the caller's locators hold
+/// session-side objects that do not cross (see this library's doc comment),
+/// so the session puts them back. That is exact, not approximate: resolution
+/// fails with `KeyResolutionReason.unusedLocator` unless every locator fills a
+/// role, so a successful signing used every locator it was given.
+final class Signed extends WorkerReply {
+  /// Creates the reply.
+  const Signed(super.id, this.result);
+
+  /// The signed transaction.
+  final SignResult result;
+
+  @override
+  String toString() => 'Signed(#$id, $result)';
 }
 
 /// The wallet [walletRef] is released — or was never known, or was already

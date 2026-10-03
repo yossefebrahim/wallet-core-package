@@ -13,6 +13,8 @@ import '../address/address_facade.dart';
 import '../errors/errors.dart';
 import '../lifecycle/session_state.dart';
 import '../mnemonic/mnemonic_facade.dart';
+import '../signing/local_signer.dart';
+import '../signing/signer.dart';
 import '../wallet/wallet.dart';
 import '../worker/handler.dart';
 import '../worker/protocol.dart';
@@ -127,6 +129,14 @@ final class WalletCoreSession implements WalletCore {
   /// The deadlines.
   final OperationTimeouts timeouts;
 
+  static int _nextSessionToken = 1;
+
+  /// This session's number among the sessions of this isolate: positive,
+  /// never reused. Every wallet reference it issues crosses to the executor
+  /// with it, and the executor, told it by [Init], refuses a locator that
+  /// carries another (`KeyResolutionReason.foreignRef`). Not a secret.
+  final int sessionToken = _nextSessionToken++;
+
   late final WorkerTransport _transport;
 
   /// The transport, for the internal test seam.
@@ -157,6 +167,9 @@ final class WalletCoreSession implements WalletCore {
 
   @override
   late final MnemonicFacade mnemonics = MnemonicFacadeImpl(this);
+
+  @override
+  late final LocalSigner signer = SessionSigner(this);
 
   @override
   SessionState get state => _state;
@@ -191,6 +204,7 @@ final class WalletCoreSession implements WalletCore {
           expectedIdentity: expectedIdentity,
           manifestBytes: manifestBytes,
           hostLibraryPath: hostLibraryPath,
+          sessionToken: sessionToken,
         ),
         timeout: timeouts.initialize,
         parse: (reply) => reply is InitOk ? null : throw _unexpected(reply),
@@ -351,6 +365,9 @@ final class WalletCoreSession implements WalletCore {
   }) {
     final id = request.id;
     final completer = Completer<T>();
+    // Taken before the session's own stopwatch starts, so the executor's
+    // deadline is never later than the session's.
+    final deadline = OperationDeadline.after(timeout);
     final pending = _Pending(
       operation: request.operation,
       isOperation: true,
@@ -361,7 +378,7 @@ final class WalletCoreSession implements WalletCore {
     _pending[id] = pending;
     _outstanding++;
     pending.timer = Timer(timeout, () => _expire(id));
-    _transport.send(request);
+    _transport.send(request, deadline: deadline);
     return completer.future;
   }
 
@@ -440,10 +457,12 @@ final class WalletCoreSession implements WalletCore {
     }
   }
 
-  /// A result nobody will receive. A wallet created for a caller who already
-  /// got [OperationTimeoutError] is released at once rather than left to
-  /// shutdown; anything else is simply dropped, the mnemonic of a late
-  /// [MnemonicExported] included.
+  /// A result nobody will receive. **A backstop**: the executor drops a
+  /// result whose deadline passed before posting it (`WorkerLoop`), so this
+  /// sees one only when the session's timer and the executor's clock
+  /// disagree at the edge. A wallet created for a caller who already got
+  /// [OperationTimeoutError] is released at once rather than left to
+  /// shutdown; anything else is simply dropped.
   void _discardLate(WorkerReply reply) {
     if (reply is WalletCreated && _state == SessionState.ready) {
       _post((id) => DisposeRef(id, walletRef: reply.walletRef));
@@ -465,8 +484,8 @@ final class WalletCoreSession implements WalletCore {
   /// acknowledgement — with no deadline (DECISION-12 §3.5).
   ///
   /// In `closing` the acknowledgement is shutdown's; in `closed` there is
-  /// nothing left to release; after a failure the session's termination
-  /// error is the answer.
+  /// nothing left to release; after a failure — in `failed`, or in `closed`
+  /// reached from `failed` — the session's termination error is the answer.
   Future<void> releaseWallet(int walletRef) {
     switch (_state) {
       case SessionState.ready:
@@ -475,8 +494,28 @@ final class WalletCoreSession implements WalletCore {
           parse: (reply) => reply is Disposed ? null : throw _unexpected(reply),
         );
       case SessionState.closing:
-        return _shutdown ?? Future<void>.value();
+        // Shutdown's acknowledgement is this wallet's — unless the executor
+        // was forced down, in which case nothing acknowledged its release
+        // (lifecycle.md §2: the isolate ended first).
+        final shutdown = _shutdown;
+        if (shutdown == null) return Future<void>.value();
+        return shutdown.then((_) {
+          if (_forcedTermination) {
+            throw const WorkerTerminatedError(
+              WorkerTerminationKind.isolateExited,
+            );
+          }
+        });
       case SessionState.closed:
+        // Closed after a failure (failed → closed): the executor died before
+        // shutdown, so nothing confirmed this wallet's release either.
+        final termination = _termination;
+        if (termination != null) return Future<void>.error(termination);
+        if (_forcedTermination) {
+          return Future<void>.error(
+            const WorkerTerminatedError(WorkerTerminationKind.isolateExited),
+          );
+        }
         return Future<void>.value();
       case SessionState.failed:
       case SessionState.initializing:

@@ -161,14 +161,18 @@ abstract interface class Wallet {
   /// string lives until it is collected and cannot be erased. Display it once
   /// and drop the reference.
   ///
-  /// This is the **only** payload that carries key material *back* across the
-  /// isolate boundary, and one of four that carry it in either direction: the
-  /// request names only this wallet, the reply is the mnemonic. The other three
-  /// all go outward — [WalletFacade.create] (a passphrase), [importMnemonic]
-  /// and [importEntropy] (a mnemonic or entropy, and a passphrase), and
-  /// keystore import (a blob and its password). Nothing else crosses in either
-  /// direction (DECISION-12 §3.2). A wallet made by [WalletFacade.create]
-  /// surrenders its mnemonic here too, and nowhere else.
+  /// This is one of the two replies that carry key material *back* across the
+  /// isolate boundary — the other is the word suggestions of
+  /// `MnemonicFacade.suggest` — and the only one that carries a whole
+  /// mnemonic back. It is one of eight payloads that carry key material in
+  /// either direction (DECISION-12 §3.2, amended 2026-10-03): the request
+  /// names only this wallet, the reply is the mnemonic. The other six all go
+  /// outward — [WalletFacade.create] (a passphrase), [importMnemonic] and
+  /// [importEntropy] (a mnemonic or entropy, and a passphrase), the three
+  /// mnemonic checks (a mnemonic, a word, a prefix), and keystore import (a
+  /// blob and its password; planned). Nothing else crosses in either
+  /// direction. A wallet made by [WalletFacade.create] surrenders its
+  /// mnemonic here too, and nowhere else.
   Future<String> exportMnemonic();
 
   /// Releases this wallet in the owning isolate and awaits the acknowledgement.
@@ -354,49 +358,72 @@ abstract interface class ResourceScope {
 
 ## 6. Worker protocol types — **internal to the SDK, not exported**
 
-These types cross the isolate boundary: **13 requests and 14 replies**. Every one of them is a plain immutable value with no native address and no reference to anything unsendable except the one reply port in `Init`.
+These types cross the isolate boundary: **13 requests and 14 replies** are declared today (`lib/src/worker/protocol.dart`). Every one of them is a plain immutable value with no native address and no reference to anything unsendable — not even a reply port: the port the worker answers on belongs to T2.1's isolate transport, not to `Init`. Three more requests and their replies — `ImportKey`/`KeyImported` (T3.4), `SignMessage`/`MessageSigned` (T2.7), `Plan`/`Planned` (T2.5) — are planned and **not declared**; both families are `sealed`, so each one's arrival is a compile error at every `switch` that must handle it.
 
-Four of the 27 carry key material, and they are enumerated rather than counted loosely (DECISION-12 §3.2): the requests `CreateWallet` (a passphrase), `ImportWallet` (a mnemonic or entropy, and a passphrase) and `ImportKey` (a keystore blob and its password, or raw key bytes under `advanced.dart`); and one reply, `MnemonicExported` (the wallet's mnemonic). `WalletCreated` carries a reference and nothing else — a newly created wallet's mnemonic comes back through `ExportMnemonic` like any other, so a mnemonic crosses the boundary by exactly one reply type. Every other request and reply is key-less by construction. A secret-bearing payload is never logged, never put into an error, and never retained by the worker after it has crossed; the SDK drops its own references, and cannot erase the caller's.
+**Eight payloads carry key material**, and they are enumerated rather than counted loosely (DECISION-12 §3.2, amended 2026-10-03). Seven are declared: the requests `CreateWallet` (a passphrase), `ImportWallet` (a mnemonic or entropy, and a passphrase), `ValidateMnemonic` (a whole candidate mnemonic), `ValidateMnemonicWord` (one word of a mnemonic), and `SuggestMnemonicWords` (a word prefix); and the replies `MnemonicExported` (the wallet's mnemonic) and `MnemonicWordsSuggested` (candidate words, every one sharing the caller's prefix). The eighth, `ImportKey` (a keystore blob and its password, or raw key bytes under `advanced.dart`), is planned. None of them accepts or returns a derived key. `WalletCreated` carries a reference and nothing else — a newly created wallet's mnemonic comes back through `ExportMnemonic` like any other, so a wallet's mnemonic comes back across the boundary by exactly one reply type. Every other request and reply is key-less by construction. A secret-bearing payload is never logged (its `toString()` names its fields, never their values), never put into an error, and never retained by the worker after it has crossed; the one secret buffer a request owns, `ImportWallet`'s entropy copy, is overwritten with zeros by the sender once handed over and by the executor once handled. The SDK drops its own references, and cannot erase the caller's.
 
 ```dart
 sealed class WorkerRequest {
   /// Monotonic within a session, never reused. Every reply carries the same id.
   int get id;
+
+  /// `DisposeRef`, `Cancel`, `Shutdown`: never rejected for a full queue, no deadline.
+  bool get isControl;
 }
 
-final class Init extends WorkerRequest { … }             // manifest snapshot, reply port, limits
-final class CreateWallet extends WorkerRequest { … }     // strength, passphrase — carries a secret
-final class ImportWallet extends WorkerRequest { … }     // mnemonic OR entropy, passphrase — carries a secret
-final class ImportKey extends WorkerRequest { … }        // keystore blob + password — carries a secret
-final class ExportMnemonic extends WorkerRequest { … }   // walletRef — key-less request, secret-bearing reply
-final class DeriveAddress extends WorkerRequest { … }    // walletRef, coin, network, style, path
-final class ValidateAddress extends WorkerRequest { … }  // value, coin, network
-final class Sign extends WorkerRequest { … }             // request value, Set<KeyLocator>
-final class SignMessage extends WorkerRequest { … }      // message request value, Set<KeyLocator>
-final class Plan extends WorkerRequest { … }             // UTXO request value, no keys
-final class DisposeRef extends WorkerRequest { … }       // ref — control message, exempt from the queue bound
-final class Cancel extends WorkerRequest { … }           // target request id — control message
-final class Shutdown extends WorkerRequest { … }         // grace period — control message
+final class Init extends WorkerRequest { … }                 // queue bound, session token, manifest identity — no timeouts, no port
+final class CreateWallet extends WorkerRequest { … }         // strength, passphrase — carries a secret
+final class ImportWallet extends WorkerRequest { … }         // mnemonic OR entropy, passphrase — carries a secret
+final class ExportMnemonic extends WorkerRequest { … }       // walletRef — key-less request, secret-bearing reply
+final class DeriveAddress extends WorkerRequest { … }        // walletRef, coin, network, style, path
+final class ValidateAddress extends WorkerRequest { … }      // value, coin, network
+final class ValidateMnemonic extends WorkerRequest { … }     // candidate mnemonic — carries a secret
+final class ValidateMnemonicWord extends WorkerRequest { … } // one word — carries part of a secret
+final class SuggestMnemonicWords extends WorkerRequest { … } // word prefix — carries part of a secret
+final class Sign extends WorkerRequest { … }                 // request value, Set<LocatorSpec> — names keys, carries none
+final class DisposeRef extends WorkerRequest { … }           // walletRef — control message, exempt from the queue bound
+final class Cancel extends WorkerRequest { … }               // target request id — control message
+final class Shutdown extends WorkerRequest { … }             // grace period — control message
+// planned, not declared: ImportKey (T3.4) — carries a secret; SignMessage (T2.7); Plan (T2.5)
 
 sealed class WorkerReply {
   int get id;
 }
 
-final class InitOk extends WorkerReply { … }             // resolved symbol count
-final class WalletCreated extends WorkerReply { … }      // walletRef only — no mnemonic, no secret
-final class KeyImported extends WorkerReply { … }        // keyRef
-final class MnemonicExported extends WorkerReply { … }   // mnemonic — carries a secret
-final class AddressDerived extends WorkerReply { … }     // address, public key, path
-final class AddressValidated extends WorkerReply { … }   // bool
-final class Signed extends WorkerReply { … }             // SignResult
-final class MessageSigned extends WorkerReply { … }      // SignResult
-final class Planned extends WorkerReply { … }            // UtxoPlan
-final class Disposed extends WorkerReply { … }           // ref — sent for unknown refs too
+final class InitOk extends WorkerReply { … }                 // resolved symbol count
+final class WalletCreated extends WorkerReply { … }          // walletRef only — no mnemonic, no secret
+final class MnemonicExported extends WorkerReply { … }       // mnemonic — carries a secret
+final class AddressDerived extends WorkerReply { … }         // address, public key, path
+final class AddressValidated extends WorkerReply { … }       // bool
+final class MnemonicValidated extends WorkerReply { … }      // bool
+final class MnemonicWordValidated extends WorkerReply { … }  // bool
+final class MnemonicWordsSuggested extends WorkerReply { … } // candidate words — carries part of a secret
+final class Signed extends WorkerReply { … }                 // SignResult; usedKeys empty on the wire
+final class Disposed extends WorkerReply { … }               // walletRef — sent for unknown refs too
 final class Cancelled extends WorkerReply { … }
-final class NotCancellable extends WorkerReply { … }     // already running in native code
-final class ShutdownComplete extends WorkerReply { … }   // count of handles disposed
-final class Failed extends WorkerReply {                 // an already-typed error, never a string
+final class NotCancellable extends WorkerReply { … }         // already running in native code
+final class ShutdownComplete extends WorkerReply { … }       // count of handles disposed
+final class Failed extends WorkerReply {                     // an already-typed error, never a string
   WalletCoreException get error;
+}
+// planned, not declared: KeyImported (T3.4), MessageSigned (T2.7), Planned (T2.5)
+
+/// When an operation's deadline passes. Sent beside the operation
+/// (`WorkerTransport.send(request, deadline: …)`), never inside it.
+final class OperationDeadline {
+  const OperationDeadline(this.timeout, this.atMicros);
+
+  /// [timeout] from now, on the process's monotonic clock (`Timeline.now`,
+  /// read alike by every isolate). Saturates at [neverMicros] instead of
+  /// overflowing.
+  factory OperationDeadline.after(Duration timeout);
+
+  /// A deadline at this instant never passes.
+  static const int neverMicros = 0x7FFFFFFFFFFFFFFF;
+
+  final Duration timeout; // what OperationTimeoutError reports
+  final int atMicros;     // the expiry instant, in microseconds on that clock
+  bool get hasPassed;
 }
 ```
 
@@ -405,6 +432,7 @@ Rules the types encode, from DECISION-12 §3:
 - Exactly one reply per request, correlated by `id`. The exceptions are a dispose posted by a finalizer and a cancel, whose replies nobody awaits.
 - `DisposeRef`, `Cancel`, and `Shutdown` are control messages and are never rejected for a full queue: a load spike must not prevent teardown. The control path is nonetheless bounded (DECISION-12 §3.4): at most one pending `DisposeRef` per reference and one pending `Cancel` per target id, a `Cancel` for an unknown or finished id answered `NotCancellable` without being enqueued, a reserved control capacity, and `Shutdown` admissible always.
 - `DisposeRef` for an unknown, already-disposed, or shutdown-freed reference is a no-op that still replies `Disposed`.
+- **Every operation is sent beside its `OperationDeadline`** (DECISION-12 §3.5); control messages are sent without one. The session builds it with `OperationDeadline.after(timeout)` at submission, so queue time counts. `Init` carries no timeouts: they stay in the session's `OperationTimeouts`. The executor checks the deadline when the operation's turn comes — passed, and the operation is not run — and again after the handler returns: passed, and the result is **dropped without being posted**, whatever it named (a new wallet) is released, and a key-less `Failed(OperationTimeoutError)` is posted in its place. T2.1's isolate envelope must carry the `OperationDeadline` the same way.
 - An operation parses upstream's output into a Dart-owned result **before** its `finally` releases the derived keys and every other key-bearing buffer, and the reply is posted after that release: parse, release, reply (DECISION-12 §3.9). The retained result is not key-bearing.
 - `Failed` carries a constructed exception, so the calling isolate never rebuilds an error from text.
 

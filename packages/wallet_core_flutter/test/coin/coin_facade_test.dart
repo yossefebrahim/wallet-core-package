@@ -102,12 +102,16 @@ void main() {
       expect(Coin.byId('cosmos').family, ChainFamily.other);
       expect(Coin.byFamily(ChainFamily.evm), hasLength(60));
       expect(
-        ChainFamily.evm.hasRequestBuilders ||
-            ChainFamily.utxo.hasRequestBuilders ||
+        ChainFamily.evm.hasRequestBuilders,
+        isTrue,
+        reason: 'EvmTransactionRequest exists',
+      );
+      expect(
+        ChainFamily.utxo.hasRequestBuilders ||
             ChainFamily.solana.hasRequestBuilders ||
             ChainFamily.other.hasRequestBuilders,
         isFalse,
-        reason: 'no request builder exists at this version',
+        reason: 'no other request builder exists at this version',
       );
     });
 

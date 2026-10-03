@@ -13,6 +13,7 @@ import '../address/address.dart';
 import '../coin/coin.dart';
 import '../coin/network.dart';
 import '../core/input_checks.dart';
+import '../errors/boundary.dart';
 import '../errors/errors.dart';
 import 'coin_bridge.dart';
 import 'handles.dart';
@@ -149,19 +150,23 @@ final class HDWallet extends NativeResource {
   /// and drop the reference. The native copy upstream returned is released —
   /// and zeroed by upstream — before this returns.
   ///
-  /// Throws [DisposedError] after [dispose], and [KeyResolutionError] if
-  /// upstream returns no mnemonic.
+  /// Throws [DisposedError] after [dispose]. Throws `NativeResultError` if
+  /// upstream returns no mnemonic, an empty one, or one it cannot read back:
+  /// a soft native failure, which the session reports as a typed error of
+  /// this one operation and survives (DECISION-12 §3.10).
   String exportMnemonic() {
     final wallet = _wallet;
     final pointer = context.bindings.TWHDWalletMnemonic(wallet);
     if (pointer == nullptr) {
-      throw const KeyResolutionError('upstream returned no mnemonic');
+      throw const NativeResultError('TWHDWalletMnemonic returned nullptr');
     }
     final handle = TWStringHandle.adopt(context, pointer);
     try {
       final mnemonic = readSecretString(handle);
       if (mnemonic.isEmpty) {
-        throw const KeyResolutionError('upstream returned an empty mnemonic');
+        throw const NativeResultError(
+          'TWHDWalletMnemonic returned an empty mnemonic',
+        );
       }
       return mnemonic;
     } finally {
@@ -197,7 +202,10 @@ final class HDWallet extends NativeResource {
     final twDerivation = twDerivationOf(coin, derivation);
     final bindings = context.bindings;
     return runScope(context, (scope) {
-      final pathString = scope.string(derivationPath);
+      final pathString = readNative(
+        'TWStringCreateWithUTF8Bytes',
+        () => scope.string(derivationPath),
+      );
       final keyPointer = bindings.TWHDWalletGetKey(
         wallet,
         coinType,
@@ -226,9 +234,13 @@ final class HDWallet extends NativeResource {
       if (publicKeyData == nullptr) {
         throw UnsupportedOperationError(coin, 'deriveAddress');
       }
-      final publicKeyBytes = scope
-          .use(TWDataHandle.adopt(context, publicKeyData))
-          .copyBytes();
+      final publicKeyHandle = scope.use(
+        TWDataHandle.adopt(context, publicKeyData),
+      );
+      final publicKeyBytes = readNative(
+        'TWPublicKeyData',
+        publicKeyHandle.copyBytes,
+      );
 
       final addressPointer = bindings.TWAnyAddressCreateWithPublicKeyDerivation(
         publicKey.pointer,
@@ -247,9 +259,13 @@ final class HDWallet extends NativeResource {
       if (descriptionPointer == nullptr) {
         throw UnsupportedOperationError(coin, 'deriveAddress');
       }
-      final addressString = scope
-          .use(TWStringHandle.adopt(context, descriptionPointer))
-          .toDartString();
+      final description = scope.use(
+        TWStringHandle.adopt(context, descriptionPointer),
+      );
+      final addressString = readNative(
+        'TWAnyAddressDescription',
+        description.toDartString,
+      );
       if (addressString.isEmpty || publicKeyBytes.isEmpty) {
         throw UnsupportedOperationError(coin, 'deriveAddress');
       }
@@ -275,4 +291,79 @@ final class HDWallet extends NativeResource {
   @override
   void releaseNative(Pointer<Void> pointer) =>
       context.bindings.TWHDWalletDelete(pointer.cast<TWHDWallet>());
+}
+
+/// Derives the private key of [wallet] for [coin] at [derivationPath], runs
+/// [use] with a read-only **view over upstream's native bytes** of it, and
+/// releases the key before returning or throwing. **Internal**: the signing
+/// path's only door to a key; never exported, not even by `advanced.dart`.
+///
+/// [derivationPath] must already have passed `checkDerivationPath`; the
+/// caller validates before deriving, so that nothing is derived for a request
+/// that is going to be rejected anyway.
+///
+/// In this order:
+///
+/// 1. `TWHDWalletGetKey(wallet, coin, path)` — upstream derives the key into
+///    a new `TWPrivateKey`, owned from here by a [PrivateKeyHandle].
+/// 2. `TWPrivateKeyData(key)` — upstream copies the key's bytes into a new
+///    `TWData`, owned from here by a [TWDataHandle].
+/// 3. [use] runs with `TWDataBytes(data).asTypedList(length)`: a `Uint8List`
+///    whose storage *is* that `TWData`'s buffer. No Dart-heap copy of the key
+///    is made here, and [use] must make none and must not retain the view —
+///    it is dangling once this returns.
+/// 4. In a `finally`, on every path: the `TWData` is disposed —
+///    `TWDataDelete` overwrites its buffer with zeros before freeing it — and
+///    then the key — `TWPrivateKeyDelete`, whose `PrivateKey` destructor
+///    overwrites its bytes with zeros at the pinned commit
+///    (`src/PrivateKey.h`, `~PrivateKey() { cleanup(); }`).
+///
+/// Throws [DisposedError] after [wallet] was disposed, before any native
+/// call; [InvalidInputError] (`inputName: 'derivationPath'`) when upstream
+/// derives no key at the path; and `NativeResultError` when upstream returns
+/// no key bytes or a size out of range — a soft native failure of this one
+/// operation (DECISION-12 §3.10). The key handle is released on those paths
+/// too.
+T withDerivedKey<T>(
+  HDWallet wallet,
+  Coin coin,
+  String derivationPath,
+  T Function(Uint8List privateKey) use,
+) {
+  final pointer = wallet._wallet;
+  final context = wallet.context;
+  final bindings = context.bindings;
+  final coinType = twCoinTypeOf(coin);
+  return runScope(context, (scope) {
+    final path = readNative(
+      'TWStringCreateWithUTF8Bytes',
+      () => scope.string(derivationPath),
+    );
+    final keyPointer = bindings.TWHDWalletGetKey(
+      pointer,
+      coinType,
+      path.pointer,
+    );
+    if (keyPointer == nullptr) {
+      throw const InvalidInputError(
+        'upstream could not derive a key at this derivation path',
+        inputName: 'derivationPath',
+      );
+    }
+    final key = scope.use(PrivateKeyHandle.adopt(context, keyPointer));
+    final dataPointer = bindings.TWPrivateKeyData(key.pointer);
+    if (dataPointer == nullptr) {
+      throw const NativeResultError('TWPrivateKeyData returned nullptr');
+    }
+    final data = scope.use(TWDataHandle.adopt(context, dataPointer));
+    final length = readNative('TWPrivateKeyData', () => data.length);
+    if (length == 0) {
+      throw const NativeResultError('TWPrivateKeyData returned no bytes');
+    }
+    final bytes = bindings.TWDataBytes(data.pointer);
+    if (bytes == nullptr) {
+      throw const NativeResultError('TWDataBytes returned nullptr');
+    }
+    return use(bytes.asTypedList(length));
+  });
 }

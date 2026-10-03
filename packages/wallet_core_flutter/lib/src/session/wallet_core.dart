@@ -8,6 +8,7 @@ import '../address/address_facade.dart';
 import '../errors/errors.dart';
 import '../lifecycle/session_state.dart';
 import '../mnemonic/mnemonic_facade.dart';
+import '../signing/signer.dart';
 import '../wallet/wallet.dart';
 import 'session.dart';
 
@@ -23,8 +24,6 @@ import 'session.dart';
 /// [SessionState.ready]: in `initializing` and `closing` it fails with
 /// [SessionStateError], after [shutdown] with [ClosedError], and after the
 /// owning isolate ended with [WorkerTerminatedError]. Nothing is retried.
-///
-/// Signing — `signer` in the design sketch — is not part of this version.
 abstract interface class WalletCore {
   /// Loads the native library in the session's owning isolate, verifies the
   /// build identity against the shipped manifest, runs a symbol-lookup health
@@ -63,6 +62,11 @@ abstract interface class WalletCore {
 
   /// Validating mnemonics and suggesting mnemonic words.
   MnemonicFacade get mnemonics;
+
+  /// Signing transactions with keys named by `KeyLocator`s. The key is
+  /// derived in the session's owning isolate for one operation and released
+  /// before the result comes back; no key crosses to the caller.
+  LocalSigner get signer;
 
   /// Runs [body] and closes every public resource created through its
   /// [SessionScope], in reverse order of creation, whether [body] returns or
@@ -115,7 +119,7 @@ final class OperationTimeouts {
   /// Deriving an account, and the stateless address and mnemonic checks.
   final Duration derivation;
 
-  /// Signing. No operation of this version uses it.
+  /// Signing a transaction ([LocalSigner.sign]).
   final Duration signing;
 
   /// Bounds teardown as a whole. This one **does** expire: on expiry the

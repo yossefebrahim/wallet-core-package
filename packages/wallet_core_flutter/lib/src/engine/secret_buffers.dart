@@ -23,6 +23,7 @@ import 'package:wallet_core_flutter_bindings/wallet_core_flutter_bindings.dart'
     hide DisposedError;
 
 import '../core/input_checks.dart';
+import '../errors/boundary.dart';
 import '../errors/errors.dart';
 
 /// Copies [secret] into a new native `TWString` and returns its handle.
@@ -57,7 +58,9 @@ TWStringHandle secretString(
         buffer.cast<Char>(),
       );
       if (pointer == nullptr) {
-        throw StateError('TWStringCreateWithUTF8Bytes returned nullptr');
+        throw const NativeResultError(
+          'TWStringCreateWithUTF8Bytes returned nullptr',
+        );
       }
       return TWStringHandle.adopt(context, pointer);
     } finally {
@@ -85,7 +88,50 @@ TWDataHandle secretData(NativeContext context, Uint8List secret) {
     buffer.asTypedList(size).setAll(0, secret);
     final pointer = context.bindings.TWDataCreateWithBytes(buffer, size);
     if (pointer == nullptr) {
-      throw StateError('TWDataCreateWithBytes returned nullptr');
+      throw const NativeResultError('TWDataCreateWithBytes returned nullptr');
+    }
+    return TWDataHandle.adopt(context, pointer);
+  } finally {
+    buffer.asTypedList(allocated).fillRange(0, allocated, 0);
+    calloc.free(buffer);
+  }
+}
+
+/// Copies the concatenation of [parts] into a new native `TWData` and returns
+/// its handle.
+///
+/// For a secret assembled from pieces — the signing core's key field's tag
+/// and length, the key, and the key-less input, in the order
+/// `keyedInputParts` gives — without ever joining them in a Dart list: each
+/// part is copied straight into one `calloc` buffer, which is zero-filled
+/// before it is released, on the success path and when
+/// `TWDataCreateWithBytes` fails alike. No Dart-heap copy of the concatenation
+/// exists at any point.
+///
+/// [parts] belong to the caller and are read, never modified or retained; a
+/// part may be a view over native memory, read only during this call.
+TWDataHandle secretDataFromParts(NativeContext context, List<Uint8List> parts) {
+  var total = 0;
+  for (final part in parts) {
+    total += part.length;
+  }
+  final size = checkNativeLength(
+    total,
+    resourceType: 'TWDataHandle',
+    what: 'the length of secret bytes',
+  );
+  final allocated = size == 0 ? 1 : size;
+  final buffer = calloc<Uint8>(allocated);
+  try {
+    final view = buffer.asTypedList(allocated);
+    var offset = 0;
+    for (final part in parts) {
+      view.setAll(offset, part);
+      offset += part.length;
+    }
+    final pointer = context.bindings.TWDataCreateWithBytes(buffer, size);
+    if (pointer == nullptr) {
+      throw const NativeResultError('TWDataCreateWithBytes returned nullptr');
     }
     return TWDataHandle.adopt(context, pointer);
   } finally {
@@ -101,20 +147,31 @@ TWDataHandle secretData(NativeContext context, Uint8List secret) {
 /// Dart copy is the returned `String`, which is the value the caller asked for.
 /// The length is validated before anything is read (threat model TM-17).
 ///
-/// Returns the empty string when upstream holds no bytes. Throws [StateError]
-/// if upstream reports bytes but returns a null buffer (TM-19, TM-20).
+/// Returns the empty string when upstream holds no bytes. Throws
+/// [NativeResultError] if upstream reports a size out of range, reports bytes
+/// but returns a null buffer, or returns bytes that are not UTF-8 (TM-17,
+/// TM-19, TM-20) — a soft native failure, typed for the one operation
+/// (DECISION-12 §3.10). The decoder's own message, which could quote the
+/// bytes, is not kept.
 String readSecretString(TWStringHandle handle) {
   final pointer = handle.pointer;
   final bindings = handle.context.bindings;
-  final size = checkNativeLength(
-    bindings.TWStringSize(pointer),
-    resourceType: 'TWStringHandle',
-    what: 'the size TWStringSize reported',
+  final size = readNative(
+    'TWStringSize',
+    () => checkNativeLength(
+      bindings.TWStringSize(pointer),
+      resourceType: 'TWStringHandle',
+      what: 'the size TWStringSize reported',
+    ),
   );
   if (size == 0) return '';
   final bytes = bindings.TWStringUTF8Bytes(pointer);
   if (bytes == nullptr) {
-    throw StateError('TWStringUTF8Bytes returned nullptr');
+    throw const NativeResultError('TWStringUTF8Bytes returned nullptr');
   }
-  return utf8.decode(bytes.cast<Uint8>().asTypedList(size));
+  try {
+    return utf8.decode(bytes.cast<Uint8>().asTypedList(size));
+  } on FormatException {
+    throw const NativeResultError('TWStringUTF8Bytes returned invalid UTF-8');
+  }
 }

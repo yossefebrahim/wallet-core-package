@@ -53,7 +53,10 @@ String _typeName(WalletCoreException error) => switch (error) {
 };
 
 /// Input rejected by this SDK before reaching native code — or rejected by
-/// upstream, which this SDK reports the same way (PRD §16 S5).
+/// upstream, which this SDK reports the same way (PRD §16 S5). Also what an
+/// operation other than signing fails with when upstream returns a null or
+/// an out-of-range value for its input (DECISION-12 §3.10); the [message]
+/// then says the result was unusable, and the session stays ready.
 ///
 /// [inputName] names the input (`'mnemonic'`, `'derivationPath'`, `'address'`,
 /// `'strength'`, …). The input's *value* is never carried: it may be a secret,
@@ -127,17 +130,54 @@ final class SigningError extends WalletCoreException {
   /// Upstream's `SigningOutput.error_message`, verbatim.
   @override
   final String message;
+
+  /// The [upstreamCode] of a signing output this SDK could not accept: upstream
+  /// returned no output, bytes that do not decode as the family's
+  /// `SigningOutput`, a field longer than its bound, or a success with nothing
+  /// signed in it (threat model TM-22) — and, more widely, of any null or
+  /// out-of-range value upstream returned while signing, such as no bytes
+  /// for a derived key (TM-19, TM-20; DECISION-12 §3.10).
+  ///
+  /// Upstream's own codes are the non-negative values of its
+  /// `Common.Proto.SigningError` enum, so this value never collides with one.
+  /// The [message] of such an error is this SDK's, not upstream's, and names
+  /// what was wrong with the output — never its bytes.
+  static const int malformedOutputCode = -1;
 }
 
 /// The named keys could not be resolved into the set the operation needs:
 /// a missing role, an unused locator, a reference from another session, or an
 /// account with no key behind it.
 final class KeyResolutionError extends WalletCoreException {
-  /// Creates an error explaining which key could not be resolved.
-  const KeyResolutionError(this.message);
+  /// Creates an error explaining which key could not be resolved, and why
+  /// ([reason]) when the failure is one of `docs/architecture/signing.md` §5.
+  const KeyResolutionError(this.message, {this.reason});
 
   @override
   final String message;
+
+  /// Which resolution rule failed, when it is one the signing surface names
+  /// (`docs/architecture/signing.md` §5). `null` for a failure raised before
+  /// the reasons existed, or outside locator resolution.
+  final KeyResolutionReason? reason;
+}
+
+/// Why a [KeyResolutionError] was raised (`docs/architecture/signing.md` §5,
+/// DECISION-13 §4.1, §4.5).
+///
+/// Every one of these is decided in Dart, before any key is derived.
+enum KeyResolutionReason {
+  /// The account named has no key behind it — a watch-only account.
+  noKeyForAccount,
+
+  /// A role the family requires has no locator in the set.
+  missingRole,
+
+  /// A locator in the set fills no role the family requires.
+  unusedLocator,
+
+  /// A locator names a reference from another session.
+  foreignRef,
 }
 
 /// An **internal** native-backed object was used after `dispose()`.

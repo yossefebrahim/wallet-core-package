@@ -10,6 +10,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Interface sketch** | [`docs/architecture/lifecycle.md`](../architecture/lifecycle.md) |
 | **Recommendation** | **Protocol as specified below** (PRD §14.3 written out in full); per-call isolates rejected here, and the residual worker-vs-pool question left to DECISION-3 |
 | **Status** | **Recorded 2026-09-07** - recommendation adopted as written, with the T0.R2/T0.R4 fixes. See the Decision section. Recorded by the orchestrator under the owner's standing authorization; subject to their ratification. |
+| **Amended** | **2026-10-03**, by the owner's decision: §8 trigger 6 fired, and the secret-bearing payload set of §3.2 was reopened and amended from four to eight; §3.5 records the per-operation `OperationDeadline`; §3.2's message table now lists the messages the code declares, with the absent ones marked planned. See "Amendment 2026-10-03" in the Decision section. |
 
 ---
 
@@ -87,36 +88,43 @@ Every message carries a `requestId`: a monotonically increasing `int` allocated 
 
 | Request | Payload | Reply | Notes |
 |---|---|---|---|
-| `Init` | manifest snapshot, the reply `SendPort`, queue bound, timeouts | `InitOk(symbolCount)` / `Failed` | sent once, by `initialize()`, before the session is `ready` |
+| `Init` | queue bound, session token, the expected manifest identity, the shipped manifest's bytes (optional), a host library path (internal test seam only) | `InitOk(symbolCount)` / `Failed` | sent once, by `initialize()`, before the session is `ready`. Carries **no timeouts** (§3.5) and **no reply port**: the port the worker answers on belongs to T2.1's isolate transport, not to this value |
 | `CreateWallet` | `strength`, `passphrase` | `WalletCreated(walletRef)` | **secret-carrying request** (the passphrase). The reply carries **no mnemonic**: a freshly created wallet's mnemonic is obtained the same way any other wallet's is, through `ExportMnemonic` |
-| `ImportWallet` | `mnemonic` **or** `entropy`, `passphrase` | `WalletCreated(walletRef)` | **secret-carrying request**; documented as such in code and in `docs/security/memory_contract.md` (TM-04, TM-06) |
-| `ImportKey` | encrypted keystore blob + password, or raw key bytes (advanced only) | `KeyImported(keyRef)` | **secret-carrying request**; T3.4/T3.5 |
+| `ImportWallet` | `mnemonic` **or** `entropy`, `passphrase` | `WalletCreated(walletRef)` | **secret-carrying request**; documented as such in code (TM-04, TM-06). The `entropy` is a copy the request owns, overwritten with zeros by the sender once handed over and by the executor once handled |
 | `ExportMnemonic` | `walletRef` | `MnemonicExported(mnemonic)` / `Failed` | the request carries no secret; **the reply does**. Backs `Wallet.exportMnemonic()` (PRD §11.3), which exists to display the mnemonic once |
 | `DeriveAddress` | `walletRef`, coin id, network, address style, explicit path | `AddressDerived(address, publicKey, path)` | returns a descriptor; no handle crosses back |
 | `ValidateAddress` | address string, coin id, network | `AddressValidated(bool)` | the stateless native call §1 rules must still happen in the owning isolate |
-| `Sign` | request value, `Set<KeyLocator>` | `Signed(SignResult)` / `Failed` | key-less request in, sealed result out (DECISION-13) |
-| `SignMessage` | message request value, `Set<KeyLocator>` | `MessageSigned(SignResult)` / `Failed` | |
-| `Plan` | UTXO request value | `Planned(UtxoPlan)` / `Failed` | UTXO chains only |
-| `Dispose` | `ref` | `Disposed(ref)` | idempotent; unknown ref is a no-op (§3.7) |
-| `Cancel` | `targetRequestId` | `Cancelled(targetRequestId)` / `NotCancellable(targetRequestId)` | §3.6 |
+| `ValidateMnemonic` | a candidate mnemonic | `MnemonicValidated(bool)` | **secret-carrying request**: the candidate is very likely somebody's real mnemonic. Backs `MnemonicFacade.isValid`; sent only when the Dart-side shape check cannot already answer |
+| `ValidateMnemonicWord` | one word | `MnemonicWordValidated(bool)` | **secret-carrying request**: a word of a mnemonic being typed. Backs `MnemonicFacade.isValidWord` |
+| `SuggestMnemonicWords` | a word prefix | `MnemonicWordsSuggested(words)` | **secret-carrying request and reply**: the prefix, and the suggested words, every one of which shares it. Backs `MnemonicFacade.suggest` |
+| `Sign` | request value, `Set<LocatorSpec>` (the names each `KeyLocator` carries) | `Signed(SignResult)` / `Failed` | key-less request in, sealed result out (DECISION-13). `usedKeys` is empty on the wire; the session puts the caller's locators back |
+| `DisposeRef` | `walletRef` | `Disposed(walletRef)` | idempotent; unknown ref is a no-op (§3.7). Written `Dispose(ref)` in the rest of this record |
+| `Cancel` | `target` request id | `Cancelled(target)` / `NotCancellable(target)` | §3.6 |
 | `Shutdown` | grace period | `ShutdownComplete(disposedCount)` | §3.8 |
+| *planned:* `ImportKey` | encrypted keystore blob + password, or raw key bytes (advanced only) | `KeyImported(keyRef)` | **not declared yet** (T3.4/T3.5); a **secret-carrying request** when it is |
+| *planned:* `SignMessage` | message request value, `Set<LocatorSpec>` | `MessageSigned(SignResult)` / `Failed` | **not declared yet** (T2.7) |
+| *planned:* `Plan` | UTXO request value | `Planned(UtxoPlan)` / `Failed` | **not declared yet** (T2.5); UTXO chains only |
 
-Thirteen request types and fourteen reply types, exactly as `docs/architecture/lifecycle.md` §6 declares them (the fourteenth reply is `Failed`, which any request may receive).
+**Thirteen request types and fourteen reply types are declared today**, exactly as `docs/architecture/lifecycle.md` §6 lists them. Requests: `Init`, `CreateWallet`, `ImportWallet`, `ExportMnemonic`, `DeriveAddress`, `ValidateAddress`, `ValidateMnemonic`, `ValidateMnemonicWord`, `SuggestMnemonicWords`, `Sign`, `DisposeRef`, `Cancel`, `Shutdown`. Replies: `InitOk`, `WalletCreated`, `MnemonicExported`, `AddressDerived`, `AddressValidated`, `MnemonicValidated`, `MnemonicWordValidated`, `MnemonicWordsSuggested`, `Signed`, `Disposed`, `Cancelled`, `NotCancellable`, `ShutdownComplete`, and `Failed`, which any request may receive. The three planned requests and their replies (`KeyImported`, `MessageSigned`, `Planned`) are not declared; both families are `sealed`, so each one's arrival is a compile error at every `switch` that must handle it.
 
-Replies are a sealed family; the failure member is `Failed(requestId, WalletCoreException)` carrying an already-typed error, so the UI isolate never reconstructs an exception from a string. All request and reply types are plain immutable Dart values with no native pointer, no handle, and no `SendPort` other than `Init`'s — a `Set<KeyLocator>` names keys, it does not carry them (DECISION-13).
+Replies are a sealed family; the failure member is `Failed(requestId, WalletCoreException)` carrying an already-typed error, so the UI isolate never reconstructs an exception from a string. All request and reply types are plain immutable Dart values with no native pointer, no handle, and no `SendPort` — the reply port belongs to the transport, not to any message. `Sign` carries `LocatorSpec`s, not the caller's `KeyLocator`s: a locator's `WalletRef` holds session-side objects that cannot cross an isolate, so what crosses is the names it carries (the issuing session's token, the wallet reference's number, the coin, the path, the role). It names keys, it does not carry them (DECISION-13).
 
-**Which payloads carry a secret, enumerated.** The message set has no single "the secret-carrying message"; it has **four** payloads — three requests and one reply — and each one is documented in code and in `docs/security/memory_contract.md` (TM-04, TM-06):
+**Which payloads carry a secret, enumerated.** The message set has no single "the secret-carrying message"; it has **eight** payloads — six requests and two replies — of which seven are declared today and one, `ImportKey`, is planned. Each declared one is marked as such in its doc comment, and `docs/security/memory_contract.md` (T1.18; TM-04, TM-06) is to cover all eight:
 
-| Payload | Direction | What it carries |
-|---|---|---|
-| `CreateWallet` | request | `passphrase` (a BIP-39 passphrase is key material: it selects the seed) |
-| `ImportWallet` | request | `mnemonic` **or** `entropy`, plus `passphrase` |
-| `ImportKey` | request | an encrypted keystore blob **and** its password, or raw key bytes under `advanced.dart` |
-| `MnemonicExported` | reply | the wallet's `mnemonic` |
+| Payload | Direction | What it carries | |
+|---|---|---|---|
+| `CreateWallet` | request | `passphrase` (a BIP-39 passphrase is key material: it selects the seed) | |
+| `ImportWallet` | request | `mnemonic` **or** `entropy`, plus `passphrase` | |
+| `ImportKey` | request | an encrypted keystore blob **and** its password, or raw key bytes under `advanced.dart` | planned (T3.4/T3.5) |
+| `ValidateMnemonic` | request | a whole candidate mnemonic | added 2026-10-03 |
+| `ValidateMnemonicWord` | request | one word of a mnemonic | added 2026-10-03 |
+| `SuggestMnemonicWords` | request | the beginning of a word of a mnemonic | added 2026-10-03 |
+| `MnemonicExported` | reply | the wallet's `mnemonic` | |
+| `MnemonicWordsSuggested` | reply | the candidate words, every one of which shares the caller's prefix | added 2026-10-03 |
 
-**`WalletCreated` carries no mnemonic, and there is no way to ask it for one.** An earlier draft returned `WalletCreated(walletRef, mnemonic?)` "if the caller asked", but nothing in `CreateWallet`'s payload or in the public `WalletFacade.create` signature could express the asking — the option was unreachable, and an unreachable option on a secret-bearing reply is worse than none: it invites an implementation to add the flag later without revisiting this table. So creation returns a ref and nothing else. A freshly created wallet's mnemonic is obtained exactly the way any other wallet's is, by calling `Wallet.exportMnemonic()` → `ExportMnemonic(walletRef)` → `MnemonicExported(mnemonic)`. That costs one extra round trip on the seed-display screen and buys a single, explicit, auditable path by which a mnemonic can cross the boundary — one reply type to review, one call site to grep for, one place for the "display once and drop it" rule to live.
+**`WalletCreated` carries no mnemonic, and there is no way to ask it for one.** An earlier draft returned `WalletCreated(walletRef, mnemonic?)` "if the caller asked", but nothing in `CreateWallet`'s payload or in the public `WalletFacade.create` signature could express the asking — the option was unreachable, and an unreachable option on a secret-bearing reply is worse than none: it invites an implementation to add the flag later without revisiting this table. So creation returns a ref and nothing else. A freshly created wallet's mnemonic is obtained exactly the way any other wallet's is, by calling `Wallet.exportMnemonic()` → `ExportMnemonic(walletRef)` → `MnemonicExported(mnemonic)`. That costs one extra round trip on the seed-display screen and buys a single, explicit, auditable path by which a wallet's mnemonic can come back across the boundary — one reply type to review, one call site to grep for, one place for the "display once and drop it" rule to live.
 
-Every other request and reply is key-less by construction: refs, coin and network ids, paths, addresses, public keys, request values, locators, counts, and typed errors. Two consequences the implementation is held to. First, the secret-bearing set is *closed*: adding a message that carries key material in either direction reopens this record (§8). Second, a secret in a **reply** is the harder half — it exists because a person has to read it (PRD §11.3) — so the one secret-bearing reply is produced only in response to an explicit request for that value, is never logged, never included in an error message, and never cached in the worker after the reply is posted. The SDK drops its own references once the value has crossed; it cannot erase the caller's copy, and the doc comments say so.
+Every other request and reply is key-less by construction: refs, coin and network ids, paths, addresses, public keys, request values, locators, booleans, counts, and typed errors. Two consequences the implementation is held to. First, the secret-bearing set is *closed*: adding a message that carries key material in either direction reopens this record (§8), as the four mnemonic-validation payloads did on 2026-10-03. Second, a secret in a **reply** is the harder half — it exists because a person has to read it (PRD §11.3) — so each of the two secret-bearing replies is produced only in response to an explicit request for that value (`ExportMnemonic`, `SuggestMnemonicWords`), is never logged (its `toString()` names its fields, never their values), never included in an error message, and never cached in the worker after the reply is posted. The SDK drops its own references once the value has crossed; it cannot erase the caller's copy, and the doc comments say so.
 
 ### 3.3 Refs
 
@@ -144,7 +152,17 @@ A single FIFO queue in the worker, bounded (**default 32 pending operations**, c
 
 ### 3.5 Timeouts
 
-Every *operation* carries a deadline. Defaults, all overridable at `initialize()`: `Init` 30 s, `ImportWallet` / `CreateWallet` / `ImportKey` / `ExportMnemonic` 20 s, `DeriveAddress` / `ValidateAddress` 5 s, `Sign` / `SignMessage` / `Plan` 15 s, `Shutdown` grace period 10 s. The deadline starts when the operation is **submitted**, not when it starts running, so queue time counts against it — otherwise a bounded queue plus a slow operation still yields an unbounded wait.
+Every *operation* carries a deadline; the control messages `Dispose`, `Cancel`, and `Shutdown` carry none. Defaults, all overridable through `OperationTimeouts` at `initialize()`: `Init` 30 s; `CreateWallet` / `ImportWallet` / `ExportMnemonic` 20 s (and the planned `ImportKey`); `DeriveAddress` / `ValidateAddress` / `ValidateMnemonic` / `ValidateMnemonicWord` / `SuggestMnemonicWords` 5 s; `Sign` 15 s (and the planned `SignMessage` / `Plan`); `Shutdown` grace period 10 s. The timeouts stay in the session: `Init` does not carry them, and the executor never holds a table of them — it receives one deadline per operation, below. The deadline starts when the operation is **submitted**, not when it starts running, so queue time counts against it — otherwise a bounded queue plus a slow operation still yields an unbounded wait.
+
+**The deadline crosses beside the operation, as an `OperationDeadline`.** It is a plain value of two fields: the operation's `timeout` (what `OperationTimeoutError` reports) and `atMicros`, the instant it expires, in microseconds on the process's monotonic clock — the clock `Timeline.now` reads (`monotonicMicros()`), which every isolate of the process reads alike, so a deadline taken in the session's isolate names the same instant in the executor's.
+
+- **Created** by the session at submission, `OperationDeadline.after(timeout)`, for every operation including `Init`, before the session starts its own timer for the same operation, so the executor's deadline is never later than the session's.
+- **Saturating.** A timeout too long to add to the clock without overflowing 64 bits gives `OperationDeadline.neverMicros`, a deadline that never passes, rather than a wrapped negative instant that has always passed.
+- **Carried** by `WorkerTransport.send(request, deadline: …)`, beside the request and not inside it. Control messages are sent without one, and the executor ignores any given with them.
+- **Checked by the executor**, twice. When the operation's turn comes, a deadline that has passed means the operation is not run at all. When the handler returns — after it has parsed and released (§3.9) — a deadline that passed while it ran means its result is **dropped without being posted, not posted and ignored** (§3.9): whatever the result named is released in the executor (the wallet a `WalletCreated` names), and a key-less `Failed(OperationTimeoutError)` is posted in its place, so that the session's accounting of the request id closes and nothing a caller will no longer receive — a mnemonic included — ever crosses.
+- **The session times the operation as well.** Its own timer completes the caller's future with `OperationTimeoutError` on expiry, without waiting for the executor, and posts a `Cancel` for the target so that one still queued never runs. A reply that reaches the session for a request already completed is discarded, and a wallet a late `WalletCreated` names is released with a `Dispose`. That is a backstop for the edge where the session's timer and the executor's clock disagree; the executor's check is the rule. In M0 it is also the only check that can fire during native work: the in-process executor runs on the session's event loop, so no timer fires while a native call blocks it.
+
+**Recorded for T2.1 (decided 2026-10-03; not built yet).** The worker isolate transport's envelope must carry the `OperationDeadline` beside each operation — the instant, not only the timeout, so that the worker measures from the session's submission and not from its own receipt. T2.1 also adds a public cancel-before-start, which is what makes `OperationCancelledError` reachable by a caller; until then the only `Cancel` the session posts is the one on a passed deadline, whose caller already holds `OperationTimeoutError`.
 
 **`Dispose` has no deadline at all, and the reason is that no honest one can be written.** An explicit `close()` must wait behind an operation already running in native code, which cannot be interrupted (§3.6), so a deadline measured from submission would expire `close()` for a reason that is not a fault, at exactly the moment the caller is trying to release a seed. An earlier draft answered that by bounding "the worker's own dispose step" instead — the interval from the worker picking the `Dispose` message up to the native delete returning. That bound cannot be enforced by anything in this protocol:
 
@@ -157,7 +175,7 @@ So the rule is the simple one:
 
 **A worker stuck inside a native delete is indistinguishable from a worker stuck inside any other native call**, and it is handled the same way: the session has one in-flight message that never completes, and the only recovery is `shutdown()`, whose `shutdownGrace` *does* expire and kills the isolate on expiry (§3.8). That kill is not clean — native allocations owned by that isolate are not wiped, exactly as TM-25's residual risk describes — so the recovery is a real recovery with a real cost, not a tidy timeout. `Dispose` posted by a finalizer (§3.7) awaits nothing and so has no deadline either, for a different reason: nobody is waiting.
 
-For every deadline that does exist, on expiry the caller's `Future` completes with `OperationTimeoutError(operation, timeout)`. **The native call is not aborted** — there is no mechanism to abort it, and inventing one would mean interrupting upstream mid-computation. The worker finishes the operation, disposes its temporaries and any derived key exactly as it would normally (§3.9), and discards the result. A late result is never delivered under a `requestId` whose future is already completed.
+For every deadline that does exist, on expiry the caller's `Future` completes with `OperationTimeoutError(operation, timeout)`. **The native call is not aborted** — there is no mechanism to abort it, and inventing one would mean interrupting upstream mid-computation. The worker finishes the operation, disposes its temporaries and any derived key exactly as it would normally (§3.9), and drops the result unposted, as above. A late result is never delivered under a `requestId` whose future is already completed.
 
 ### 3.6 Cancellation
 
@@ -353,7 +371,9 @@ Re-open this record when any of the following occurs:
 3. **Upstream documents thread-safety for its handles** — the sequential-worker justification of §1 weakens, and concurrency inside one session becomes evaluable.
 4. **Dart gains a way to observe a native crash from a surviving isolate** — §3.10's answer to Q3 changes and `WorkerTerminationKind` grows a member.
 5. **Approach B (PRD §11.4) is selected at D1a** — §3.9's `finally` block moves partly into C, and the "parse, release, reply" ordering must be re-established for the adapter's own buffers.
-6. **A message that carries key material in either direction is added to §3.2** — the enumerated secret-bearing set is closed at four payloads, so a fifth is a change to what crosses the isolate boundary and needs the same scrutiny the first four got (TM-04, TM-06). Returning a mnemonic from `WalletCreated` again, rather than through `ExportMnemonic`, is exactly such a change and is not an implementation detail.
+6. **A message that carries key material in either direction is added to §3.2** — the enumerated secret-bearing set is closed at eight payloads (four until the amendment of 2026-10-03), so a ninth is a change to what crosses the isolate boundary and needs the same scrutiny the first eight got (TM-04, TM-06). Returning a mnemonic from `WalletCreated` again, rather than through `ExportMnemonic`, is exactly such a change and is not an implementation detail.
+
+   **Fired 2026-10-03.** The protocol as built added three requests and one reply that carry a mnemonic or part of one — `ValidateMnemonic` (a whole candidate mnemonic), `ValidateMnemonicWord` (one word), `SuggestMnemonicWords` (a word prefix), and the reply `MnemonicWordsSuggested` (words sharing that prefix) — so the record was reopened, and on that date the owner amended the set from four to eight (§3.2). These four additions are accepted because they are the mnemonic-validation and word-suggestion paths, which cannot answer without seeing the mnemonic or the part of it being typed, and because none of them accepts or returns a derived key: their replies are a boolean or words of the BIP-39 English list. They are held to the same handling as the original four — `toString()` names their fields and never their values, no error carries them, the executor keeps nothing once it has replied — and each crosses only when the Dart-side check (a mnemonic's shape, a word's length, a prefix's characters) cannot already answer.
 
 ---
 
@@ -361,7 +381,7 @@ Re-open this record when any of the following occurs:
 
 **The protocol of section 3 is adopted in full**, including the four rulings that were contested at D0 and then
 conceded: only the session isolate calls native (so address validation is asynchronous, with a pure-Dart
-`looksWellFormed` for keystroke-rate checks); the secret-bearing payload set is **closed at four** (section 3.2); the
+`looksWellFormed` for keystroke-rate checks); the secret-bearing payload set is **closed at four** (section 3.2; amended to eight on 2026-10-03, below); the
 explicit-close acknowledgement is **non-expiring** (section 3.5); and `WorkerTerminationKind` has **no `nativeCrash`
 member** (section 3.10).
 
@@ -372,3 +392,20 @@ Recorded **2026-09-07 by the orchestrator**, under the repository owner's standi
 
 Read before ratifying: section 3.2 (the four payloads) and section 3.5 (why no dispose deadline exists). Section 3.4's
 reserved control capacity is the implementer's number, not a fixed part of this record.
+
+### Amendment 2026-10-03
+
+Decided by the repository owner on 2026-10-03, after section 8 trigger 6 fired:
+
+1. **The secret-bearing payload set is eight, not four** (section 3.2): the requests `CreateWallet`, `ImportWallet`,
+   `ImportKey` (planned), `ValidateMnemonic`, `ValidateMnemonicWord`, `SuggestMnemonicWords`, and the replies
+   `MnemonicExported` and `MnemonicWordsSuggested`. The set stays closed; a ninth reopens this record. Why the four
+   additions are accepted is recorded under trigger 6.
+2. **Each operation's deadline crosses beside it as an `OperationDeadline`** on the process's monotonic clock, measured
+   from submission and saturating; `Init` carries no timeouts; the executor drops a result whose deadline has passed
+   without posting it (section 3.5).
+3. **Forward to T2.1:** the worker isolate transport's envelope carries the `OperationDeadline`, and T2.1 adds a public
+   cancel-before-start that makes `OperationCancelledError` reachable (section 3.5). Neither exists yet.
+
+Section 3.2's message table was also brought into line with the declared protocol: 13 requests and 14 replies, with
+`ImportKey`, `SignMessage`, and `Plan` (and their replies) marked planned. Every other ruling above is unchanged.
