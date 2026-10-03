@@ -22,7 +22,6 @@ workspace:
   - tools/probes
   - tools/lint
 
-
 dev_dependencies:
   lints: ^6.0.0
   melos: 8.6.0
@@ -176,4 +175,3 @@ melos:
         --out-dir "${WCF_PACKAGING_OUT:-${TMPDIR:-/tmp}/wcf-packaging}"
     probe:sign-json: dart run tools/probes/bin/sign_json_probe.dart
     lint:public-api: dart run tools/lint/bin/public_api_lint.dart
-

@@ -390,7 +390,7 @@ stays with DECISION-3 at D2; adopting this record does not pre-judge it.
 
 Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
 
-Read before ratifying: section 3.2 (the four payloads) and section 3.5 (why no dispose deadline exists). Section 3.4's
+Read before ratifying: section 3.2 (the secret-bearing payloads — eight since the amendment of 2026-10-03) and section 3.5 (why no dispose deadline exists). Section 3.4's
 reserved control capacity is the implementer's number, not a fixed part of this record.
 
 ### Amendment 2026-10-03

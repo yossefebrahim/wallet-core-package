@@ -75,6 +75,8 @@ The result is a Dart `String` carried by `MnemonicExported` (`protocol.dart`). I
 
 `WalletEngine.suggestMnemonicWords` (`packages/wallet_core_flutter/lib/src/engine/engine.dart`) also decodes with `readSecretString`. Its result is a list of `String`s.
 
+The requests `ValidateMnemonic`, `ValidateMnemonicWord`, and `SuggestMnemonicWords` carry a mnemonic, a word, or a prefix as Dart `String`s that cannot be overwritten. They are redacted from `toString()` and errors, and are dropped by the executor after use (`packages/wallet_core_flutter/lib/src/worker/protocol.dart:328-377`). This completes the list of all eight secret-bearing payloads (DECISION-12 §3.2).
+
 ## Private keys and signing
 
 ### What the API returns
