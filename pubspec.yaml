@@ -20,6 +20,8 @@ workspace:
   - tools/gen
   - tools/packaging_eval
   - tools/probes
+  - tools/lint
+
 
 dev_dependencies:
   lints: ^6.0.0
@@ -173,3 +175,5 @@ melos:
         dart run tools/packaging_eval/bin/measure_all.dart
         --out-dir "${WCF_PACKAGING_OUT:-${TMPDIR:-/tmp}/wcf-packaging}"
     probe:sign-json: dart run tools/probes/bin/sign_json_probe.dart
+    lint:public-api: dart run tools/lint/bin/public_api_lint.dart
+

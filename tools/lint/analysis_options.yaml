@@ -1,0 +1,6 @@
+include: ../../analysis_options.yaml
+
+analyzer:
+  exclude:
+    # Deliberately broken: proves analysis errors exit 2 instead of passing.
+    - test/fixtures/diagnostics/**
