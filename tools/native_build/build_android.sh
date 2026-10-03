@@ -425,13 +425,23 @@ for abi in "${abi_list[@]}"; do
 
   # Gate 1: export visibility. This is the gate upstream issue #4638 exists
   # for. If it fails, the first remedy is -fvisibility=default on the TW
-  # translation units; the second is dropping any version script or
-  # --gc-sections from the Android link. Do not publish past a failure.
+  # translation units (-DFLUTTER=ON is what exports the C API now); the second
+  # is dropping any version script or --gc-sections from the Android link.
+  # Do not publish past a failure.
+  #
+  # These four allow-extra names are upstream's JNI glue (jni/cpp/TWJNIData.h,
+  # TWJNIString.h), present in every Android build of upstream's module,
+  # TW-prefixed by upstream, outside include/TrustWalletCore/; anything else
+  # unexpected still fails (build-native run 37158147404).
   wcf_run "$here/check_exports.sh" \
     --binary "$final" \
     --symbol-list "$symbol_list" \
     --format elf \
-    --nm "$llvm_bin/llvm-nm"
+    --nm "$llvm_bin/llvm-nm" \
+    --allow-extra TWDataCreateWithJByteArray \
+    --allow-extra TWDataJByteArray \
+    --allow-extra TWStringCreateWithJString \
+    --allow-extra TWStringJString
 
   # Gate 2: 16 KB page alignment, on every 64-bit ELF.
   wcf_run "$here/check_alignment.sh" \

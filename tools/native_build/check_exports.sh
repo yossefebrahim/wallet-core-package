@@ -35,6 +35,7 @@ usage() {
   cat <<'EOF'
 Usage: check_exports.sh --binary FILE --symbol-list FILE --format macho|elf
                         [--nm PATH] [--identity-symbol NAME] [--max-report N]
+                        [--allow-extra NAME]...
 
 Fails unless every name in the symbol list, plus the build-identity symbol, is
 a defined external symbol of the binary, and unless the set of exported TW*
@@ -58,6 +59,8 @@ Options:
                          neither nm nor llvm-nm is on PATH on a macOS runner.
   --identity-symbol NAME Default wcf_build_info.
   --max-report N         How many missing/extra names to print. Default 20.
+  --allow-extra NAME     An unexpected TW* export that is not considered a failure.
+                         Can be repeated.
   -h, --help             This text.
 EOF
 }
@@ -68,6 +71,7 @@ format=''
 nm_bin=''
 identity_symbol='wcf_build_info'
 max_report=20
+allow_extra=()
 
 while (($#)); do
   case $1 in
@@ -77,6 +81,7 @@ while (($#)); do
     --nm) nm_bin=${2:?--nm needs a value}; shift 2 ;;
     --identity-symbol) identity_symbol=${2:?--identity-symbol needs a value}; shift 2 ;;
     --max-report) max_report=${2:?--max-report needs a value}; shift 2 ;;
+    --allow-extra) allow_extra+=("${2:?--allow-extra needs a value}"); shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; wcf_die "unknown argument: $1" ;;
   esac
@@ -156,17 +161,35 @@ for arch in "${archs[@]}"; do
   actual_count=$(wc -l <"$actual" | tr -d ' ')
 
   missing="$workdir/missing"
+  extra_raw="$workdir/extra_raw"
   extra="$workdir/extra"
+  allowed="$workdir/allowed"
+  allowed_list="$workdir/allowed_list"
+
   comm -23 "$expected" "$actual" >"$missing"
-  comm -13 "$expected" "$actual" >"$extra"
+  comm -13 "$expected" "$actual" >"$extra_raw"
+
+  if ((${#allow_extra[@]})); then
+    printf '%s\n' "${allow_extra[@]}" | sort -u >"$allowed_list"
+  else
+    : >"$allowed_list"
+  fi
+
+  comm -12 "$allowed_list" "$extra_raw" >"$allowed"
+  comm -23 "$extra_raw" "$allowed_list" >"$extra"
+
   missing_count=$(wc -l <"$missing" | tr -d ' ')
   extra_count=$(wc -l <"$extra" | tr -d ' ')
+  allowed_count=$(wc -l <"$allowed" | tr -d ' ')
 
   identity_ok=no
   if grep -qxF "${prefix}${identity_symbol}" "$all"; then identity_ok=yes; fi
 
   wcf_log "arch $local_label: $total defined external symbols, $actual_count of them TW*"
   wcf_log "arch $local_label: expected $expected_count, missing $missing_count, unexpected $extra_count"
+  if (( allowed_count > 0 )); then
+    wcf_log "arch $local_label: allowed extra TW* exports ($allowed_count): $(paste -s -d, "$allowed" | sed 's/,/, /g')"
+  fi
   wcf_log "arch $local_label: ${prefix}${identity_symbol} exported: $identity_ok"
 
   if (( missing_count > 0 )); then

@@ -72,7 +72,9 @@ reconciled in both directions against the canonical symbol list, plus a
 presence check for `wcf_build_info` (`_wcf_build_info` on Mach-O). A universal
 Mach-O is checked one architecture at a time, so a symbol missing from one
 slice cannot be masked by the other. Extra `TW*` exports fail too: they mean
-the list is stale.
+the list is stale, unless explicitly allowed via `--allow-extra` (used on
+Android for upstream's four JNI helpers: `TWDataCreateWithJByteArray`,
+`TWDataJByteArray`, `TWStringCreateWithJString`, `TWStringJString`).
 
 This is the gate upstream issue #4638 exists for — a Flutter user got
 `undefined symbol: TWAnyAddressIsValid` from an `.aar` built by upstream's own
