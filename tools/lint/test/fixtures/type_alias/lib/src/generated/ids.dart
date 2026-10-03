@@ -1,0 +1,1 @@
+typedef GeneratedId = int;

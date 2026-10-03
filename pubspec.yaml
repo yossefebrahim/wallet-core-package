@@ -19,6 +19,7 @@ workspace:
   - tools/vectors
   - tools/gen
   - tools/packaging_eval
+  - tools/lint
 
 dev_dependencies:
   lints: ^6.0.0
@@ -171,3 +172,5 @@ melos:
       run: >-
         dart run tools/packaging_eval/bin/measure_all.dart
         --out-dir "${WCF_PACKAGING_OUT:-${TMPDIR:-/tmp}/wcf-packaging}"
+
+    lint:public-api: dart run tools/lint/bin/public_api_lint.dart
