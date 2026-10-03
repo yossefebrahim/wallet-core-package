@@ -26,3 +26,7 @@ eval/**/build/
 
 # Claude Code runtime lock (orchestrator session)
 .claude/scheduled_tasks.lock
+
+# Compiled Dart executables (dart compile exe) are never tracked
+*.exe
+tools/*/bin/*.exe
