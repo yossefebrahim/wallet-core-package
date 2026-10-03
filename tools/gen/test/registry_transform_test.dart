@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
+const _registryJson = '../../third_party/wallet-core/registry.json';
+
 void main() {
   test('Generated CoinType has all members and correct normalizeId', () {
     final typeContent = File(
@@ -15,22 +17,33 @@ void main() {
     expect(typeContent, contains('  nebl(146),'));
     expect(typeContent, contains('  internetComputer(223),'));
     expect(typeContent, contains('  kin(2017),'));
-
-    // Count assertion
-    final registryData =
-        jsonDecode(
-              File(
-                '../../third_party/wallet-core/registry.json',
-              ).readAsStringSync(),
-            )
-            as List<dynamic>;
-
-    // The number of commas (plus one for the last semi-colon) between enum members is count-1.
-    // However, it's easier to check if the number of lines matching `  identifier(number)[,;]` is exactly the registry count.
-    final memberRegex = RegExp(r'^  [a-zA-Z0-9]+\(\d+\)[,;]$', multiLine: true);
-    final matchCount = memberRegex.allMatches(typeContent).length;
-    expect(matchCount, equals(registryData.length));
   });
+
+  // `melos run test` runs without the upstream tree (AGENTS.md gate table), so
+  // the one assertion that needs registry.json skips when it is absent — the
+  // same shape as tools/inventory's agreement test and the bindings package's
+  // key_fields test. The generated file is still fully checked above.
+  test(
+    'Generated CoinType has exactly one member per registry.json entry',
+    () {
+      final typeContent = File(
+        '../../packages/wallet_core_flutter_bindings/lib/src/generated/registry/coin_type.dart',
+      ).readAsStringSync();
+      final registryData =
+          jsonDecode(File(_registryJson).readAsStringSync()) as List<dynamic>;
+
+      // One line per enum member, `  identifier(number)[,;]`.
+      final memberRegex = RegExp(
+        r'^  [a-zA-Z0-9]+\(\d+\)[,;]$',
+        multiLine: true,
+      );
+      final matchCount = memberRegex.allMatches(typeContent).length;
+      expect(matchCount, equals(registryData.length));
+    },
+    skip: File(_registryJson).existsSync()
+        ? false
+        : 'needs `melos run upstream:fetch` (third_party/wallet-core/registry.json)',
+  );
 
   test('Generated CoinInfo matches expected text for sample entries', () {
     final infoContent = File(
