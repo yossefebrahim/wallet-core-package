@@ -298,6 +298,19 @@ else
   )
 fi
 
+# CMake must find Boost from the host, not the NDK sysroot (upstream's
+# find_host_package). Upstream's install-sys-dependencies-mac writes
+# BOOST_ROOT into ~/.zprofile, which a non-interactive shell never reads, and
+# the Android SDK's CMake 3.18 does not search Apple Silicon's brew prefix
+# (/opt/homebrew) on its own — upstream's CI runs on Intel runners where
+# /usr/local is searched by default. So export it here for Gradle's CMake.
+if [[ -z ${BOOST_ROOT:-} ]] && command -v brew >/dev/null 2>&1; then
+  if boost_prefix=$(brew --prefix boost 2>/dev/null) && [[ -d $boost_prefix/include/boost ]]; then
+    export BOOST_ROOT=$boost_prefix
+  fi
+fi
+[[ -n ${BOOST_ROOT:-} ]] && wcf_log "BOOST_ROOT: $BOOST_ROOT"
+
 ndk_dir="$android_sdk/ndk/$ndk_version"
 [[ -d $ndk_dir ]] || wcf_die "NDK $ndk_version is not installed at $ndk_dir"
 
