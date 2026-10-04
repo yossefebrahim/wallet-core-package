@@ -295,9 +295,139 @@ name: $name
       },
     );
 
+    test('depends on an unlisted hosted package -> violation', () async {
+      for (final name in [
+        'wallet_core_flutter',
+        'wallet_core_flutter_bindings',
+        'wallet_core_flutter_native',
+      ]) {
+        File(p.join(root, 'packages', name, 'pubspec.yaml')).writeAsStringSync(
+          '''
+name: $name
+dependencies:
+  bad_pkg: ^1.0.0
+''',
+        );
+      }
+      File(
+        p.join(root, 'hosted', 'bad_pkg', 'pubspec.yaml'),
+      ).writeAsStringSync('name: bad_pkg\n');
+
+      var outBuffer = StringBuffer();
+      int code = await IOOverrides.runZoned(
+        () => runRuntimeDepsCheck(['--root', root]),
+        stdout: () => _MockStdout(outBuffer),
+      );
+
+      expect(code, exitViolations);
+      expect(
+        outBuffer.toString(),
+        contains('bad_pkg is not on the allow list'),
+      );
+    });
+
+    test('custom hosted url in lockfile -> violation', () async {
+      for (final name in [
+        'wallet_core_flutter',
+        'wallet_core_flutter_bindings',
+        'wallet_core_flutter_native',
+      ]) {
+        File(p.join(root, 'packages', name, 'pubspec.yaml')).writeAsStringSync(
+          '''
+name: $name
+dependencies:
+  ffi: ^2.0.0
+''',
+        );
+      }
+      File(
+        p.join(root, 'hosted', 'ffi', 'pubspec.yaml'),
+      ).writeAsStringSync('name: ffi\n');
+
+      File(p.join(root, 'pubspec.lock')).writeAsStringSync('''
+packages:
+  ffi:
+    dependency: "direct main"
+    description:
+      name: ffi
+      url: "https://evil.example.com/pub"
+    source: hosted
+    version: "2.1.0"
+''');
+
+      var outBuffer = StringBuffer();
+      int code = await IOOverrides.runZoned(
+        () => runRuntimeDepsCheck(['--root', root]),
+        stdout: () => _MockStdout(outBuffer),
+      );
+
+      expect(code, exitViolations);
+      expect(
+        outBuffer.toString(),
+        contains('ffi source-not-allowed: custom hosted URL.'),
+      );
+    });
+
+    test('doc comment with HttpClient -> OK', () async {
+      for (final name in [
+        'wallet_core_flutter',
+        'wallet_core_flutter_bindings',
+        'wallet_core_flutter_native',
+      ]) {
+        File(
+          p.join(root, 'packages', name, 'pubspec.yaml'),
+        ).writeAsStringSync('name: $name\n');
+      }
+      File(
+        p.join(root, 'packages', 'wallet_core_flutter', 'lib', 'test.dart'),
+      ).writeAsStringSync(
+        '/// never uses HttpClient\n// also never uses HttpServer',
+      );
+
+      var outBuffer = StringBuffer();
+      int code = await IOOverrides.runZoned(
+        () => runRuntimeDepsCheck(['--root', root]),
+        stdout: () => _MockStdout(outBuffer),
+      );
+
+      expect(code, exitClean);
+    });
+
+    test('string literal with HttpClient -> OK', () async {
+      for (final name in [
+        'wallet_core_flutter',
+        'wallet_core_flutter_bindings',
+        'wallet_core_flutter_native',
+      ]) {
+        File(
+          p.join(root, 'packages', name, 'pubspec.yaml'),
+        ).writeAsStringSync('name: $name\n');
+      }
+      File(
+        p.join(root, 'packages', 'wallet_core_flutter', 'lib', 'test.dart'),
+      ).writeAsStringSync(
+        'final s = "HttpClient";\nfinal s2 = \'Process.run\';',
+      );
+
+      var outBuffer = StringBuffer();
+      int code = await IOOverrides.runZoned(
+        () => runRuntimeDepsCheck(['--root', root]),
+        stdout: () => _MockStdout(outBuffer),
+      );
+
+      expect(code, exitClean);
+    });
+
     test('the real three packages -> OK', () async {
-      // Runs against the actual repository directory.
-      final actualRoot = Directory.current.parent.parent.path;
+      // Find repo root by walking up
+      var dir = Directory.current;
+      while (!File(p.join(dir.path, 'AGENTS.md')).existsSync() ||
+          !File(p.join(dir.path, 'compat_manifest.json')).existsSync()) {
+        if (dir.parent.path == dir.path) throw StateError('Root not found');
+        dir = dir.parent;
+      }
+      final actualRoot = dir.path;
+
       var outBuffer = StringBuffer();
       int code = await IOOverrides.runZoned(
         () => runRuntimeDepsCheck(['--root', actualRoot]),

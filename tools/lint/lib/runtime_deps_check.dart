@@ -34,7 +34,6 @@ const allowList = {
       'Cryptographic hashing (SHA-256) for artifact/manifest verification',
   'collection': 'Collections utility used for Dart types',
   'meta': 'Dart meta annotations',
-  'path': 'Path manipulation',
   'typed_data': 'Typed data wrappers',
   'flutter': 'Flutter SDK',
   'sky_engine': 'Flutter internal engine',
@@ -73,7 +72,7 @@ Future<int> runRuntimeDepsCheck(List<String> args) async {
     stderr.writeln(
       'Error: .dart_tool/package_config.json not found. Run melos bootstrap.',
     );
-    return exitViolations;
+    return 2;
   }
 
   final packageConfigContent = File(packageConfigPath).readAsStringSync();
@@ -93,9 +92,28 @@ Future<int> runRuntimeDepsCheck(List<String> args) async {
     packageMap[name] = rootUri;
   }
 
+  final lockFile = File(p.join(root, 'pubspec.lock'));
+  Map<String, dynamic>? lockPackages;
+  if (lockFile.existsSync()) {
+    final lockDoc = loadYaml(lockFile.readAsStringSync());
+    if (lockDoc != null && lockDoc['packages'] is YamlMap) {
+      lockPackages = (lockDoc['packages'] as YamlMap).cast<String, dynamic>();
+    }
+  }
+
+  final rootPubspecFile = File(p.join(root, 'pubspec.yaml'));
+  YamlMap? rootOverrides;
+  if (rootPubspecFile.existsSync()) {
+    final rootPubspecDoc = loadYaml(rootPubspecFile.readAsStringSync());
+    if (rootPubspecDoc != null &&
+        rootPubspecDoc['dependency_overrides'] is YamlMap) {
+      rootOverrides = rootPubspecDoc['dependency_overrides'] as YamlMap;
+    }
+  }
+
   int totalViolations = 0;
   for (final pkg in siblingPackages) {
-    final report = _checkPackage(pkg, packageMap);
+    final report = _checkPackage(pkg, packageMap, lockPackages, rootOverrides);
     stdout.writeln('Package: $pkg');
     stdout.writeln('Closure: ${report.closure.toList()..sort()}');
     if (report.violations.isEmpty) {
@@ -127,6 +145,8 @@ Future<int> runRuntimeDepsCheck(List<String> args) async {
 DependencyReport _checkPackage(
   String entryPackage,
   Map<String, String> packageMap,
+  Map<String, dynamic>? lockPackages,
+  YamlMap? rootOverrides,
 ) {
   final closure = <String>{};
   final queue = <String>[entryPackage];
@@ -181,6 +201,36 @@ DependencyReport _checkPackage(
   }
 
   for (final pkg in closure) {
+    if (rootOverrides != null &&
+        rootOverrides.containsKey(pkg) &&
+        !siblingPackages.contains(pkg)) {
+      violations.add('$pkg has a dependency_override in the root pubspec.');
+    }
+
+    if (lockPackages != null && lockPackages.containsKey(pkg)) {
+      final lockEntry = lockPackages[pkg];
+      if (lockEntry is YamlMap) {
+        final source = lockEntry['source'];
+        if (source == 'hosted') {
+          final desc = lockEntry['description'];
+          if (desc is YamlMap) {
+            final url = desc['url'];
+            if (url != 'https://pub.dev') {
+              violations.add('$pkg source-not-allowed: custom hosted URL.');
+            }
+          }
+        } else if (source == 'sdk') {
+          // ok
+        } else if (source == 'path') {
+          if (!siblingPackages.contains(pkg)) {
+            violations.add('$pkg source-not-allowed: path source.');
+          }
+        } else {
+          violations.add('$pkg source-not-allowed: $source.');
+        }
+      }
+    }
+
     if (isDenied(pkg)) {
       violations.add(
         '$pkg is on the deny list of networking/telemetry packages.',
@@ -198,11 +248,20 @@ DependencyReport _checkPackage(
 List<String> _checkNetworkSymbols(String root) {
   final violations = <String>[];
   final networkSymbols = [
-    'HttpClient',
-    'Socket',
+    'SecureSocket',
+    'RawSecureSocket',
+    'ServerSocket',
+    'RawServerSocket',
     'RawDatagramSocket',
-    'WebSocket',
+    'WebSocketTransformer',
+    'NetworkImage',
+    'Image.network',
+    'HttpClient',
     'HttpServer',
+    'Process.run',
+    'Process.start',
+    'Socket',
+    'WebSocket',
     'package:http',
   ];
 
@@ -221,16 +280,20 @@ List<String> _checkNetworkSymbols(String root) {
         if (!file.path.endsWith('.dart')) continue;
         final lines = file.readAsLinesSync();
         for (int i = 0; i < lines.length; i++) {
-          final line = lines[i];
+          final originalLine = lines[i];
+
+          // Basic stripping of comments and string literals
+          // This is a naive approach but sufficient for the requested fixture tests
+          var cleanLine = originalLine.replaceAll(RegExp(r'//.*'), '');
+          cleanLine = cleanLine.replaceAll(RegExp(r"'.*?'"), "''");
+          cleanLine = cleanLine.replaceAll(RegExp(r'".*?"'), '""');
+
           for (final sym in networkSymbols) {
-            // simple check; we could use regex, but string matching is fine as requested.
-            // to avoid partial matches like "MySocket", let's make sure it's surrounded by non-word chars if possible
-            // or just rely on contains as before, but let's just use regex for whole word except package:http
             bool match = false;
-            if (sym == 'package:http') {
-              match = line.contains(sym);
+            if (sym == 'package:http' || sym.contains('.')) {
+              match = cleanLine.contains(sym);
             } else {
-              match = RegExp(r'\b' + sym + r'\b').hasMatch(line);
+              match = RegExp(r'\b' + sym + r'\b').hasMatch(cleanLine);
             }
 
             if (match) {
@@ -239,7 +302,7 @@ List<String> _checkNetworkSymbols(String root) {
                   '${file.path}:${i + 1}: build-time, network allowed by rule 3',
                 );
               } else if (isToolOrHook) {
-                if (line.contains('// wcf: network-ok')) {
+                if (originalLine.contains('// wcf: network-ok')) {
                   stdout.writeln(
                     '${file.path}:${i + 1}: build-time, network allowed by rule 3',
                   );
