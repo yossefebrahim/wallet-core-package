@@ -474,11 +474,11 @@ Still yours alone, and not done: **create the GitHub repository**. Until a remot
 | ID | Due | Status | Doc |
 |---|---|---|---|
 | DECISION-1 | D1 | open | docs/decisions/DECISION-1.md |
-| DECISION-2 | D1a | open | docs/decisions/DECISION-2.md |
+| DECISION-2 | D1a | **decided 2026-10-05 (D1a): Option 1 build hooks, provisional until T1.16b** | docs/decisions/DECISION-2.md |
 | DECISION-3 | D2 | open | docs/decisions/DECISION-3.md |
 | DECISION-4 | before Phase 5 W4 (human) | open | docs/decisions/DECISION-4.md |
 | DECISION-5 | Phase 0 | **recorded 2026-09-07 by the orchestrator (awaiting your ratification): keep `wallet_core_flutter*`**, T0.10 skipped; T3.12 must re-open before the first publish | docs/decisions/DECISION-5.md |
-| DECISION-6 | D1a | open | docs/decisions/DECISION-6.md |
+| DECISION-6 | D1a | **decided 2026-10-05: Flutter >=3.47.5** | docs/decisions/DECISION-6.md |
 | DECISION-7 | after Phase 2 (human) | open | docs/decisions/DECISION-7.md |
 | DECISION-8 | Phase 0 | **recorded 2026-09-07: sample (dormant)**, uncontested; README uses the one-sentence wording of §4.2 | docs/decisions/DECISION-8.md |
 | DECISION-9 | Phase 0 (evidence) → DECISION-14 at D1a | **recorded 2026-09-07 by the orchestrator (awaiting your ratification): Option C** (A′ Apple relink + B Android, Apple → from-source at M3), decided against Codex's B-only for the four reasons in §7; condition: T4.3 watches the tarball layout | docs/decisions/DECISION-9.md |
@@ -486,4 +486,4 @@ Still yours alone, and not done: **create the GitHub repository**. Until a remot
 | DECISION-11 | D0 | **recorded 2026-09-07 by the orchestrator (awaiting your ratification)**: recommendation adopted as written with the T0.R2/T0.R4 fixes | docs/decisions/DECISION-11.md |
 | DECISION-12 | D0 | **recorded 2026-09-07 by the orchestrator (awaiting your ratification)**: recommendation adopted as written with the T0.R2/T0.R4 fixes | docs/decisions/DECISION-12.md |
 | DECISION-13 | D0 | **recorded 2026-09-07 by the orchestrator (awaiting your ratification)**: recommendation adopted as written with the T0.R2/T0.R4 fixes | docs/decisions/DECISION-13.md |
-| DECISION-14 | D1a (with DECISION-9 evidence) | **recorded 2026-09-07 by the orchestrator (awaiting your ratification)**: contract of §§2–5 adopted, per-artifact `toolchain`, full-digest asset names, conduct-only retention; 24 months still a proposal until T3.13 | docs/decisions/DECISION-14.md |
+| DECISION-14 | D1a (with DECISION-9 evidence) | **recorded 2026-09-07 by the orchestrator (awaiting your ratification)**: contract of §§2–5 adopted, per-artifact `toolchain`, full-digest asset names, conduct-only retention; 24 months still a proposal until T3.13; **§10 a–h ratified/amended by you 2026-10-05** (a: x86_64 runtime run before Phase 1 closes or drop; b: per-artifact patch record, T1.2 follow-up; g: comparison 2 opt-in until T3.11; h: release `native-4.8.0-001` published) | docs/decisions/DECISION-14.md |

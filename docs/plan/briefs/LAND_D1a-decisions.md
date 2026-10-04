@@ -1,0 +1,6 @@
+<task>
+Commit the owner's D1a decision records (owner-authorized commit/push boundary — PROGRESS.md header). Root /Users/yossefebrahim/Work/wallet-core-package, `main` (2466ab3). `git status --short` must show only: ` M docs/decisions/DECISION-14.md`, ` M docs/plan/PROGRESS.md`, `?? docs/decisions/DECISION-2.md`, `?? docs/decisions/DECISION-6.md`, and untracked files under `docs/plan/briefs/` and `docs/plan/reviews/` — anything else (in particular anything under `packages/`, `tools/`, `example/`, or a worktree path): STOP. `git add docs`; `git status --short` must be empty. Commit:
+"docs: D1a decisions — DECISION-2 Option 1 build hooks (provisional until T1.16b), DECISION-6 Flutter >=3.47.5, DECISION-14 §10 ratified, release native-4.8.0-001 published"
+body: "Owner decisions 2026-10-05 after two independent debates (docs/plan/reviews/D1a-opus-debate.md, D1a-codex-debate.md). DECISION-2.md and DECISION-6.md new; DECISION-14 §10 a–h ratified (g amended: comparison 2 opt-in until T3.11; h: release published, tag native-4.8.0-001 at 2466ab3); decisions-log rows updated. Briefs of the round included."
+trailer after a blank line: "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>". `git push origin main` (plain; STOP on rejection). Paste hash and push output. No other git commands, no edits, no other agent.
+</task>
