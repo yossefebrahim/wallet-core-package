@@ -1,0 +1,12 @@
+<task>
+Two bookkeeping steps, no push, no file edits.
+1. LAND T1.16a-d2 in /Users/yossefebrahim/Work/wallet-core-package.worktrees/T1.16 (branch `task/T1.16`, tip `08dced3`). `git status --short` must be exactly: ` M example/lib/src/m0_flow.dart`, ` M example/lib/src/m0_page.dart`, ` M example/pubspec.lock`, ` M example/pubspec.yaml`, ` M example/test/m0_flow_test.dart`, ` M example/test/support/test_seam.dart`, ` M pubspec.yaml`, ` M tools/consumer_check.sh`, `?? tools/consumer_check/analysis_options.yaml`, `?? tools/consumer_check/pubspec.yaml` — else STOP. `git add -A`; commit "example: shutdown from failed, start-over after failed/closed; consumer_check is a workspace member" with body "Review W6-fable B.7, nits 10/14/16: the page can shut down from `failed` (DECISION-12 §3.1) and offers Start over after failed or closed, with a widget test (example 5 → 6 tests); the comment about `closed` timing matches T1.11-d1/d2; `wallet_core_flutter_native` comes only through dependency_overrides; `tools/consumer_check/` gets a pubspec + analysis_options and joins the root workspace (12 packages) so `melos run analyze/format/test` cover it. Implemented by agy-delegate on briefs T1.16a-d2 / -d2-d1; reviewed by the orchestrator." + blank line + trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. Record HASH_16.
+2. Re-merge into the existing integration worktree /Users/yossefebrahim/Work/wallet-core-package.worktrees/W6-integration (branch `integration/W6`, tip `1077399`; `git status --short` must be empty — `third_party/` is ignored). One at a time, each followed by `git status --short` (empty) and `git log --oneline -1`:
+   `git merge --no-ff task/T1.16 -m "merge task/T1.16 (T1.16a-d2) into integration/W6"`
+   `git merge --no-ff task/T1.17 -m "merge task/T1.17 (T1.17-d2) into integration/W6"`
+   `git merge --no-ff task/T1.4-d1 -m "merge task/T1.4-d1 (T1.4-d2) into integration/W6"`
+   `git merge --no-ff task/T1.11-d1 -m "merge task/T1.11-d1 (T1.11-d2) into integration/W6"`
+   Expected clean (root `pubspec.yaml` is touched by T1.16's workspace entry and by nothing else new). On any conflict: `git merge --abort`, STOP, report. Paste `git log --oneline --graph -12`.
+No push, no rebase/reset/checkout/stash/amend/tag/force, no other agent.
+</task>
+<structured_output_contract>Report: step-1 status paste and HASH_16; per-merge pastes; the graph; anything failed/skipped.</structured_output_contract>
