@@ -29,6 +29,8 @@ not carry one machine's layout; nothing else was edited.
 | `check_alignment_fail.txt` | `check_alignment.sh --readelf-output` | the 4 KB output above |
 | `check_exports_pass.txt` | `check_exports.sh --format macho` | our macOS dylib: 464/464, `_wcf_build_info` yes |
 | `check_exports_no_identity.txt` | `check_exports.sh --format macho` | upstream's device framework: 464/464, `_wcf_build_info` **no** |
+| `llvm_nm_dynamic_android_arm64_excerpt.txt` | NDK r28.2 `llvm-nm --dynamic --defined-only --extern-only`, 11 whole lines selected by name | our `android/arm64-v8a` `.so` (as_4.8.0_001, stripped): listed TW* names, upstream JNI glue, `wcf_build_info` |
+| `llvm_nm_symtab_stripped_android_arm64.txt` | NDK r28.2 `llvm-nm --defined-only --extern-only` (no `--dynamic`), stdout and stderr | the same `.so`: `no symbols` — the harness defect fixed in T1.8b-d1 |
 | `zipalign_check_pass.txt` | `zipalign -c -P 16 -v 4` | a zip built here with `zipalign -P 16 -f 4` |
 | `zipalign_check_fail.txt` | `zipalign -c -P 16 -v 4`, first 10 lines | the same zip before alignment |
 

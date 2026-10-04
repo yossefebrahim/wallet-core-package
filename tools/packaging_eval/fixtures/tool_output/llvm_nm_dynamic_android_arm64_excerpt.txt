@@ -1,0 +1,11 @@
+00000000014cb210 D AptosDP
+0000000000b6d2b0 T JNI_OnLoad
+0000000000b888a0 T Java_wallet_core_java_AnySigner_nativeSign
+00000000009d1b04 T TWAnyAddressCreateWithString
+00000000009d1a1c T TWAnyAddressIsValid
+0000000000b6d87c T TWDataCreateWithJByteArray
+0000000000b6d800 T TWDataJByteArray
+0000000000b6d944 T TWStringCreateWithJString
+00000000009a6700 T TWStringCreateWithUTF8Bytes
+0000000000b6d8fc T TWStringJString
+0000000000b88894 T wcf_build_info
