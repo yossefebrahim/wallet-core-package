@@ -300,7 +300,7 @@ final class WalletCoreSession implements WalletCore {
     );
     _transport.close();
     _transition(SessionState.closed);
-    await _states.close();
+    await _states.close().timeout(timeouts.shutdownGrace, onTimeout: () {});
   }
 
   void _onTerminated(WorkerTerminatedError error) {

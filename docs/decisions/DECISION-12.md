@@ -219,7 +219,7 @@ This is exactly why step 3 carries no deadline: an in-flight `Sign` may take arb
 2. Post `Shutdown(grace)`.
 3. The worker stops accepting work, **rejects every queued operation with `SessionStateError`**, lets the one in-flight operation finish (its future completes normally), disposes every handle in its ref table, detaches every native finalizer it attached, replies `ShutdownComplete(disposedCount)`, closes its ports, and exits.
 4. The UI isolate awaits `ShutdownComplete` up to the grace period. On expiry it **kills the isolate** (`Isolate.kill(priority: immediate)`), moves to `closed`, and records that a forced termination happened. Killing is worse than a clean exit — native allocations owned by that isolate are not wiped, exactly as TM-25's residual risk describes — so the grace period exists to make it rare, not to make it impossible.
-5. `closing → closed`. Every proxy of the session reports `ClosedError`; every ref is invalid.
+5. `closing → closed`. Every proxy of the session reports `ClosedError`; every ref is invalid. Every live, un-paused listener receives `closed` before `shutdown()` completes; a paused subscription or an `await for` body that is still awaiting cannot hold `shutdown()` beyond the grace period.
 
 ### 3.9 Key material and the acknowledgement order — **threat-model Q2**
 
