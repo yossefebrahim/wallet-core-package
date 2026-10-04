@@ -55,6 +55,78 @@ void main() {
       },
     );
 
+    test(
+      'baseline: normal shutdown, states list ends with closed synchronously',
+      () async {
+        final (core, _) = await _start();
+        final seen = <SessionState>[];
+        var done = false;
+        core.states.listen(seen.add, onDone: () => done = true);
+        await core.shutdown();
+        expect(seen, [SessionState.closing, SessionState.closed]);
+        expect(done, isTrue);
+      },
+    );
+
+    test(
+      'shutdown() bound: paused subscription completes within grace',
+      () async {
+        final (core, _) = await _start(
+          timeouts: const OperationTimeouts(
+            shutdownGrace: Duration(milliseconds: 50),
+          ),
+        );
+        final seen = <SessionState>[];
+        var done = false;
+        final sub = core.states.listen(seen.add, onDone: () => done = true);
+        sub.pause();
+
+        final stopwatch = Stopwatch()..start();
+        await core.shutdown();
+        expect(stopwatch.elapsedMilliseconds, lessThan(1000));
+        expect(core.state, SessionState.closed);
+        expect(done, isFalse);
+
+        sub.resume();
+        await Future<void>.delayed(Duration.zero);
+        expect(seen, contains(SessionState.closed));
+        expect(done, isTrue);
+      },
+    );
+
+    test(
+      'shutdown() bound: await for body awaiting indefinitely completes within grace',
+      () async {
+        final (core, _) = await _start(
+          timeouts: const OperationTimeouts(
+            shutdownGrace: Duration(milliseconds: 50),
+          ),
+        );
+        final seen = <SessionState>[];
+
+        final done = Completer<void>();
+        Future<void> consume() async {
+          await for (final state in core.states) {
+            seen.add(state);
+            if (state == SessionState.closing) {
+              await Completer<void>().future;
+            }
+          }
+          done.complete();
+        }
+
+        unawaited(consume());
+        await Future<void>.delayed(Duration.zero);
+
+        final stopwatch = Stopwatch()..start();
+        await core.shutdown();
+        expect(stopwatch.elapsedMilliseconds, lessThan(1000));
+        expect(core.state, SessionState.closed);
+
+        expect(done.isCompleted, isFalse);
+      },
+    );
+
     test('a failed Init throws the typed error, hands out no session, and '
         'leaves nothing to close', () async {
       final fake = FakeHandler()
