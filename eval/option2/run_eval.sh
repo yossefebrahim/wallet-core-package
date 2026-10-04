@@ -25,6 +25,21 @@
 #                        `xcrun simctl list devices booted` reports. This
 #                        script never boots, erases or configures a simulator.
 #   WCF_IOS_DEVICE       id of a connected physical device (optional).
+#   WCF_ANDROID_EMULATOR adb serial of an already-running arm64-v8a emulator.
+#                        Default: the first `emulator-*` serial `adb devices`
+#                        lists. This script never boots, stops or configures
+#                        an emulator. Android also needs $ANDROID_HOME
+#                        (default ~/Library/Android/sdk) with adb, a
+#                        build-tools apksigner and the NDK Flutter defaults to.
+#
+# Android (T1.9b). The evaluated set (as_4.8.0_001) ships arm64-v8a and x86_64
+# only: armeabi-v7a was never built (PRD §12.2 step 8), so every measured APK
+# is built with --target-platform android-arm64,android-x64 and the
+# armeabi-v7a rows are `skip`. On an Apple-Silicon host no x86_64 system image
+# runs, so the run rows are measured on the arm64-v8a emulator and the x86_64
+# library statically from the same APK. The release run is a probe entry point
+# (consumer/lib/probe_main.dart) installed with adb and read from logcat:
+# `flutter test` has no release mode and Flutter Driver refuses one.
 #
 # Every measurement is a tools/packaging_eval command appending to
 # eval/option2/results/results.jsonl; rows the harness has no command for
@@ -55,10 +70,19 @@ for arg in "$@"; do
   case "$arg" in
     --no-xcode) NO_XCODE=1 ;;
     --skip-consumer-gen) SKIP_CONSUMER_GEN=1 ;;
-    -h|--help) sed -n '2,48p' "$0"; exit 0 ;;
+    -h|--help) awk 'NR > 1 && /^#/ { print; next } NR > 1 { exit }' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 64 ;;
   esac
 done
+
+# CocoaPods (1.16.2 on Ruby 4.0) aborts with "Unicode Normalization not
+# appropriate for ASCII-8BIT" when the locale is not UTF-8 — the case for a
+# script started without LANG (measured, T1.9b). Flutter sets it for the pod
+# installs it runs itself; the direct `pod install`s below need it too.
+case "${LC_ALL:-${LANG:-}}" in
+  *UTF-8*|*utf8*|*UTF8*|*utf-8*) ;;
+  *) export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 ;;
+esac
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EVAL="$REPO/eval/option2"
@@ -89,11 +113,32 @@ SIM_ROW="ios-simulator/arm64_x86_64/libTrustWalletCore.dylib"
 XCF_DEVICE_BIN="TrustWalletCore.xcframework/ios-arm64/TrustWalletCore.framework/TrustWalletCore"
 XCF_SIM_BIN="TrustWalletCore.xcframework/ios-arm64_x86_64-simulator/TrustWalletCore.framework/TrustWalletCore"
 EMBEDDED_BIN="Frameworks/TrustWalletCore.framework/TrustWalletCore"
-NDK_HINT='$ANDROID_NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin'
-WAITING_ANDROID="waiting-for-artifacts: no Android artifact exists (the eval manifest's android rows are TBD-T1.2; T1.2's Android build produces them, T1.9b runs this)"
 ORCHESTRATOR="orchestrator-run: --no-xcode (this session's sandbox refuses Xcode's DerivedData); run eval/option2/run_eval.sh without it"
 IOS_APP_TARGETS=(ios-simulator-arm64/debug ios-simulator-arm64/release ios-device-arm64/debug ios-device-arm64/release)
-ANDROID_APP_TARGETS=(android-emulator-x86_64/debug android-emulator-x86_64/release android-device-arm64-v8a/debug android-device-arm64-v8a/release)
+
+# Android (T1.9b): see the header. One APK carries both shipped ABIs, so the
+# x86_64 emulator columns measure the same APK statically.
+ANDROID_PLATFORMS='android-arm64,android-x64'
+AND_ARM=android-emulator-arm64-v8a
+AND_X64=android-emulator-x86_64
+AND_DEV=android-device-arm64-v8a
+AND_ARM_ROW='android/arm64-v8a/libTrustWalletCore.so'
+AND_X64_ROW='android/x86_64/libTrustWalletCore.so'
+AND_PACKAGE='dev.wcf.eval.wcf_eval_option2'
+AND_APPS="$APPS/android"
+# The four TW* exports outside the symbol list that every Android build of
+# upstream's module carries — its JNI glue (jni/cpp/TWJNIData.h,
+# TWJNIString.h) — allowed exactly as tools/native_build/build_android.sh
+# allows them; any other extra still fails.
+JNI_ALLOW=(--allow-extra TWDataCreateWithJByteArray --allow-extra TWDataJByteArray
+  --allow-extra TWStringCreateWithJString --allow-extra TWStringJString)
+NOT_SHIPPED='not shipped (PRD §12.2 step 8)'
+NOT_SHIPPED_NOTE='as_4.8.0_001 builds no armeabi-v7a library: PRD §12.2 step 8 ships an ABI only if it is tested; the manifest has no android/armeabi-v7a row, so the Gradle task packages none (what a default-ABI build does: consumer-build / android/armeabi-v7a)'
+NO_DEVICE='no physical Android device is attached to this host; the APK is the one the emulator columns measure, what is unmeasured is installing and running it on arm64 hardware'
+NO_X64='Apple-Silicon host: an x86_64 Android system image does not run here, so the run rows are measured on the arm64-v8a emulator; the x86_64 library is measured statically from the same APK (symbols, size, alignment, packaged digest, libc++_shared copy)'
+# The fixture manifest every placeholder check uses (main f9f3d58): the root
+# manifest as it was before as_4.8.0_001, every digest `TBD-`.
+PLACEHOLDER="$REPO/packages/wallet_core_flutter_native/test/fixtures/compat_manifest.placeholder.json"
 
 cd "$REPO"
 
@@ -152,6 +197,65 @@ target_of() { echo "${1%-*}/${1##*-}"; }
 # How many libraries an artifact cache holds (0 when it does not exist).
 cache_files() {
   { find "$1" -type f -name 'libTrustWalletCore.dylib' 2>/dev/null || true; } | wc -l | tr -d ' '
+}
+# The same for the Android libraries.
+so_cache_files() {
+  { find "$1" -type f -name 'libTrustWalletCore.so' 2>/dev/null || true; } | wc -l | tr -d ' '
+}
+
+# A working copy of the consumer app at $1, resolving the two packages from
+# the staged copies (the same pubspec_overrides.yaml as $APP).
+stage_app() {
+  rm -rf "$1"
+  rsync -a --exclude .dart_tool --exclude build \
+    --exclude ios/Pods --exclude ios/.symlinks "$EVAL/consumer/" "$1/"
+  cp "$APP/pubspec_overrides.yaml" "$1/pubspec_overrides.yaml"
+  (cd "$1" && flutter pub get --offline) > "$LOGS/pub-get-$(basename "$1").log" 2>&1
+}
+
+# apk_libs APK: the APK's native libraries, `lib/<abi>/<name>.so <bytes>`,
+# comma-separated.
+apk_libs() {
+  unzip -l "$1" | awk '$4 ~ /^lib\/[^\/]+\/[^\/]+\.so$/ { printf "%s%s %s", sep, $4, $1; sep = ", " }'
+}
+# apk_abi_libs APK ABI: the file names under lib/<ABI>/, space-separated.
+apk_abi_libs() {
+  unzip -l "$1" | awk -v p="lib/$2/" 'index($4, p) == 1 { n = $4; sub(".*/", "", n); printf "%s%s", sep, n; sep = " " }'
+}
+# build_id ELF: the GNU build ID, which tells two builds of one file apart.
+build_id() {
+  "$READELF" -n "$1" 2>/dev/null | sed -n 's/^ *Build ID: //p' | head -1
+}
+# dt_needed ELF: the DT_NEEDED entries, space-separated.
+dt_needed() {
+  "$READELF" -d "$1" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | tr '\n' ' ' | sed 's/ $//'
+}
+# The fetch tool's count line(s) for the Gradle task, out of a verbose
+# `flutter build apk -v` log: what the task obtained and from where.
+prepare_lines() { # log task
+  sed -n "/> Task :wallet_core_flutter_native:$2/,/verified libraries in/p" "$1" \
+    | grep -E ' requested: |verified libraries in' | sed 's/^\[[^]]*\] *//' | tr '\n' ' ' | tr -s ' ' || true
+}
+# android_probe APK LOG: installs APK on $EMU_ID, cold-starts its activity and
+# waits up to 60 s for the probe's line in logcat. Sets PROBE_LINE (empty if
+# none) and LAUNCH (am start -W's status, launch state and time).
+android_probe() {
+  {
+    "$ADB" -s "$EMU_ID" install -r "$1" &&
+      "$ADB" -s "$EMU_ID" shell am force-stop "$AND_PACKAGE" &&
+      "$ADB" -s "$EMU_ID" logcat -c &&
+      "$ADB" -s "$EMU_ID" shell am start -W -n "$AND_PACKAGE/.MainActivity"
+  } > "$2" 2>&1 || true
+  PROBE_LINE=''
+  local n=0
+  while [ $n -lt 60 ]; do
+    PROBE_LINE=$("$ADB" -s "$EMU_ID" logcat -d -s flutter:I 2>/dev/null | tr -d '\r' | grep -o 'WCF_PROBE .*' | head -1 || true)
+    [ -z "$PROBE_LINE" ] || break
+    sleep 1
+    n=$((n + 1))
+  done
+  "$ADB" -s "$EMU_ID" logcat -d -s flutter:I >> "$2" 2>&1 || true
+  LAUNCH=$(tr -d '\r' < "$2" | grep -E '^(Status|LaunchState|TotalTime):' | tr '\n' ' ' | sed 's/ *$//' || true)
 }
 
 # ---------------------------------------------------------------------------
@@ -214,6 +318,51 @@ row --check min-version --target host/xcode --status "$deployment_status" \
   --summary "$XCODE_VERSION accepts iOS ${IOS_SDK_MIN}–$IOS_SDK_MAX; Flutter.framework $FLUTTER_IOS_MIN; pod $POD_TARGET; app $APP_IOS_TARGET" \
   --notes "pass means both the pod's and the consumer app's deployment targets are ones this Xcode accepts. An app whose template target is below $IOS_SDK_MIN does not build for iOS on this Xcode at all."
 
+# Android tooling (T1.9b), read from the machine. The NDK is the one the
+# installed Flutter's Gradle plugin defaults to (else the newest installed):
+# its llvm-nm and llvm-readelf read the packaged libraries, and its
+# sysroot's libc++_shared.so is the fixture plugin's copy in step 9.
+ANDROID_SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+ADB="$(command -v adb || true)"
+[ -n "$ADB" ] || ADB="$ANDROID_SDK/platform-tools/adb"
+APKSIGNER="$(ls -d "$ANDROID_SDK"/build-tools/*/ 2>/dev/null | sort -V | tail -1)apksigner"
+NDK_ROOT="$ANDROID_SDK/ndk"
+FLUTTER_NDK="$(grep -ho 'val ndkVersion: String = "[^"]*"' \
+  "$FLUTTER_ROOT_DIR/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt" 2>/dev/null \
+  | sed 's/.*= "//; s/"$//' || true)"
+if [ -n "$FLUTTER_NDK" ] && [ -d "$NDK_ROOT/$FLUTTER_NDK" ]; then
+  NDK="$NDK_ROOT/$FLUTTER_NDK"
+else
+  NDK="$(ls -d "$NDK_ROOT"/*/ 2>/dev/null | sort -V | tail -1)"
+  NDK="${NDK%/}"
+fi
+[ -n "$NDK" ] && [ -d "$NDK" ] || { echo "run_eval.sh: no Android NDK under $NDK_ROOT" >&2; exit 1; }
+NDK_BIN="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin"
+READELF="$NDK_BIN/llvm-readelf"
+LLVM_NM="$NDK_BIN/llvm-nm"
+for t in "$ADB" "$APKSIGNER" "$READELF" "$LLVM_NM"; do
+  [ -x "$t" ] || { echo "run_eval.sh: $t not found" >&2; exit 1; }
+done
+# The set's own NDK (manifest toolchain.ndk): the libc++_shared.so a
+# c++_shared build of the set would have shipped (step 9's counterfactual).
+SET_NDK_VERSION="$(dart "$EVAL/tool/eval.dart" json-get --file "$MANIFEST" --key toolchain.ndk)"
+SET_NDK="$NDK_ROOT/$SET_NDK_VERSION"
+# The emulator that is already running (never booted here).
+EMU_ID="${WCF_ANDROID_EMULATOR:-}"
+if [ -z "$EMU_ID" ]; then
+  EMU_ID="$("$ADB" devices 2>/dev/null | awk '$1 ~ /^emulator-/ && $2 == "device" { print $1; exit }' || true)"
+fi
+EMU_ABI=''
+EMU_API=''
+if [ -n "$EMU_ID" ]; then
+  EMU_ABI="$("$ADB" -s "$EMU_ID" shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r' || true)"
+  EMU_API="$("$ADB" -s "$EMU_ID" shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r' || true)"
+fi
+EMU_OK=0
+[ -n "$EMU_ID" ] && [ "$EMU_ABI" = arm64-v8a ] && EMU_OK=1
+EMU_NOTE="emulator ${EMU_ID:-none} (${EMU_ABI:-?}, API ${EMU_API:-?})"
+echo "Android: NDK $(basename "$NDK") (Flutter default ${FLUTTER_NDK:-unknown}); set NDK $SET_NDK_VERSION; $EMU_NOTE"
+
 # third_party/ is untrusted: every file used below is verified against the
 # evaluation manifest by the package's own fetch tool before anything reads it.
 # Into a cache of its own: the builds' $CACHE must start absent, or the
@@ -221,7 +370,7 @@ row --check min-version --target host/xcode --status "$deployment_status" \
 # vendored set.
 dart run packages/wallet_core_flutter_native/tool/fetch_artifacts.dart \
   --manifest "$MANIFEST" --cache-dir "$PREFLIGHT_CACHE" --vendored "$VENDORED" --offline \
-  --only "$DEVICE_ROW" --only "$SIM_ROW"
+  --only "$DEVICE_ROW" --only "$SIM_ROW" --only "$AND_ARM_ROW" --only "$AND_X64_ROW"
 
 # The consumer resolves the two packages by path from staged copies, so that
 # `pod install` writes the xcframework into $TMPDIR and never into packages/.
@@ -251,6 +400,10 @@ EOF
 dart "$EVAL/tool/eval.dart" flip --manifest "$MANIFEST" --artifact "$SIM_ROW" --out "$FLIPPED"
 # Self-consistent on purpose: the gate passes, and only the bytes disagree.
 dart run tools/manifest/bin/validate.dart "$FLIPPED"
+# The same for the Gradle task, on the arm64-v8a library.
+FLIPPED_ANDROID="$OUT/eval_manifest.flipped-android.json"
+dart "$EVAL/tool/eval.dart" flip --manifest "$MANIFEST" --artifact "$AND_ARM_ROW" --out "$FLIPPED_ANDROID"
+dart run tools/manifest/bin/validate.dart "$FLIPPED_ANDROID"
 
 # Build-time inputs of the podspec (and of the Gradle task, which reads the
 # same names). The fetch makes no request: --offline, from the vendored set.
@@ -265,9 +418,12 @@ IDENTITY_DEFINES=(
 )
 TEST_CMD="flutter test integration_test/symbol_lookup_test.dart ${IDENTITY_DEFINES[*]}"
 # `flutter test` has no --release option (Flutter 3.47.5: "Could not find an
-# option named --release"); an integration test runs in release mode only
-# through `flutter drive` with the integration_test driver.
-DRIVE_CMD="flutter drive --driver=test_driver/integration_test.dart --target=integration_test/symbol_lookup_test.dart ${IDENTITY_DEFINES[*]}"
+# option named --release"), and `flutter drive --release` with the
+# integration_test driver is refused too ("Flutter Driver (non-web) does not
+# support running in release mode", measured on the Android emulator,
+# 2026-10-04). A release build therefore runs lib/probe_main.dart, the same
+# checks with one `WCF_PROBE PASS|FAIL` line in the device log.
+PROBE_CMD="-t lib/probe_main.dart ${IDENTITY_DEFINES[*]}"
 
 # Builds recorded `skip`, one "<target> TAB <summary> TAB <notes>" line each.
 # Every row that needs the build's output inherits the skip and its reason
@@ -278,7 +434,11 @@ SKIPPED="$OUT/skipped-builds.tsv"
 skipped_build() { grep -q "^$1$TAB" "$SKIPPED"; }
 # The on-target command for a "<device>/<debug|release>" target, as text.
 on_target_cmd() { # target device-id
-  if [ "${1##*/}" = release ]; then echo "$DRIVE_CMD -d $2 --release"; else echo "$TEST_CMD -d $2"; fi
+  if [ "${1##*/}" = release ]; then
+    echo "flutter run --release -d $2 $PROBE_CMD (look for WCF_PROBE PASS in the device log)"
+  else
+    echo "$TEST_CMD -d $2"
+  fi
 }
 inherit_skip() { # check target command
   local line
@@ -416,15 +576,145 @@ else
     build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app \
     build ipa --no-codesign
 fi
-# The first pod install above started without $CACHE; with --offline and the
-# eval manifest's never-resolving retention URL, --vendored is the only
-# source it had (step 7).
+# The first pod install above started without $CACHE; with --offline, the
+# vendored directory is the only source it had (step 7).
 CACHE_FILLED="$(cache_files "$CACHE")"
-for t in "${ANDROID_APP_TARGETS[@]}"; do
-  unmeasured consumer-build "$t" \
-    "cd \"\$APP\" && WCF_MANIFEST=<manifest with android rows> flutter build apk --${t##*/}" \
-    "$WAITING_ANDROID"
+
+# Android (T1.9b). The debug APK first, so it is the app's first Gradle build
+# and its wcfPrepareDebugJniLibs task the first fetch of the Android rows into
+# $CACHE (step 7 counts them before and after), then release. `-v` so the log
+# carries Gradle's task graph and the task's own output (where the libraries
+# came from). Each APK is copied away right after its build: later steps
+# rebuild the same outputs (step 2's `flutter test -d <emulator>` for one ABI
+# only, the release probe with another entry point).
+mkdir -p "$AND_APPS"
+APK_OUT="$APP/build/app/outputs/flutter-apk"
+AND_CACHE_BEFORE="$(so_cache_files "$CACHE")"
+android_build() { # mode -> BUILD_RC, BUILD_SECONDS
+  local mode="$1" log="$LOGS/build-android-$1.log" start=$SECONDS
+  say "step 1: flutter build apk --$mode --target-platform $ANDROID_PLATFORMS"
+  BUILD_RC=0
+  (cd "$APP" && flutter build apk "--$mode" --target-platform "$ANDROID_PLATFORMS" \
+    "${IDENTITY_DEFINES[@]}" -v) > "$log" 2>&1 || BUILD_RC=$?
+  BUILD_SECONDS=$((SECONDS - start))
+  if [ "$BUILD_RC" = 0 ]; then cp "$APK_OUT/app-$mode.apk" "$AND_APPS/app-$mode.apk"; fi
+}
+android_build debug
+AND_DEBUG_RC=$BUILD_RC
+AND_DEBUG_SECONDS=$BUILD_SECONDS
+AND_CACHE_AFTER="$(so_cache_files "$CACHE")"
+android_build release
+AND_RELEASE_RC=$BUILD_RC
+AND_RELEASE_SECONDS=$BUILD_SECONDS
+
+# android_build_rows MODE: the consumer-build rows of one APK. `pass` only if
+# the APK holds our library for both shipped ABIs.
+android_build_rows() {
+  local mode="$1" rc seconds log="$LOGS/build-android-$1.log" libs abi task
+  if [ "$mode" = debug ]; then
+    rc=$AND_DEBUG_RC; seconds=$AND_DEBUG_SECONDS; task=wcfPrepareDebugJniLibs
+  else
+    rc=$AND_RELEASE_RC; seconds=$AND_RELEASE_SECONDS; task=wcfPrepareReleaseJniLibs
+  fi
+  local cmd="cd \"\$APP\" && flutter build apk --$mode --target-platform $ANDROID_PLATFORMS ${IDENTITY_DEFINES[*]} -v && unzip -l build/app/outputs/flutter-apk/app-$mode.apk"
+  if [ "$rc" != 0 ]; then
+    for t in "$AND_ARM/$mode" "$AND_X64/$mode"; do
+      row --check consumer-build --target "$t" --status fail --command "$cmd" \
+        --value "log=$log" --notes "$(log_tail "$log")"
+    done
+    echo "Android $mode build failed: $log" >&2
+    finish 1
+  fi
+  libs="$(apk_libs "$AND_APPS/app-$mode.apk")"
+  for abi in arm64-v8a x86_64; do
+    case "$libs, " in
+      *"lib/$abi/libTrustWalletCore.so "*) ;;
+      *)
+        row --check consumer-build --target "$AND_ARM/$mode" --status fail --command "$cmd" \
+          --summary "no $abi library in the APK" --notes "APK native libraries (bytes): $libs; log: $log"
+        finish 1
+        ;;
+    esac
+  done
+  local prepared
+  prepared="$(prepare_lines "$log" "$task")"
+  row --check consumer-build --target "$AND_ARM/$mode" --status pass --command "$cmd" \
+    --value "seconds=$seconds" --value "log=$log" --value "apk_native_libraries=$libs" \
+    --value "gradle_task=$task: ${prepared:-no output (UP-TO-DATE?)}" \
+    --summary "built in ${seconds} s; arm64-v8a and x86_64 .so in the APK" \
+    --notes "APK native libraries (bytes): $libs. $task: ${prepared:-no fetch-tool output in the log}. $BUILD_NOTE"
+  row --check consumer-build --target "$AND_X64/$mode" --status pass --command "$cmd" \
+    --value "log=$log" \
+    --summary "built in ${seconds} s; x86_64 .so in the APK" \
+    --notes "the same APK as $AND_ARM/$mode (one APK carries both ABIs). $NO_X64"
+  row --check consumer-build --target "$AND_DEV/$mode" --status unmeasured \
+    --command "$cmd && adb -s <arm64-device-id> install build/app/outputs/flutter-apk/app-$mode.apk" \
+    --summary 'no physical device' --notes "$NO_DEVICE"
+}
+android_build_rows debug
+android_build_rows release
+
+# What the Gradle integration is, read from the debug build: the task in the
+# graph and where it sits, the generated jniLibs directory it hands to AGP,
+# and that the consumer's Gradle files are still as `flutter create` wrote
+# them (no manual native edit).
+GRADLE_LOG="$LOGS/build-android-debug.log"
+GEN_DIR="$APP/build/wallet_core_flutter_native/generated/jniLibs/wcfPrepareDebugJniLibs"
+task_graph="$(grep -m1 'Tasks to be executed:' "$GRADLE_LOG" | tr ',' '\n' \
+  | grep -E "wcfPrepareDebugJniLibs|:wallet_core_flutter_native:mergeDebugJniLibFolders|:app:mergeDebugNativeLibs|:app:stripDebugDebugSymbols|:app:packageDebug'" \
+  | sed "s/.*task '//; s/'.*//" | tr '\n' ' ' | sed 's/ $//' | sed 's/ / -> /g' || true)"
+gen_libs="$(cd "$GEN_DIR" 2>/dev/null && find . -name '*.so' | sed 's|^\./||' | sort | tr '\n' ' ' | sed 's/ $//' || true)"
+gradle_edits=none
+for f in android/build.gradle.kts android/settings.gradle.kts android/app/build.gradle.kts android/gradle.properties; do
+  cmp -s "$EVAL/consumer/$f" "$APP/$f" || gradle_edits="$gradle_edits $f"
 done
+gradle_edits="${gradle_edits#none }"
+dart_line="$(grep -m1 "Starting process 'command '.*/bin/dart''" "$GRADLE_LOG" | sed 's/^\[[^]]*\] *//; s/Command: .*//' || true)"
+status=pass
+{ [ -n "$task_graph" ] && [ "$gen_libs" = 'arm64-v8a/libTrustWalletCore.so x86_64/libTrustWalletCore.so' ] \
+  && [ "$gradle_edits" = none ]; } || status=fail
+row --check gradle-integration --target android/gradle --status "$status" \
+  --command "cd \"\$APP\" && flutter build apk --debug --target-platform $ANDROID_PLATFORMS -v; read the task graph, \$APP/build/wallet_core_flutter_native/generated/jniLibs/, cmp the consumer's Gradle files with eval/option2/consumer" \
+  --value "task_chain=$task_graph" --value "generated_jnilibs=$GEN_DIR" \
+  --value "generated_files=$gen_libs" --value "consumer_gradle_edits=$gradle_edits" \
+  --value "tool_process=$dart_line" \
+  --summary "wcfPrepareDebugJniLibs in the graph before AGP's merge; generated jniLibs: $gen_libs; consumer Gradle edits: $gradle_edits" \
+  --notes "task chain: $task_graph. The task runs the package's tool/option2/prepare_jni_libs.dart with the Flutter SDK's dart ($dart_line) and hands AGP build/wallet_core_flutter_native/generated/jniLibs/wcfPrepareDebugJniLibs through variant.sources.jniLibs.addGeneratedSourceDirectory; nothing is written under the package's or the app's src/"
+[ "$status" = pass ] || finish 1
+
+# armeabi-v7a is not shipped. What a consumer meets, measured once in copies
+# of their own: a default `flutter build apk` (no --target-platform: Flutter
+# targets android-arm, android-arm64 and android-x64), and the same with
+# `ndk { abiFilters += listOf("arm64-v8a", "x86_64") }` added to the app's
+# build.gradle.kts — the remedy an Android developer reaches for first.
+ABI_APP="$OUT/abi"
+stage_app "$ABI_APP"
+ABI_CMD="(working copy of eval/option2/consumer) && flutter build apk --release ${IDENTITY_DEFINES[*]}   # no --target-platform"
+rc=0
+(cd "$ABI_APP" && flutter build apk --release "${IDENTITY_DEFINES[@]}") > "$LOGS/build-android-default-abis.log" 2>&1 || rc=$?
+default_v7a="build exit $rc"
+if [ "$rc" = 0 ]; then
+  cp "$ABI_APP/build/app/outputs/flutter-apk/app-release.apk" "$AND_APPS/app-release-default-abis.apk"
+  default_v7a="build exit 0; APK lib/armeabi-v7a/: $(apk_abi_libs "$AND_APPS/app-release-default-abis.apk" armeabi-v7a)"
+fi
+default_msg="$(grep -i -m1 -E 'armeabi|wallet_core_flutter_native.*(warn|abi)' "$LOGS/build-android-default-abis.log" || true)"
+sed -i '' 's|^        versionName = flutter.versionName$|        versionName = flutter.versionName\
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }|' "$ABI_APP/android/app/build.gradle.kts"
+grep -q 'abiFilters' "$ABI_APP/android/app/build.gradle.kts" || { echo "run_eval.sh: could not add abiFilters" >&2; exit 1; }
+rm -rf "$ABI_APP/build"
+rc=0
+(cd "$ABI_APP" && flutter build apk --release "${IDENTITY_DEFINES[@]}") > "$LOGS/build-android-abifilters.log" 2>&1 || rc=$?
+filters_v7a="build exit $rc"
+if [ "$rc" = 0 ]; then
+  cp "$ABI_APP/build/app/outputs/flutter-apk/app-release.apk" "$AND_APPS/app-release-abifilters.apk"
+  filters_v7a="build exit 0; APK lib/armeabi-v7a/: $(apk_abi_libs "$AND_APPS/app-release-abifilters.apk" armeabi-v7a)"
+fi
+target_platform_arg="$(grep -m1 -o -- '-Ptarget-platform=[^ ]*' "$LOGS/build-android-release.log" || true)"
+row --check consumer-build --target android/armeabi-v7a --status skip --summary "$NOT_SHIPPED" \
+  --command "$ABI_CMD; then the same with ndk { abiFilters += listOf(\"arm64-v8a\", \"x86_64\") } in android/app/build.gradle.kts" \
+  --value "default_build=$default_v7a" --value "default_build_message=${default_msg:-none}" \
+  --value "abifilters_build=$filters_v7a" \
+  --notes "as_4.8.0_001 builds no armeabi-v7a library, and the Gradle task packages exactly the manifest's ABIs. A default-ABI build is NOT refused: $default_v7a (no libTrustWalletCore.so), Gradle message: ${default_msg:-none}. With abiFilters arm64-v8a,x86_64 in the app's defaultConfig.ndk: $filters_v7a. Only --target-platform $ANDROID_PLATFORMS keeps android-arm out of the APK (Flutter passes it to Gradle as ${target_platform_arg:--Ptarget-platform}). logs: $LOGS/build-android-default-abis.log, $LOGS/build-android-abifilters.log"
 
 # ---------------------------------------------------------------------------
 # step 2 — run on target; step 4 (runtime half) — full symbol lookup
@@ -435,9 +725,7 @@ run_test() { # target slug device debug|release
   local log="$LOGS/test-$slug.log"
   local cmd
   if [ "$mode" = release ]; then
-    cmd=(flutter drive --driver=test_driver/integration_test.dart
-      --target=integration_test/symbol_lookup_test.dart "${IDENTITY_DEFINES[@]}"
-      -d "$device" --release)
+    cmd=(flutter run --release -d "$device" -t lib/probe_main.dart "${IDENTITY_DEFINES[@]}")
   else
     cmd=(flutter test integration_test/symbol_lookup_test.dart "${IDENTITY_DEFINES[@]}"
       -d "$device")
@@ -449,9 +737,28 @@ run_test() { # target slug device debug|release
     inherit_skip symbols-runtime-lookup "$target" "${cmd[*]}"
     return 0
   fi
+  # A release run on an iOS device is the probe under `flutter run --release`
+  # (Flutter Driver refuses release mode), which stays attached to the app;
+  # this script does not drive it.
+  if [ "$mode" = release ]; then
+    for check in run-on-target symbols-runtime-lookup; do
+      unmeasured "$check" "$target" "${cmd[*]} (look for WCF_PROBE PASS)" \
+        "release on an iOS device: run the probe by hand and read its WCF_PROBE line; Flutter Driver refuses release mode (measured on Android, 2026-10-04)"
+    done
+    return 0
+  fi
   say "step 2: integration test on $device ($target)"
-  local status=pass
+  local status=pass retry_note=''
   (cd "$APP" && "${cmd[@]}") > "$log" 2>&1 || status=fail
+  # Flutter's tooling, not the app: observed once on the Android emulator
+  # right after the simulator run (T1.9b, 2026-10-04), and passing when rerun.
+  # One retry, recorded in the row.
+  if [ "$status" = fail ] && grep -q 'Failed to start Dart Development Service' "$log"; then
+    cp "$log" "$log.first-attempt"
+    retry_note="first attempt failed to load the test: 'Failed to start Dart Development Service' ($log.first-attempt); rerun once"
+    status=pass
+    (cd "$APP" && "${cmd[@]}") > "$log" 2>&1 || status=fail
+  fi
   if [ "$status" = fail ] && grep -q 'not supported' "$log"; then
     local notes
     notes="$(grep -m1 'not supported' "$log")"
@@ -464,6 +771,7 @@ run_test() { # target slug device debug|release
   fi
   local notes=""
   [ "$status" = fail ] && notes="$(log_tail "$log")"
+  [ -z "$retry_note" ] || notes="${notes:+$notes; }$retry_note"
   local resolved via set_id summary
   resolved="$(grep -o 'WCF-EVAL symbols_resolved=[^ ]*' "$log" | head -1 | cut -d= -f2 || true)"
   via="$(grep -o 'WCF-EVAL resolved_by=.*' "$log" | head -1 | cut -d= -f2- || true)"
@@ -513,9 +821,79 @@ else
     unmeasured symbols-runtime-lookup "$t" "WCF_IOS_DEVICE=<id> eval/option2/run_eval.sh ($(on_target_cmd "$t" '<id>'))" "device: physical iPhone (T1.9b)"
   done
 fi
-for t in "${ANDROID_APP_TARGETS[@]}"; do
-  unmeasured run-on-target "$t" "$(on_target_cmd "$t" '<emulator or device id>')" "$WAITING_ANDROID"
-  unmeasured symbols-runtime-lookup "$t" "$(on_target_cmd "$t" '<emulator or device id>')" "$WAITING_ANDROID"
+
+# Android: the arm64-v8a emulator that is already running. Debug runs the
+# integration test (`flutter test -d`, which rebuilds the debug APK for that
+# one ABI — step 1's copies are what later steps measure); release builds the
+# probe entry point with step 1's release configuration, installs it with adb,
+# cold-starts it and reads its WCF_PROBE line from logcat.
+PROBE_APK="$AND_APPS/app-release-probe.apk"
+PROBE_BUILD="cd \"\$APP\" && flutter build apk --release --target-platform $ANDROID_PLATFORMS $PROBE_CMD"
+probe_cmd() {
+  echo "$PROBE_BUILD && adb -s $1 install -r build/app/outputs/flutter-apk/app-release.apk && adb -s $1 shell am start -W -n $AND_PACKAGE/.MainActivity && adb -s $1 logcat -d -s flutter:I   (look for WCF_PROBE PASS)"
+}
+PROBE_PASS=0
+AND_PROBE_LINE=''
+AND_LAUNCH=''
+if [ "$EMU_OK" = 1 ]; then
+  run_test "$AND_ARM/debug" android-emulator-debug "$EMU_ID" debug
+  say "step 2: release probe on $EMU_ID ($AND_ARM/release)"
+  rc=0
+  (cd "$APP" && flutter build apk --release --target-platform "$ANDROID_PLATFORMS" \
+    -t lib/probe_main.dart "${IDENTITY_DEFINES[@]}") > "$LOGS/build-android-release-probe.log" 2>&1 || rc=$?
+  if [ "$rc" != 0 ]; then
+    for check in run-on-target symbols-runtime-lookup; do
+      row --check "$check" --target "$AND_ARM/release" --status fail --command "$(probe_cmd "$EMU_ID")" \
+        --summary 'probe build failed' --notes "$(log_tail "$LOGS/build-android-release-probe.log")"
+    done
+    finish 1
+  fi
+  cp "$APK_OUT/app-release.apk" "$PROBE_APK"
+  android_probe "$PROBE_APK" "$LOGS/run-android-emulator-release.log"
+  case "$PROBE_LINE" in
+    'WCF_PROBE PASS'*)
+      PROBE_PASS=1
+      AND_PROBE_LINE="$PROBE_LINE"
+      AND_LAUNCH="$LAUNCH"
+      row --check run-on-target --target "$AND_ARM/release" --status pass --command "$(probe_cmd "$EMU_ID")" \
+        --value "log=$LOGS/run-android-emulator-release.log" --value "probe=$PROBE_LINE" \
+        --summary "ran; identity $(printf '%s' "$PROBE_LINE" | sed -n 's/.*identity=\([^@ ]*\).*/\1/p') verified; library via $(printf '%s' "$PROBE_LINE" | sed -n 's/.*resolved_by=\(.*\) TWAnyAddressIsValid.*/\1/p')" \
+        --notes "$EMU_NOTE; am start -W: $LAUNCH; $PROBE_LINE"
+      row --check symbols-runtime-lookup --target "$AND_ARM/release" --status pass --command "$(probe_cmd "$EMU_ID")" \
+        --value "probe=$PROBE_LINE" \
+        --summary "$(printf '%s' "$PROBE_LINE" | sed -n 's/.*symbols=\([^ ]*\).*/\1/p') resolved; via $(printf '%s' "$PROBE_LINE" | sed -n 's/.*resolved_by=\(.*\) TWAnyAddressIsValid.*/\1/p')"
+      ;;
+    *)
+      for check in run-on-target symbols-runtime-lookup; do
+        row --check "$check" --target "$AND_ARM/release" --status fail --command "$(probe_cmd "$EMU_ID")" \
+          --summary 'probe did not pass' \
+          --notes "${PROBE_LINE:-no WCF_PROBE line in logcat within 60 s}; am start -W: ${LAUNCH:-none}; log: $LOGS/run-android-emulator-release.log"
+      done
+      finish 1
+      ;;
+  esac
+else
+  for check in run-on-target symbols-runtime-lookup; do
+    unmeasured "$check" "$AND_ARM/debug" "$(on_target_cmd "$AND_ARM/debug" '<arm64-emulator-id>')" \
+      "needs a running arm64-v8a emulator (this script never boots one); found: $EMU_NOTE"
+    unmeasured "$check" "$AND_ARM/release" "$(probe_cmd '<arm64-emulator-id>')" \
+      "needs a running arm64-v8a emulator (this script never boots one); found: $EMU_NOTE"
+  done
+fi
+for mode in debug release; do
+  if [ "$mode" = debug ]; then
+    x64_cmd="$(on_target_cmd "$AND_X64/debug" '<x86_64-emulator-id>')"
+    dev_cmd="$(on_target_cmd "$AND_DEV/debug" '<arm64-device-id>')"
+  else
+    x64_cmd="$(probe_cmd '<x86_64-emulator-id>')"
+    dev_cmd="$(probe_cmd '<arm64-device-id>')"
+  fi
+  for check in run-on-target symbols-runtime-lookup; do
+    row --check "$check" --target "$AND_X64/$mode" --status unmeasured --summary 'no x86_64 emulator here' \
+      --command "$x64_cmd" --notes "$NO_X64"
+    row --check "$check" --target "$AND_DEV/$mode" --status unmeasured --summary 'no physical device' \
+      --command "$dev_cmd" --notes "$NO_DEVICE"
+  done
 done
 
 # ---------------------------------------------------------------------------
@@ -525,9 +903,36 @@ done
 unmeasured release-launch-and-sign ios-device-arm64/release \
   "flutter build ipa (signed) && WCF_IOS_DEVICE=<id> eval/option2/run_eval.sh" \
   "device: needs a signing identity and a physical iPhone; the release archive is built --no-codesign here (T1.9b)"
-for t in android-emulator-x86_64/release android-device-arm64-v8a/release; do
-  unmeasured release-launch-and-sign "$t" "flutter run --release -d <id> in \"\$APP\"" "$WAITING_ANDROID"
-done
+# Android: step 2's release probe APK — step 1's release configuration with
+# the probe's entry point — launched on the emulator, and its signature
+# verified.
+SIGN_CMD="$(probe_cmd "${EMU_ID:-<arm64-emulator-id>}") && apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk"
+if [ "$PROBE_PASS" = 1 ]; then
+  sign="$("$APKSIGNER" verify --print-certs "$PROBE_APK" 2>&1 || true)"
+  signer="$(printf '%s\n' "$sign" | sed -n 's/^Signer #1 certificate DN: //p' | head -1)"
+  sign_rc=0
+  "$APKSIGNER" verify "$PROBE_APK" > /dev/null 2>&1 || sign_rc=$?
+  case "$sign_rc:$AND_LAUNCH" in
+    0:*'Status: ok'*)
+      row --check release-launch-and-sign --target "$AND_ARM/release" --status pass --command "$SIGN_CMD" \
+        --value "launch=$AND_LAUNCH" --value "signer=$signer" \
+        --summary 'launched, probe PASS; signed with the debug keystore' \
+        --notes "$EMU_NOTE; am start -W: $AND_LAUNCH; apksigner verify: OK, signer $signer. The flutter create template signs release with signingConfigs.debug; an upload key is the app author's, not a property of the packaging option. $AND_PROBE_LINE"
+      ;;
+    *)
+      row --check release-launch-and-sign --target "$AND_ARM/release" --status fail --command "$SIGN_CMD" \
+        --summary 'release did not launch or verify' \
+        --notes "am start -W: ${AND_LAUNCH:-none}; apksigner verify exit $sign_rc: $sign"
+      ;;
+  esac
+else
+  unmeasured release-launch-and-sign "$AND_ARM/release" "$SIGN_CMD" \
+    "needs step 2's release probe on an arm64-v8a emulator; $EMU_NOTE"
+fi
+row --check release-launch-and-sign --target "$AND_X64/release" --status unmeasured \
+  --summary 'no x86_64 emulator here' --command "$(probe_cmd '<x86_64-emulator-id>')" --notes "$NO_X64"
+row --check release-launch-and-sign --target "$AND_DEV/release" --status unmeasured \
+  --summary 'no physical device' --command "$(probe_cmd '<arm64-device-id>')" --notes "$NO_DEVICE"
 
 # ---------------------------------------------------------------------------
 # The xcframework `pod install` produced, measured by steps 4, 5 and 10.
@@ -552,10 +957,37 @@ if [ "$NO_XCODE" = 0 ]; then
       --target "$(target_of "$slug")"
   done
 fi
-for abi in arm64-v8a armeabi-v7a x86_64; do
-  unmeasured symbols "android/$abi" \
-    "unzip -o \"\$APP/build/app/outputs/flutter-apk/app-release.apk\" 'lib/*' -d \"\$OUT/apk\" && dart run tools/packaging_eval/bin/symbols.dart --artifact \"\$OUT/apk/lib/$abi/libTrustWalletCore.so\" --format elf --nm \"$NDK_HINT/llvm-nm\" --target android/$abi" \
-    "$WAITING_ANDROID"
+# Android: the libraries as Gradle packaged them, out of step 1's release APK
+# (the copy taken right after its build) — the library columns, as the
+# xcframework's binaries are for iOS — and whether those bytes are still the
+# pinned ones (risk 7 of DECISION-2-option2.md: AGP strips packaged .so files).
+mkdir -p "$AND_APPS/release" "$AND_APPS/debug"
+unzip -o -q "$AND_APPS/app-release.apk" 'lib/*' -d "$AND_APPS/release"
+unzip -o -q "$AND_APPS/app-debug.apk" 'lib/*' -d "$AND_APPS/debug"
+APK_SO_CMD="unzip -o \"\$OUT/apps/android/app-release.apk\" 'lib/*' -d \"\$OUT/apps/android/release\""
+for abi in arm64-v8a x86_64; do
+  harness symbols --artifact "$AND_APPS/release/lib/$abi/libTrustWalletCore.so" --format elf \
+    --nm "$LLVM_NM" --target "android/$abi" "${JNI_ALLOW[@]}"
+done
+row --check symbols --target android/armeabi-v7a --status skip --summary "$NOT_SHIPPED" \
+  --command "$APK_SO_CMD && dart run tools/packaging_eval/bin/symbols.dart --artifact \"\$OUT/apps/android/release/lib/armeabi-v7a/libTrustWalletCore.so\" --format elf --target android/armeabi-v7a" \
+  --notes "$NOT_SHIPPED_NOTE"
+for abi in arm64-v8a x86_64; do
+  manifest_sha="$(dart "$EVAL/tool/eval.dart" json-get --file "$MANIFEST" --key "artifacts.android/$abi/libTrustWalletCore.so.sha256" 2>/dev/null || true)"
+  for mode in release debug; do
+    apk_sha="$(shasum -a 256 "$AND_APPS/$mode/lib/$abi/libTrustWalletCore.so" | cut -d' ' -f1)"
+    apk_size="$(wc -c < "$AND_APPS/$mode/lib/$abi/libTrustWalletCore.so" | tr -d ' ')"
+    if [ "$apk_sha" = "$manifest_sha" ]; then
+      status=pass; summary="$mode APK: the pinned bytes (sha256 = manifest)"
+    else
+      status=fail; summary="$mode APK: NOT the pinned bytes"
+    fi
+    row --check packaged-digest --target "android/$abi" --status "$status" \
+      --command "unzip -p \"\$OUT/apps/android/app-$mode.apk\" lib/$abi/libTrustWalletCore.so | shasum -a 256" \
+      --value "apk_sha256=$apk_sha" --value "apk_size=$apk_size" --value "manifest_sha256=$manifest_sha" \
+      --summary "$summary" \
+      --notes "lib/$abi/libTrustWalletCore.so in the $mode APK: sha256 $apk_sha, $apk_size B; the manifest pins android/$abi/libTrustWalletCore.so at $manifest_sha"
+  done
 done
 
 # ---------------------------------------------------------------------------
@@ -565,14 +997,14 @@ done
 say "step 5: sizes"
 harness size --artifact "$XCF_ROOT/$XCF_DEVICE_BIN" --target ios/arm64
 harness size --artifact "$XCF_ROOT/$XCF_SIM_BIN" --target ios-simulator/arm64_x86_64
+say "step 5: baseline app (no SDK) for the app-size delta"
+(cd "$OUT" && flutter create --no-pub --platforms=android,ios --org dev.wcf.eval \
+    --project-name wcf_eval_baseline baseline) > "$LOGS/baseline-create.log" 2>&1
+# The consumer has integration_test as a dev dependency, and dev-dependency
+# plugins are built into debug apps; the baseline gets the same.
+(cd "$BASELINE" && flutter pub add 'dev:integration_test:{"sdk":"flutter"}') \
+  > "$LOGS/baseline-pub.log" 2>&1
 if [ "$NO_XCODE" = 0 ]; then
-  say "step 5: baseline app (no SDK) for the app-size delta"
-  (cd "$OUT" && flutter create --no-pub --platforms=ios --org dev.wcf.eval \
-      --project-name wcf_eval_baseline baseline) > "$LOGS/baseline-create.log" 2>&1
-  # The consumer has integration_test as a dev dependency, and dev-dependency
-  # plugins are built into debug apps; the baseline gets the same.
-  (cd "$BASELINE" && flutter pub add 'dev:integration_test:{"sdk":"flutter"}') \
-    > "$LOGS/baseline-pub.log" 2>&1
   (cd "$BASELINE" && flutter build ios --simulator --debug) > "$LOGS/baseline-sim.log" 2>&1
   mkdir -p "$APPS/baseline-sim" "$APPS/baseline-device"
   ditto "$BASELINE/build/ios/iphonesimulator/Runner.app" "$APPS/baseline-sim/Runner.app"
@@ -588,15 +1020,29 @@ else
     unmeasured app-size-delta "$t" "eval/option2/run_eval.sh (size.dart --baseline-app <flutter create app> --sdk-app <consumer app> --target $t)" "$ORCHESTRATOR"
   done
 fi
-for abi in arm64-v8a armeabi-v7a x86_64; do
-  unmeasured size "android/$abi" \
-    "dart run tools/packaging_eval/bin/size.dart --artifact \"\$OUT/apk/lib/$abi/libTrustWalletCore.so\" --target android/$abi" \
-    "$WAITING_ANDROID"
+for abi in arm64-v8a x86_64; do
+  harness size --artifact "$AND_APPS/release/lib/$abi/libTrustWalletCore.so" --target "android/$abi"
 done
-for t in android-emulator-x86_64/release android-device-arm64-v8a/release; do
-  unmeasured app-size-delta "$t" \
-    "dart run tools/packaging_eval/bin/size.dart --baseline-app \"\$OUT/baseline/build/app/outputs/flutter-apk/app-release.apk\" --sdk-app \"\$APP/build/app/outputs/flutter-apk/app-release.apk\" --target $t" \
-    "$WAITING_ANDROID"
+row --check size --target android/armeabi-v7a --status skip --summary "$NOT_SHIPPED" \
+  --command "$APK_SO_CMD && dart run tools/packaging_eval/bin/size.dart --artifact \"\$OUT/apps/android/release/lib/armeabi-v7a/libTrustWalletCore.so\" --target android/armeabi-v7a" \
+  --notes "$NOT_SHIPPED_NOTE"
+# The baseline's APKs: the same Flutter, commands, modes and ABIs. One APK
+# carries both ABIs, so the delta lands in the arm64-v8a emulator column and
+# the x86_64 column points at it.
+for mode in debug release; do
+  base_apk="$BASELINE/build/app/outputs/flutter-apk/app-$mode.apk"
+  (cd "$BASELINE" && flutter build apk "--$mode" --target-platform "$ANDROID_PLATFORMS") \
+    > "$LOGS/baseline-android-$mode.log" 2>&1
+  mkdir -p "$APPS/baseline-android"
+  cp "$base_apk" "$APPS/baseline-android/app-$mode.apk"
+  delta_cmd="cd \"\$OUT/baseline\" && flutter build apk --$mode --target-platform $ANDROID_PLATFORMS && dart run tools/packaging_eval/bin/size.dart --baseline-app \"\$OUT/apps/baseline-android/app-$mode.apk\" --sdk-app \"\$OUT/apps/android/app-$mode.apk\" --target $AND_ARM/$mode"
+  harness size --baseline-app "$APPS/baseline-android/app-$mode.apk" \
+    --sdk-app "$AND_APPS/app-$mode.apk" --target "$AND_ARM/$mode"
+  row --check app-size-delta --target "$AND_X64/$mode" --status skip \
+    --summary "one APK for both ABIs (see $AND_ARM/$mode)" --command "$delta_cmd" \
+    --notes "the APK measured in the $AND_ARM/$mode column carries the x86_64 library too; per-ABI library sizes are the size rows"
+  row --check app-size-delta --target "$AND_DEV/$mode" --status unmeasured --summary 'no physical device' \
+    --command "$delta_cmd" --notes "$NO_DEVICE"
 done
 
 # ---------------------------------------------------------------------------
@@ -606,10 +1052,18 @@ done
 say "step 6: toolchain and declared constraints"
 harness min_version --target host/toolchain
 FLOOR_NOTE="one SDK per run: this run used Flutter $FLUTTER_VERSION / Dart $DART_VERSION with $XCODE_VERSION (iOS deployment ${IOS_SDK_MIN}–$IOS_SDK_MAX). With this Xcode, a Flutter whose app template targets below iOS $IOS_SDK_MIN builds no iOS app at all, with or without this package (recorded in DECISION-2-option2.md §4). Documentation: the ffiPlugin platform key exists since Flutter 3.0 (plugin_ffi template); the package's declared floor is the Dart code's, not the packaging's."
-for t in ios-simulator-arm64/debug ios-device-arm64/release android-emulator-x86_64/release; do
-  unmeasured min-version-floor "$t" \
-    "for each candidate SDK, oldest first: <sdk>/bin/flutter build ios --simulator --debug (and apk --release) in \"\$APP\"; record the oldest that builds" \
-    "$FLOOR_NOTE"
+FLOOR_CMD="for each candidate SDK, oldest first: <sdk>/bin/flutter build ios --simulator --debug (and apk --release --target-platform $ANDROID_PLATFORMS) in \"\$APP\"; record the oldest that builds"
+for t in ios-simulator-arm64/debug ios-device-arm64/release; do
+  unmeasured min-version-floor "$t" "$FLOOR_CMD" "$FLOOR_NOTE"
+done
+for t in "$AND_ARM/debug" "$AND_ARM/release" "$AND_X64/debug" "$AND_X64/release"; do
+  row --check min-version-floor --target "$t" --status unmeasured \
+    --summary "only Flutter $FLUTTER_VERSION tried" --command "$FLOOR_CMD" \
+    --notes "one SDK per run: built on Flutter $FLUTTER_VERSION / Dart $DART_VERSION (consumer-build rows), the only Flutter installed. The Gradle task needs the app's AGP to provide variant.sources.jniLibs.addGeneratedSourceDirectory (AGP 8 Variant API; built here with the $FLUTTER_VERSION app template's AGP and Gradle); the package's declared floor is the Dart code's, not the packaging's."
+done
+for mode in debug release; do
+  row --check min-version-floor --target "$AND_DEV/$mode" --status unmeasured \
+    --summary 'no physical device' --command "$FLOOR_CMD" --notes "$NO_DEVICE"
 done
 
 # ---------------------------------------------------------------------------
@@ -621,7 +1075,7 @@ offline_target=ios-simulator-arm64/debug
 # the first pod install filled the absent $CACHE from --vendored. Whether a
 # socket was opened is observed separately below, not inferred from --offline.
 offline_status=pass
-offline_notes="pub get --offline succeeded; the first pod install started without an artifact cache and, with --offline and a retention URL under .invalid, filled it from --vendored ($CACHE_FILLED of 2 libraries). No socket was observed here; see the outbound-network-denied pod install in this cell"
+offline_notes="pub get --offline succeeded; the first pod install started without an artifact cache and, with --offline, filled it from --vendored ($CACHE_FILLED of 2 libraries): no request to the retention URL (the draft release native-4.8.0-001, whose assets are not anonymously downloadable) was possible. No socket was observed here; see the outbound-network-denied pod install in this cell"
 if [ "$PUB_MODE" != offline ]; then
   offline_status=unmeasured
   offline_notes="not an offline install: pub get --offline failed and pub get ran online ($LOGS/pub-get.log)"
@@ -664,23 +1118,24 @@ else
     --notes "pod install failed, but not with the fetch tool's mismatch report: $(log_tail "$log")"
   finish 1
 fi
-say "step 7: the package's own shipped manifest (all TBD-) must fail pod install"
-log="$LOGS/negative-root-manifest.log"
-if (unset WCF_MANIFEST; cd "$APP/ios" && pod install) > "$log" 2>&1; then
+# Since as_4.8.0_001 the package ships a filled manifest (main f9f3d58), so the
+# placeholder case is the fixture copy of the manifest as it was before.
+say "step 7: a placeholder manifest (all TBD-) must fail pod install"
+log="$LOGS/negative-placeholder-manifest.log"
+PLACEHOLDER_CMD="cd \"\$APP/ios\" && WCF_MANIFEST=packages/wallet_core_flutter_native/test/fixtures/compat_manifest.placeholder.json pod install"
+if (cd "$APP/ios" && WCF_MANIFEST="$PLACEHOLDER" pod install) > "$log" 2>&1; then
   row --check offline-install --target "$offline_target" --status fail \
-    --command "cd \"\$APP/ios\" && pod install (no WCF_MANIFEST: the shipped assets/compat_manifest.json)" \
-    --value "log=$log" --notes "pod install SUCCEEDED against a placeholder manifest"
+    --command "$PLACEHOLDER_CMD" --value "log=$log" --notes "pod install SUCCEEDED against a placeholder manifest"
   finish 1
 fi
 if grep -q 'cannot be fetched from' "$log"; then
   row --check offline-install --target "$offline_target" --status pass \
-    --command "cd \"\$APP/ios\" && pod install (no WCF_MANIFEST: the shipped assets/compat_manifest.json)" \
-    --value "log=$log" \
-    --summary "shipped manifest: pod install fails, fetch tool exit 2, blockers named" \
-    --notes "$(grep -m1 'blockers' "$log" | sed 's|.*/assets/|assets/|')"
+    --command "$PLACEHOLDER_CMD" --value "log=$log" \
+    --summary "placeholder manifest: pod install fails, fetch tool exit 2, blockers named" \
+    --notes "$(grep -m1 'blockers' "$log" | sed 's|.*/test/fixtures/|test/fixtures/|')"
 else
   row --check offline-install --target "$offline_target" --status fail \
-    --command "cd \"\$APP/ios\" && pod install (shipped manifest)" --value "log=$log" \
+    --command "$PLACEHOLDER_CMD" --value "log=$log" \
     --notes "failed, but not with the manifest gate: $(log_tail "$log")"
   finish 1
 fi
@@ -767,35 +1222,336 @@ case "$no_net_applies" in
     ;;
 esac
 
-for t in android-emulator-x86_64/debug android-device-arm64-v8a/release; do
-  unmeasured offline-install "$t" \
-    "WCF_OFFLINE=1 WCF_VENDORED_DIR=<dir> flutter build apk; then WCF_MANIFEST=<flipped> flutter build apk must fail in wcfPrepare<Variant>JniLibs" \
-    "$WAITING_ANDROID"
+# Android. The debug APK was the app's first Gradle build: its
+# wcfPrepareDebugJniLibs task found no Android library in $CACHE (the pod
+# installs fetch the iOS rows only) and, with --offline, filled it from
+# --vendored. The release build that followed found the cache warm by
+# construction, so it has no offline row of its own.
+say "step 7: Android offline install, wrong digest, placeholder manifest"
+AND_OFF_CMD="pub get --offline; cd \"\$APP\" && WCF_OFFLINE=1 WCF_VENDORED_DIR=third_party/wcf-native-all/artifacts WCF_ARTIFACT_DIR=<no Android library yet> flutter build apk --debug --target-platform $ANDROID_PLATFORMS -v"
+AND_PREPARED="$(prepare_lines "$LOGS/build-android-debug.log" wcfPrepareDebugJniLibs)"
+and_off_status=pass
+and_off_notes="pub get --offline succeeded; before the app's first Gradle build the artifact cache held $AND_CACHE_BEFORE Android libraries and after it $AND_CACHE_AFTER; wcfPrepareDebugJniLibs: $AND_PREPARED. With --offline no request to the retention URL (the draft release, not anonymously downloadable) was possible. No socket was observed here; see the network-denied prepare step in this cell"
+if [ "$PUB_MODE" != offline ]; then
+  and_off_status=unmeasured
+  and_off_notes="not an offline install: pub get --offline failed and pub get ran online ($LOGS/pub-get.log)"
+elif [ "$AND_CACHE_BEFORE" != 0 ]; then
+  and_off_status=unmeasured
+  and_off_notes="the artifact cache already held $AND_CACHE_BEFORE Android libraries before the first Gradle build (warm), so this build is not a clean install; wcfPrepareDebugJniLibs: $AND_PREPARED"
+elif [ "$AND_CACHE_AFTER" != 2 ] || ! printf '%s' "$AND_PREPARED" | grep -q '2 from --vendored'; then
+  and_off_status=fail
+  and_off_notes="after the first Gradle build the cache holds $AND_CACHE_AFTER of 2 Android libraries; wcfPrepareDebugJniLibs: ${AND_PREPARED:-no output}"
+fi
+for t in "$AND_ARM/debug" "$AND_X64/debug"; do
+  row --check offline-install --target "$t" --status "$and_off_status" --command "$AND_OFF_CMD" \
+    --value "pub_get=$PUB_MODE" --value "android_cache_before=$AND_CACHE_BEFORE" \
+    --value "android_cache_after=$AND_CACHE_AFTER" --value "prepare=$AND_PREPARED" \
+    --summary "first Gradle build filled the cache from --vendored ($AND_CACHE_BEFORE -> $AND_CACHE_AFTER/2 Android libraries)" \
+    --notes "$and_off_notes"
+done
+[ "$and_off_status" != fail ] || finish 1
+
+# The artifact step with outbound network denied: the exact command the
+# Gradle task runs (tool/option2/prepare_jni_libs.dart through the Flutter
+# SDK's dart and the app's package configuration), from a clean state, under
+# the same sandbox-exec profile and probe as the iOS pod install above.
+# Gradle itself is not run under the profile: the Gradle client talks to its
+# daemon over a loopback socket, which the profile denies too, and a daemon
+# started outside the sandbox would run the task outside it anyway.
+log="$LOGS/offline-prepare-jni-libs.log"
+AND_OFFLINE_CACHE="$OUT/offline-cache-android"
+AND_OFFLINE_OUT="$OUT/offline-jnilibs"
+FLUTTER_DART="$FLUTTER_ROOT_DIR/bin/dart"
+and_no_net_cmd="sandbox-exec -p '$NO_NET_PROFILE' <flutter>/bin/dart --packages=\"\$APP/.dart_tool/package_config.json\" <package>/tool/option2/prepare_jni_libs.dart --manifest eval/option2/eval_manifest.json --out <absent> --work <absent> --vendored third_party/wcf-native-all/artifacts --cache-dir <absent> --offline"
+case "$no_net_applies" in
+  yes)
+    rm -rf "$AND_OFFLINE_CACHE" "$AND_OFFLINE_OUT" "$OUT/offline-jni-work"
+    status=fail
+    if sandbox-exec -p "$NO_NET_PROFILE" "$FLUTTER_DART" \
+          "--packages=$APP/.dart_tool/package_config.json" \
+          "$STAGE/wallet_core_flutter_native/tool/option2/prepare_jni_libs.dart" \
+          --manifest "$MANIFEST" --out "$AND_OFFLINE_OUT" --work "$OUT/offline-jni-work" \
+          --vendored "$VENDORED" --cache-dir "$AND_OFFLINE_CACHE" --offline > "$log" 2>&1 \
+        && [ "$(so_cache_files "$AND_OFFLINE_CACHE")" = 2 ] \
+        && [ "$(so_cache_files "$AND_OFFLINE_OUT")" = 2 ]; then
+      status=pass
+    fi
+    acquired="$(grep -m1 ' requested: ' "$log" | tr -s ' ' || true)"
+    notes="${acquired:-no fetch-tool count line in the output}; jniLibs: $(cd "$AND_OFFLINE_OUT" 2>/dev/null && find . -name '*.so' | sed 's|^\./||' | sort | tr '\n' ' ')"
+    [ "$status" = pass ] || notes="$notes; $(log_tail "$log")"
+    row --check offline-install --target "$AND_ARM/debug" --status "$status" \
+      --command "$and_no_net_cmd" --value "log=$log" \
+      --value "network_probe_control=$no_net_control" --value "network_probe_denied=$no_net_denied" \
+      --value "artifact_cache_after=$(so_cache_files "$AND_OFFLINE_CACHE")" \
+      --summary "$([ "$status" = pass ] && echo "clean prepare step with outbound network denied: verified, 2 libraries laid out" || echo "clean prepare step with outbound network denied: FAILED")" \
+      --notes "$notes"
+    [ "$status" = pass ] || finish 1
+    ;;
+  *)
+    unmeasured offline-install "$AND_ARM/debug" "$and_no_net_cmd" "no socket not observed: $no_net_verdict"
+    ;;
+esac
+
+# A flipped digest must fail the Gradle build in wcfPrepareDebugJniLibs with
+# the fetch tool's report (both digests); so must the placeholder manifest,
+# with the manifest gate's blockers. Gradle reruns the task because the
+# manifest is one of its inputs.
+negative_gradle() { # label manifest manifest-shown -> NEG_LOG, NEG_RC
+  NEG_LOG="$LOGS/negative-gradle-$1.log"
+  NEG_RC=0
+  (cd "$APP" && WCF_MANIFEST="$2" flutter build apk --debug --target-platform "$ANDROID_PLATFORMS" \
+    "${IDENTITY_DEFINES[@]}") > "$NEG_LOG" 2>&1 || NEG_RC=$?
+}
+negative_gradle flipped "$FLIPPED_ANDROID"
+NEG_CMD="cd \"\$APP\" && WCF_MANIFEST=<eval manifest with android/arm64-v8a's sha256 + asset_name flipped> flutter build apk --debug --target-platform $ANDROID_PLATFORMS"
+if [ "$NEG_RC" = 0 ]; then
+  row --check offline-install --target "$AND_ARM/debug" --status fail --command "$NEG_CMD" \
+    --value "log=$NEG_LOG" --notes "the Gradle build SUCCEEDED with a flipped digest"
+  finish 1
+fi
+if grep -q 'native artifact verification FAILED' "$NEG_LOG" && grep -q 'expected sha256' "$NEG_LOG" \
+    && grep -q 'wcfPrepareDebugJniLibs' "$NEG_LOG"; then
+  row --check offline-install --target "$AND_ARM/debug" --status pass --command "$NEG_CMD" \
+    --value "log=$NEG_LOG" \
+    --summary "Gradle build fails in wcfPrepareDebugJniLibs: digest mismatch, both digests printed" \
+    --notes "$(grep -m1 "Execution failed for task" "$NEG_LOG" | tr -s ' ') / $(grep -m1 'native artifact verification FAILED' "$NEG_LOG" | tr -s ' ') / $(grep -m1 'expected sha256' "$NEG_LOG" | tr -s ' ') / $(grep -m1 'found    sha256' "$NEG_LOG" | tr -s ' ')"
+else
+  row --check offline-install --target "$AND_ARM/debug" --status fail --command "$NEG_CMD" \
+    --value "log=$NEG_LOG" --notes "the build failed, but not with the fetch tool's mismatch report in wcfPrepareDebugJniLibs: $(log_tail "$NEG_LOG")"
+  finish 1
+fi
+negative_gradle placeholder "$PLACEHOLDER"
+NEG_CMD="cd \"\$APP\" && WCF_MANIFEST=packages/wallet_core_flutter_native/test/fixtures/compat_manifest.placeholder.json flutter build apk --debug --target-platform $ANDROID_PLATFORMS"
+if [ "$NEG_RC" = 0 ]; then
+  row --check offline-install --target "$AND_ARM/debug" --status fail --command "$NEG_CMD" \
+    --value "log=$NEG_LOG" --notes "the Gradle build SUCCEEDED against a placeholder manifest"
+  finish 1
+fi
+if grep -q 'cannot be fetched from' "$NEG_LOG" && grep -q 'exit 2' "$NEG_LOG"; then
+  row --check offline-install --target "$AND_ARM/debug" --status pass --command "$NEG_CMD" \
+    --value "log=$NEG_LOG" \
+    --summary "placeholder manifest: Gradle build fails, fetch tool exit 2, blockers named" \
+    --notes "$(grep -m1 'native artifact verification FAILED' "$NEG_LOG" | tr -s ' ') / $(grep -m1 'blockers' "$NEG_LOG" | sed 's|.*/test/fixtures/|test/fixtures/|' | tr -s ' ')"
+else
+  row --check offline-install --target "$AND_ARM/debug" --status fail --command "$NEG_CMD" \
+    --value "log=$NEG_LOG" --notes "failed, but not with the manifest gate: $(log_tail "$NEG_LOG")"
+  finish 1
+fi
+for t in "$AND_ARM/release" "$AND_X64/release"; do
+  row --check offline-install --target "$t" --status skip --summary 'warm cache by construction' \
+    --command "cd \"\$APP\" && flutter build apk --release --target-platform $ANDROID_PLATFORMS -v" \
+    --notes "the clean offline install is the app's first Gradle build, the debug APK (${t%/release}/debug); the release APK follows it with the same cache: wcfPrepareReleaseJniLibs: $(prepare_lines "$LOGS/build-android-release.log" wcfPrepareReleaseJniLibs)"
+done
+for mode in debug release; do
+  row --check offline-install --target "$AND_DEV/$mode" --status unmeasured --summary 'no physical device' \
+    --command "$AND_OFF_CMD" --notes "$NO_DEVICE"
 done
 
 # ---------------------------------------------------------------------------
 # step 8 — 16 KB alignment (Android only)
 # ---------------------------------------------------------------------------
 
-for abi in arm64-v8a armeabi-v7a x86_64; do
-  unmeasured alignment "android/$abi" \
-    "dart run tools/packaging_eval/bin/alignment.dart --binary \"\$OUT/apk/lib/$abi/libTrustWalletCore.so\" --target android/$abi" \
-    "$WAITING_ANDROID"
+say "step 8: 16 KB alignment"
+# The libraries as packaged (step 4's copies out of the release APK), and the
+# zip alignment of every .so entry in both APKs, as copied right after their
+# builds.
+for abi in arm64-v8a x86_64; do
+  harness alignment --binary "$AND_APPS/release/lib/$abi/libTrustWalletCore.so" --target "android/$abi"
 done
-for t in android-emulator-x86_64/release android-device-arm64-v8a/release; do
-  unmeasured alignment-apk "$t" \
-    "dart run tools/packaging_eval/bin/alignment.dart --apk \"\$APP/build/app/outputs/flutter-apk/app-release.apk\" --target $t" \
-    "$WAITING_ANDROID"
+row --check alignment --target android/armeabi-v7a --status skip --summary "$NOT_SHIPPED" \
+  --command "$APK_SO_CMD && dart run tools/packaging_eval/bin/alignment.dart --binary \"\$OUT/apps/android/release/lib/armeabi-v7a/libTrustWalletCore.so\" --target android/armeabi-v7a" \
+  --notes "$NOT_SHIPPED_NOTE (16 KB pages concern the 64-bit ABIs)"
+for mode in debug release; do
+  for t in "$AND_ARM/$mode" "$AND_X64/$mode"; do
+    harness alignment --apk "$AND_APPS/app-$mode.apk" --target "$t"
+  done
+  row --check alignment-apk --target "$AND_DEV/$mode" --status unmeasured --summary 'no physical device' \
+    --command "dart run tools/packaging_eval/bin/alignment.dart --apk \"\$OUT/apps/android/app-$mode.apk\" --target $AND_DEV/$mode" \
+    --notes "$NO_DEVICE"
 done
 
 # ---------------------------------------------------------------------------
 # step 9 — a second plugin bundling libc++_shared.so (Android only)
 # ---------------------------------------------------------------------------
 
-for t in "${ANDROID_APP_TARGETS[@]}"; do
-  harness libcxx_conflict --target "$t" \
-    --build-command "add tools/packaging_eval/fixtures/libcxx_plugin by path to \"\$APP\", then flutter build apk --${t##*/} 2>&1 | tee \"\$OUT/gradle.log\""
+say "step 9: a second plugin bundling libc++_shared.so"
+# What our library needs: the DT_NEEDED entries of the packaged .so (§5.1).
+DT_ARM="$(dt_needed "$AND_APPS/release/lib/arm64-v8a/libTrustWalletCore.so")"
+DT_X64="$(dt_needed "$AND_APPS/release/lib/x86_64/libTrustWalletCore.so")"
+# The second plugin: the harness fixture, copied out of the checkout, given
+# the libc++_shared.so of the NDK the Flutter build uses, and added by path to
+# a working copy of the consumer. tools/packaging_eval's libcxx_conflict.dart
+# classifies a Gradle log, and a build in which only one contributor bundles
+# the file names it nowhere (nothing to classify), while AGP 9's duplicate
+# error reads "2 files found with path", not the "More than one file was
+# found with OS independent path" it matches; so the rows are this
+# evaluation's, read from the APK (copies, GNU build IDs) and the build log.
+PLUGIN="$OUT/libcxx_plugin"
+LX="$OUT/libcxx"
+NDK_NAME="$(basename "$NDK")"
+rm -rf "$PLUGIN"
+mkdir -p "$PLUGIN"
+(cd tools/packaging_eval/fixtures/libcxx_plugin && tar cf - --exclude '*.so' .) | (cd "$PLUGIN" && tar xf -)
+bash tools/packaging_eval/fixtures/libcxx_plugin/tool/materialize_libcxx.sh --ndk "$NDK" \
+  --dest "$PLUGIN/android/src/main/jniLibs" --abis 'arm64-v8a x86_64' > "$LOGS/libcxx-materialize.log" 2>&1
+stage_app "$LX"
+(cd "$LX" && { flutter pub add --offline "libcxx_plugin:{\"path\":\"$PLUGIN\"}" \
+  || flutter pub add "libcxx_plugin:{\"path\":\"$PLUGIN\"}"; }) > "$LOGS/libcxx-pub-add.log" 2>&1
+LX_STAGE="(working copy of eval/option2/consumer at \$OUT/libcxx) && (tools/packaging_eval/fixtures/libcxx_plugin copied to \$OUT/libcxx_plugin without .so) && tools/packaging_eval/fixtures/libcxx_plugin/tool/materialize_libcxx.sh --ndk <NDK $NDK_NAME> --dest \$OUT/libcxx_plugin/android/src/main/jniLibs --abis 'arm64-v8a x86_64' && flutter pub add 'libcxx_plugin:{\"path\":\"\$OUT/libcxx_plugin\"}'"
+
+libcxx_mode() { # debug|release
+  local mode="$1" log="$LOGS/libcxx-$1.log" entry=() rc=0
+  [ "$mode" != release ] || entry=(-t lib/probe_main.dart)
+  local cmd="$LX_STAGE && flutter build apk --$mode --target-platform $ANDROID_PLATFORMS ${entry[*]:-} ${IDENTITY_DEFINES[*]} && unzip -l build/app/outputs/flutter-apk/app-$mode.apk && llvm-readelf -n lib/<abi>/libc++_shared.so"
+  (cd "$LX" && flutter build apk "--$mode" --target-platform "$ANDROID_PLATFORMS" ${entry[@]+"${entry[@]}"} \
+    "${IDENTITY_DEFINES[@]}") > "$log" 2>&1 || rc=$?
+  if [ "$rc" != 0 ]; then
+    local summary='build failed' notes
+    notes="$(grep -m1 'files found with path' "$log" | sed 's/^ *//' || true)"
+    [ -z "$notes" ] || summary='duplicate-file failure'
+    for t in "$AND_ARM/$mode" "$AND_X64/$mode"; do
+      row --check libcxx-conflict --target "$t" --status fail --summary "$summary" \
+        --command "$cmd" --value "log=$log" --notes "${notes:-$(log_tail "$log")}"
+    done
+    return 0
+  fi
+  local apk="$AND_APPS/libcxx-$mode.apk" dir="$AND_APPS/libcxx-$mode"
+  cp "$LX/build/app/outputs/flutter-apk/app-$mode.apk" "$apk"
+  rm -rf "$dir"
+  mkdir -p "$dir"
+  unzip -o -q "$apk" 'lib/*' -d "$dir"
+  local abi t dt copies packaged_id plugin_id kept notes summary
+  for abi in arm64-v8a x86_64; do
+    if [ "$abi" = arm64-v8a ]; then t="$AND_ARM/$mode"; dt="$DT_ARM"; else t="$AND_X64/$mode"; dt="$DT_X64"; fi
+    copies="$(unzip -l "$apk" | awk -v p="lib/$abi/libc++_shared.so" '$4 == p' | wc -l | tr -d ' ')"
+    packaged_id=''
+    [ ! -f "$dir/lib/$abi/libc++_shared.so" ] || packaged_id="$(build_id "$dir/lib/$abi/libc++_shared.so")"
+    plugin_id="$(build_id "$PLUGIN/android/src/main/jniLibs/$abi/libc++_shared.so")"
+    if [ -n "$packaged_id" ] && [ "$packaged_id" = "$plugin_id" ]; then
+      kept="the fixture plugin's copy (NDK $NDK_NAME)"
+    else
+      kept="unidentified (build ID ${packaged_id:-none})"
+    fi
+    notes="APK lib/$abi/libc++_shared.so: $copies entr$([ "$copies" = 1 ] && echo y || echo ies), build ID ${packaged_id:-none} = $kept. Our libTrustWalletCore.so DT_NEEDED: $dt — no libc++_shared.so (a c++_static build), and the manifest lists no android/$abi/libc++_shared.so row, so the Gradle task packages none: the fixture's copy is the only contributor and Gradle says nothing about the file. log: $log"
+    if [ "$copies" != 1 ] || [ "$packaged_id" != "$plugin_id" ]; then
+      row --check libcxx-conflict --target "$t" --status fail --summary "$copies copies; $kept" \
+        --command "$cmd" --notes "$notes"
+      continue
+    fi
+    case "$dt" in *libc++_shared.so*)
+      row --check libcxx-conflict --target "$t" --status fail --summary 'our library needs libc++_shared.so' \
+        --command "$cmd" --notes "$notes"
+      continue ;;
+    esac
+    summary="one copy, the fixture's; ours needs none (c++_static)"
+    if [ "$abi" = x86_64 ]; then
+      row --check libcxx-conflict --target "$t" --status pass --summary "$summary" \
+        --command "$cmd" --notes "$notes. Not run: $NO_X64"
+    elif [ "$mode" = debug ]; then
+      row --check libcxx-conflict --target "$t" --status pass --summary "$summary" \
+        --command "$cmd" --notes "$notes. Run on the emulator in the release column"
+    elif [ "$EMU_OK" != 1 ]; then
+      row --check libcxx-conflict --target "$t" --status unmeasured --summary "$summary; not run" \
+        --command "$cmd" --notes "$notes. No arm64-v8a emulator running: $EMU_NOTE"
+    else
+      android_probe "$apk" "$LOGS/run-libcxx-release.log"
+      cmd="$cmd && adb -s $EMU_ID install -r … && adb -s $EMU_ID shell am start -W -n $AND_PACKAGE/.MainActivity && adb -s $EMU_ID logcat -d -s flutter:I"
+      case "$PROBE_LINE" in
+        'WCF_PROBE PASS'*)
+          row --check libcxx-conflict --target "$t" --status pass --summary "$summary; probe PASS" \
+            --command "$cmd" --notes "$notes. Run with both plugins: $PROBE_LINE; am start -W: $LAUNCH"
+          ;;
+        *)
+          row --check libcxx-conflict --target "$t" --status fail --summary "$summary; probe failed" \
+            --command "$cmd" --notes "$notes. Run with both plugins: ${PROBE_LINE:-no WCF_PROBE line within 60 s}; am start -W: ${LAUNCH:-none}; log: $LOGS/run-libcxx-release.log"
+          ;;
+      esac
+    fi
+  done
+}
+libcxx_mode debug
+libcxx_mode release
+for mode in debug release; do
+  row --check libcxx-conflict --target "$AND_DEV/$mode" --status unmeasured --summary 'no physical device' \
+    --command "$LX_STAGE && flutter build apk --$mode --target-platform $ANDROID_PLATFORMS" --notes "$NO_DEVICE"
 done
+
+# The counterfactual §5.2 is about: the set built against c++_shared, so the
+# manifest lists android/<abi>/libc++_shared.so beside each library and the
+# Gradle task packages it. The rows are the set's own NDK's file
+# (toolchain.ndk), added to a copy of the evaluation manifest under $OUT and
+# vendored there; never committed. Measured in the same working copy, after
+# the rows above: first as `flutter create` left it, then with the
+# resolution only the consumer can write (pickFirsts in the app's
+# build.gradle.kts).
+CXX_CHECK=libcxx-if-cxx-shared
+CXX_MANIFEST="$OUT/eval_manifest.cxx-shared.json"
+CXX_VENDORED="$OUT/vendored-cxx-shared"
+CXX_CMD="eval.dart add-artifact (android/<abi>/libc++_shared.so from NDK $SET_NDK_VERSION, the set's toolchain.ndk) && $LX_STAGE && WCF_MANIFEST=<that manifest> WCF_VENDORED_DIR=<vendored + those files> flutter build apk --debug --target-platform $ANDROID_PLATFORMS"
+SET_LIBCXX_ARM="$SET_NDK/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
+SET_LIBCXX_X64="$SET_NDK/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so"
+if [ -f "$SET_LIBCXX_ARM" ] && [ -f "$SET_LIBCXX_X64" ]; then
+  rm -rf "$CXX_VENDORED"
+  mkdir -p "$CXX_VENDORED"
+  cp -R "$VENDORED/android" "$CXX_VENDORED/android"
+  cp "$SET_LIBCXX_ARM" "$CXX_VENDORED/android/arm64-v8a/libc++_shared.so"
+  cp "$SET_LIBCXX_X64" "$CXX_VENDORED/android/x86_64/libc++_shared.so"
+  dart "$EVAL/tool/eval.dart" add-artifact --manifest "$MANIFEST" --name android/arm64-v8a/libc++_shared.so \
+    --like "$AND_ARM_ROW" --file "$CXX_VENDORED/android/arm64-v8a/libc++_shared.so" --out "$CXX_MANIFEST.tmp"
+  dart "$EVAL/tool/eval.dart" add-artifact --manifest "$CXX_MANIFEST.tmp" --name android/x86_64/libc++_shared.so \
+    --like "$AND_X64_ROW" --file "$CXX_VENDORED/android/x86_64/libc++_shared.so" --out "$CXX_MANIFEST"
+  rm -f "$CXX_MANIFEST.tmp"
+  dart run tools/manifest/bin/validate.dart "$CXX_MANIFEST"
+  ours_id="$(build_id "$CXX_VENDORED/android/arm64-v8a/libc++_shared.so")"
+  plugin_id="$(build_id "$PLUGIN/android/src/main/jniLibs/arm64-v8a/libc++_shared.so")"
+  ids="ours (NDK $SET_NDK_VERSION) build ID $ours_id; the fixture's (NDK $NDK_NAME) $plugin_id"
+  cxx_build() { # log
+    local rc=0
+    (cd "$LX" && WCF_MANIFEST="$CXX_MANIFEST" WCF_VENDORED_DIR="$CXX_VENDORED" WCF_ARTIFACT_DIR="$OUT/cache-cxx-shared" \
+      flutter build apk --debug --target-platform "$ANDROID_PLATFORMS" "${IDENTITY_DEFINES[@]}") > "$1" 2>&1 || rc=$?
+    return $rc
+  }
+  log="$LOGS/libcxx-cxx-shared-row.log"
+  if cxx_build "$log"; then
+    copies="$(unzip -l "$LX/build/app/outputs/flutter-apk/app-debug.apk" | awk '$4 == "lib/arm64-v8a/libc++_shared.so"' | wc -l | tr -d ' ')"
+    row --check "$CXX_CHECK" --target "$AND_ARM/debug" --status pass --command "$CXX_CMD" \
+      --summary "counterfactual c++_shared row: builds ($copies copy in lib/arm64-v8a)" --notes "$ids; log: $log"
+  elif grep -q "files found with path 'lib/[^']*/libc++_shared.so'" "$log"; then
+    row --check "$CXX_CHECK" --target "$AND_ARM/debug" --status fail --command "$CXX_CMD" \
+      --value "log=$log" \
+      --summary "counterfactual c++_shared row: the app build fails, duplicate lib/<abi>/libc++_shared.so" \
+      --notes "$(grep -m1 'Execution failed for task' "$log" | tr -s ' ') / $(grep -m1 'files found with path' "$log" | sed 's/^ *//') / $(grep -A2 'files found with path' "$log" | tail -2 | sed 's|.*/build/\([^/]*\)/.*|\1|' | tr '\n' ' ')contribute it. $ids"
+  else
+    row --check "$CXX_CHECK" --target "$AND_ARM/debug" --status unmeasured --command "$CXX_CMD" \
+      --value "log=$log" --summary 'counterfactual build failed for another reason' --notes "$(log_tail "$log")"
+  fi
+  # The consumer's resolution (a manual native edit, which step 1 forbids).
+  printf '\nandroid { packaging { jniLibs { pickFirsts += "**/libc++_shared.so" } } }\n' \
+    >> "$LX/android/app/build.gradle.kts"
+  log="$LOGS/libcxx-cxx-shared-row-pickfirst.log"
+  if cxx_build "$log"; then
+    pk="$OUT/libcxx-pickfirst"
+    rm -rf "$pk"
+    mkdir -p "$pk"
+    unzip -o -q "$LX/build/app/outputs/flutter-apk/app-debug.apk" 'lib/*' -d "$pk"
+    kept_id="$(build_id "$pk/lib/arm64-v8a/libc++_shared.so")"
+    if [ "$kept_id" = "$ours_id" ]; then kept="ours (NDK $SET_NDK_VERSION)"
+    elif [ "$kept_id" = "$plugin_id" ]; then kept="the fixture's (NDK $NDK_NAME)"
+    else kept="unidentified ($kept_id)"; fi
+    row --check "$CXX_CHECK" --target "$AND_ARM/debug" --status pass \
+      --command "$CXX_CMD, with android { packaging { jniLibs { pickFirsts += \"**/libc++_shared.so\" } } } appended to android/app/build.gradle.kts" \
+      --value "log=$log" \
+      --summary "counterfactual + consumer pickFirsts edit: builds; keeps $kept" \
+      --notes "lib/arm64-v8a/libc++_shared.so in the APK: build ID $kept_id = $kept; $ids. pickFirst takes the first contributor in merge order, not the newer NDK"
+  else
+    row --check "$CXX_CHECK" --target "$AND_ARM/debug" --status fail \
+      --command "$CXX_CMD, with pickFirsts in android/app/build.gradle.kts" --value "log=$log" \
+      --summary 'counterfactual + consumer pickFirsts edit: still fails' --notes "$(log_tail "$log")"
+  fi
+else
+  unmeasured "$CXX_CHECK" "$AND_ARM/debug" "$CXX_CMD" \
+    "the set's NDK $SET_NDK_VERSION (manifest toolchain.ndk) is not installed under $NDK_ROOT"
+fi
 
 # ---------------------------------------------------------------------------
 # step 10 — iOS deployment target, visibility, signing, privacy, archive link

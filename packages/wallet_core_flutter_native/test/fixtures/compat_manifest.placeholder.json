@@ -1,0 +1,60 @@
+{
+  "upstream": {
+    "repo": "trustwallet/wallet-core",
+    "tag": "4.8.0",
+    "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
+  },
+  "generators": {
+    "ffigen": "21.0.0",
+    "protoc": "33.4",
+    "protoc_gen_dart": "25.0.0",
+    "registry_transform": "9d982d272a360db645ff4da91b3307907fbd4b23e639841b4767df53097ed003"
+  },
+  "schemas": {
+    "proto_dir_sha": "a488593adb2d9b5622018a19b22748bf00781ee885fdaa6c4b145b12fd8447f0",
+    "registry_json_sha": "efc954c95e1105b8359534bd60a8e670bbd91adbeaee789b1d47cfeed81df780",
+    "headers_sha": "e716ad9bab5eae74e6e5d97965c12a6aac09c72d296a7726a91d9c620b0285fe"
+  },
+  "artifacts": {
+    "android/arm64-v8a/libTrustWalletCore.so": {
+      "sha256": "TBD-T1.2",
+      "size": 0
+    },
+    "android/armeabi-v7a/libTrustWalletCore.so": {
+      "sha256": "TBD-T1.2",
+      "size": 0
+    },
+    "android/x86_64/libTrustWalletCore.so": {
+      "sha256": "TBD-T1.2",
+      "size": 0
+    },
+    "ios/TrustWalletCore.xcframework.zip": {
+      "sha256": "TBD-T1.2",
+      "size": 0
+    }
+  },
+  "packages": {
+    "wallet_core_flutter": "0.0.1",
+    "wallet_core_flutter_bindings": "0.0.1",
+    "wallet_core_flutter_native": "0.0.1"
+  },
+  "toolchain": {
+    "ndk": "TBD-T1.2",
+    "xcode": "TBD-T1.2",
+    "cmake": "TBD-T1.2",
+    "rust": "TBD-T1.2"
+  },
+  "release_set": "TBD-T3.11",
+  "identity": {
+    "symbol": "wcf_build_info",
+    "artifact_set_id": "TBD-T1.2",
+    "upstream_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
+  },
+  "retention": {
+    "primary": "TBD-T0.11",
+    "mirror": null,
+    "policy": "TBD-T3.13"
+  },
+  "sbom": null,
+  "reproducible_build_verified": false
+}

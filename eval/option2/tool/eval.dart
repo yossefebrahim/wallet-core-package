@@ -8,19 +8,23 @@
 // only does what the harness has no command for:
 //
 //   make-manifest  build eval_manifest.json from the root manifest and the
-//                  DECISION-14 §5.1 records of a local artifact set (run once,
-//                  by hand; the output is committed and reviewed, and is the
-//                  integrity root of the evaluation — run_eval.sh never
-//                  regenerates it from the untrusted records)
+//                  DECISION-14 §5.1 records of a published artifact set
+//                  (run once, by hand; the output is committed and reviewed,
+//                  and is the integrity root of the evaluation — run_eval.sh
+//                  never regenerates it from the untrusted records)
 //   identity       print `<artifact_set_id> <upstream_commit>` of a manifest
 //   flip           write a copy of a manifest with one artifact's digest
 //                  changed consistently in `sha256` and `asset_name`, so the
 //                  manifest stays self-consistent and only the bytes disagree
+//   add-artifact   write a copy of a manifest with one more row, for a file
+//                  the evaluation supplies (step 9's counterfactual
+//                  libc++_shared.so rows), under $OUT only
 //   row            append one evaluation-owned result row (the harness schema:
 //                  check, target, status, values, command, notes)
-//   json-get       print one top-level string field of a JSON file, so the
-//                  script reads toolchain facts (`flutter --version --machine`)
-//                  at run time instead of hard-coding them
+//   json-get       print one string field of a JSON file (a dotted key walks
+//                  nested objects), so the script reads toolchain facts
+//                  (`flutter --version --machine`, the manifest's
+//                  `toolchain.ndk`) at run time instead of hard-coding them
 //   scrub          rewrite every string in a results.jsonl, replacing
 //                  machine-specific path prefixes (`--replace FROM=TO`,
 //                  longest FROM first), so committed results name `$OUT`,
@@ -46,6 +50,8 @@ void main(List<String> argv) {
       _identity(options);
     case 'flip':
       _flip(options);
+    case 'add-artifact':
+      _addArtifact(options);
     case 'row':
       _row(options);
     case 'json-get':
@@ -62,7 +68,8 @@ void main(List<String> argv) {
 Never _usage() {
   stderr.writeln(
     'usage: dart eval/option2/tool/eval.dart '
-    'make-manifest|identity|flip|row|json-get|scrub|embed [--name value]...',
+    'make-manifest|identity|flip|add-artifact|row|json-get|scrub|embed '
+    '[--name value]...',
   );
   exit(64);
 }
@@ -183,7 +190,26 @@ void _embed(Map<String, List<String>> options) {
 }
 
 void _jsonGet(Map<String, List<String>> options) {
-  final value = _readJson(_one(options, 'file'))[_one(options, 'key')];
+  // A dotted key walks nested objects: `toolchain.ndk`. A key may itself
+  // contain dots (`artifacts.android/x86_64/libTrustWalletCore.so.sha256`),
+  // so each step takes the longest run of parts that names a key.
+  Object? value = _readJson(_one(options, 'file'));
+  final parts = _one(options, 'key').split('.');
+  var i = 0;
+  while (i < parts.length && value is Map<String, Object?>) {
+    final map = value;
+    var j = parts.length;
+    while (j > i && !map.containsKey(parts.sublist(i, j).join('.'))) {
+      j--;
+    }
+    if (j == i) {
+      value = null;
+      break;
+    }
+    value = map[parts.sublist(i, j).join('.')];
+    i = j;
+  }
+  if (i < parts.length) value = null;
   if (value is! String) {
     stderr.writeln('no string field ${_one(options, 'key')}');
     exit(1);
@@ -224,66 +250,82 @@ void _makeManifest(Map<String, List<String>> options) {
   final records = Directory(_one(options, 'records'));
   final out = _one(options, 'out');
 
+  // The root manifest's rows, overlaid with the set's DECISION-14 §5.1
+  // records as they are. Since the published set as_4.8.0_001 (main f9f3d58)
+  // the records carry a real `build_workflow` and the root manifest carries
+  // that set's identity, retention URL and per-slice rows, so nothing is
+  // substituted any more: for that set the result holds the root's values.
+  // (Until T1.9b the set was a local build, as_4.8.0_000, and this tool wrote
+  // `.invalid` stand-ins for its `"local"` build_workflow and for
+  // retention.primary, and dropped the root's xcframework-zip row.) A record
+  // that is not a published one is refused rather than papered over.
   final artifacts = Map<String, Object?>.of(
     root['artifacts']! as Map<String, Object?>,
   );
-  // The local set ships dylibs, not the CI xcframework zip the root manifest
-  // names; the iOS plan prefers that row whenever it is present, so it is
-  // dropped here. The Android rows stay `TBD-T1.2`: no Android artifact
-  // exists, and the Gradle build must fail on them, not skip them.
-  artifacts.remove('ios/TrustWalletCore.xcframework.zip');
 
   String? setId;
   String? commit;
-  final files = records.listSync().whereType<File>().toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final xcodes = <Object?>{};
+  final files =
+      records
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.json'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   for (final file in files) {
     final record = _readJson(file.path);
     for (final entry in record.entries) {
-      final fields = Map<String, Object?>.of(
-        entry.value! as Map<String, Object?>,
-      );
-      // The records say `"build_workflow": "local"`. The validator requires an
-      // absolute https URL once a digest is real, so the evaluation manifest
-      // writes a host under `.invalid` (RFC 6761: never resolves), which says
-      // the same thing — no workflow run produced this — in the validator's
-      // grammar.
-      if (fields['build_workflow'] == 'local') {
-        fields['build_workflow'] = _localBuildWorkflow;
+      final fields = entry.value! as Map<String, Object?>;
+      final workflow = fields['build_workflow'];
+      if (workflow is! String || !workflow.startsWith('https://')) {
+        stderr.writeln(
+          '${file.path}: build_workflow "$workflow" is not a published '
+          'workflow run; the evaluation manifest takes published sets only',
+        );
+        exit(1);
+      }
+      final recordSet = (fields['asset_name']! as String).split('__').first;
+      if (setId != null && setId != recordSet) {
+        stderr.writeln('records span two sets, $setId and $recordSet');
+        exit(1);
+      }
+      setId = recordSet;
+      commit ??= fields['source_commit']! as String;
+      final toolchain = fields['toolchain'] as Map<String, Object?>?;
+      if (toolchain != null && toolchain.containsKey('xcode')) {
+        xcodes.add(toolchain['xcode']);
       }
       artifacts[entry.key] = fields;
-      final assetName = fields['asset_name']! as String;
-      setId ??= assetName.split('__').first;
-      commit ??= fields['source_commit']! as String;
     }
   }
+  if (setId == null) {
+    stderr.writeln('no records under ${records.path}');
+    exit(1);
+  }
+
+  final identity = root['identity']! as Map<String, Object?>;
+  if (identity['artifact_set_id'] != setId ||
+      identity['upstream_commit'] != commit) {
+    stderr.writeln(
+      "the records are set $setId @ $commit, the root manifest's identity "
+      "${identity['artifact_set_id']} @ ${identity['upstream_commit']}; "
+      'copy the root compat_manifest.json of that set first',
+    );
+    exit(1);
+  }
+  final toolchain = Map<String, Object?>.of(
+    root['toolchain']! as Map<String, Object?>,
+  );
+  // Every Apple record agrees on this; the validator checks it.
+  if (xcodes.length == 1) toolchain['xcode'] = xcodes.single;
 
   final manifest = Map<String, Object?>.of(root)
     ..['artifacts'] = artifacts
-    ..['toolchain'] = {
-      ...(root['toolchain']! as Map<String, Object?>),
-      // Every Apple record agrees on this; the validator checks it.
-      'xcode': '17F113',
-    }
-    ..['identity'] = {
-      ...(root['identity']! as Map<String, Object?>),
-      'artifact_set_id': setId,
-      'upstream_commit': commit,
-      'build_workflow': _localBuildWorkflow,
-    }
-    ..['retention'] = {
-      ...(root['retention']! as Map<String, Object?>),
-      // Never contacted: run_eval.sh fetches with --offline from a vendored
-      // directory. `.invalid` guarantees that a run without --offline fails
-      // to resolve rather than reaching anything.
-      'primary': 'https://eval-only.invalid/native-4.8.0-000',
-    };
+    ..['toolchain'] = toolchain;
   File(out).writeAsStringSync('${_pretty.convert(manifest)}\n');
-  stdout.writeln('wrote $out');
+  stdout.writeln('wrote $out (set $setId, ${files.length} records)');
 }
-
-const String _localBuildWorkflow =
-    'https://local-build.eval-only.invalid/as_4.8.0_000';
 
 void _identity(Map<String, List<String>> options) {
   final identity =
@@ -316,6 +358,43 @@ void _flip(Map<String, List<String>> options) {
     _one(options, 'out'),
   ).writeAsStringSync('${_pretty.convert(manifest)}\n');
   stdout.writeln('$name: $sha -> $flipped');
+}
+
+/// A copy of a manifest with one more artifact row, for a file the
+/// evaluation supplies itself: every field is copied from the `--like` row,
+/// then `sha256`/`size` are the file's own (through `shasum -a 256`, the same
+/// system command the harness's size check records) and `asset_name` /
+/// `logical_name` follow the manifest's grammar. Step 9 uses it to ask what
+/// Option 2 does with a `libc++_shared.so` row (a counterfactual `c++_shared`
+/// set); the result is written under `$OUT` only, never committed.
+void _addArtifact(Map<String, List<String>> options) {
+  final manifest = _readJson(_one(options, 'manifest'));
+  final artifacts = manifest['artifacts']! as Map<String, Object?>;
+  final name = _one(options, 'name');
+  final like = artifacts[_one(options, 'like')] as Map<String, Object?>?;
+  if (like == null) {
+    stderr.writeln('no artifact ${_one(options, 'like')}');
+    exit(1);
+  }
+  final file = File(_one(options, 'file'));
+  final shasum = Process.runSync('shasum', ['-a', '256', file.path]);
+  if (shasum.exitCode != 0) {
+    stderr.writeln('shasum failed on ${file.path}: ${shasum.stderr}');
+    exit(1);
+  }
+  final sha = (shasum.stdout as String).split(' ').first.trim();
+  final setId = (like['asset_name']! as String).split('__').first;
+  artifacts[name] = {
+    ...like,
+    'sha256': sha,
+    'size': file.lengthSync(),
+    'asset_name': '${setId}__${sha}__${name.replaceAll('/', '-')}',
+    'logical_name': name,
+  };
+  File(
+    _one(options, 'out'),
+  ).writeAsStringSync('${_pretty.convert(manifest)}\n');
+  stdout.writeln('$name: $sha (${file.lengthSync()} B)');
 }
 
 void _row(Map<String, List<String>> options) {

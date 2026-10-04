@@ -143,21 +143,21 @@ void main() {
       expect(Directory('${root.path}/jniLibs').existsSync(), isFalse);
     });
 
-    test(
-      'a placeholder manifest is blocked (exit 2), as the root one is',
-      () async {
-        File('${root.path}/manifest.json').writeAsStringSync(
-          File('assets/compat_manifest.json').readAsStringSync(),
-        );
-        final code = await prepareJniLibs(
-          args(),
-          packageDir: Directory.current.path,
-          environment: const {},
-        );
-        expect(code, 2);
-        expect(Directory('${root.path}/jniLibs').existsSync(), isFalse);
-      },
-    );
+    test('a placeholder manifest is blocked (exit 2), as the root one was '
+        'before as_4.8.0_001', () async {
+      File('${root.path}/manifest.json').writeAsStringSync(
+        File(
+          'test/fixtures/compat_manifest.placeholder.json',
+        ).readAsStringSync(),
+      );
+      final code = await prepareJniLibs(
+        args(),
+        packageDir: Directory.current.path,
+        environment: const {},
+      );
+      expect(code, 2);
+      expect(Directory('${root.path}/jniLibs').existsSync(), isFalse);
+    });
   });
 
   // The pod directory, and with it `--work` and `--out`, is shared by every
