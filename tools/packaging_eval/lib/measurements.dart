@@ -223,13 +223,16 @@ List<String> exportedTwFunctions(String inventoryPath) {
   return names;
 }
 
-/// Export presence and visibility of the shipped library, by calling
-/// `tools/native_build/check_exports.sh` with a symbol list derived from
-/// inventory.json. One row per architecture.
+/// Export presence and visibility of the shipped library, against a symbol
+/// list derived from inventory.json. One row per architecture.
+///
+/// Mach-O: by calling `tools/native_build/check_exports.sh`. ELF: by reading
+/// the dynamic symbol table directly ([measureElfSymbols]).
 ///
 /// [expectIdentity] is false for a library that is not ours — upstream's
 /// framework carries no `wcf_build_info`, and that is a fact to record rather
-/// than a failure of the packaging option.
+/// than a failure of the packaging option. [allowExtra] names `TW*` exports
+/// outside the list that are not a failure (ELF only: upstream's JNI glue).
 List<ResultRow> measureSymbols({
   required String artifact,
   required String format,
@@ -237,8 +240,19 @@ List<ResultRow> measureSymbols({
   String? inventoryPath,
   String? nmPath,
   bool expectIdentity = true,
+  List<String> allowExtra = const [],
 }) {
   final inventory = inventoryPath ?? inventoryJsonPath();
+  if (format == 'elf' && File(artifact).existsSync()) {
+    return measureElfSymbols(
+      artifact: artifact,
+      target: target,
+      inventoryPath: inventory,
+      nmPath: nmPath,
+      expectIdentity: expectIdentity,
+      allowExtra: allowExtra,
+    );
+  }
   if (!File(artifact).existsSync()) {
     return [
       ResultRow(
@@ -319,6 +333,101 @@ List<ResultRow> measureSymbols({
   } finally {
     scratch.deleteSync(recursive: true);
   }
+}
+
+/// The ELF half of [measureSymbols]: one row, from
+///
+///   `llvm-nm --dynamic --defined-only --extern-only <artifact>`
+///
+/// run here and reconciled by [parseElfDynamicExports] — the command
+/// `check_exports.sh` runs for ELF since 56560e8. It is run directly rather
+/// than through the gate so the measurement does not depend on which version
+/// of the gate a checkout carries: a gate without `--dynamic` reads `.symtab`,
+/// which a stripped release `.so` does not have, and reports 0 exports.
+/// [nmPath] is the NDK's llvm-nm (neither `nm` nor `llvm-nm` on a macOS PATH
+/// reads ELF reliably); without one the row is `unmeasured`.
+List<ResultRow> measureElfSymbols({
+  required String artifact,
+  required String target,
+  required String inventoryPath,
+  String? nmPath,
+  bool expectIdentity = true,
+  List<String> allowExtra = const [],
+}) {
+  const nmFlags = ['--dynamic', '--defined-only', '--extern-only'];
+  final names = exportedTwFunctions(inventoryPath);
+  final listNote =
+      '# symbol list: ${names.length} exported TW* functions projected from '
+      '${_relative(inventoryPath)}'
+      '${allowExtra.isEmpty ? '' : '; allowed extra: ${allowExtra.join(', ')}'}';
+  if (nmPath == null) {
+    return [
+      ResultRow(
+        check: 'symbols',
+        target: target,
+        status: CheckStatus.unmeasured,
+        values: {'summary': 'no NDK llvm-nm'},
+        command:
+            '\$ANDROID_NDK/toolchains/llvm/prebuilt/<host>/bin/llvm-nm '
+            '${nmFlags.join(' ')} ${shellQuote(artifact)}   $listNote',
+        notes:
+            'no llvm-nm: no NDK found under \$ANDROID_NDK, \$ANDROID_HOME/ndk '
+            'or ~/Library/Android/sdk/ndk; pass --nm',
+      ),
+    ];
+  }
+  final result = run(nmPath, [...nmFlags, artifact]);
+  final command = '${result.command}   $listNote';
+  if (!result.ok) {
+    return [
+      ResultRow(
+        check: 'symbols',
+        target: target,
+        status: CheckStatus.fail,
+        values: {'summary': 'llvm-nm exited ${result.exitCode}'},
+        command: command,
+        notes: result.combined.trim().split('\n').take(5).join(' / '),
+      ),
+    ];
+  }
+  final arch = parseElfDynamicExports(
+    result.stdout,
+    expected: names,
+    allowExtra: allowExtra,
+  );
+  final listed = arch.twExports - arch.allowedExtra.length - arch.unexpected;
+  return [
+    ResultRow(
+      check: 'symbols',
+      target: target,
+      status: arch.reconciles && (!expectIdentity || arch.identityExported)
+          ? CheckStatus.pass
+          : CheckStatus.fail,
+      values: {
+        ...arch.toJson(),
+        'symbol_list_size': names.length,
+        'symbol_list_source': _relative(inventoryPath),
+        'identity_expected': expectIdentity,
+        'summary':
+            '${arch.arch}: $listed/${arch.expected} TW*, '
+            '${arch.definedExternal} defined external, wcf_build_info '
+            '${arch.identityExported ? 'yes' : 'no'}'
+            '${arch.allowedExtra.isEmpty ? '' : ', ${arch.allowedExtra.length} allowed extra'}',
+      },
+      command: command,
+      notes: [
+        'read from the dynamic symbol table (.dynsym), what dlsym resolves',
+        if (arch.allowedExtra.isNotEmpty)
+          '${arch.allowedExtra.length} TW* exports outside the list, allowed: '
+              '${arch.allowedExtra.join(', ')}',
+        if (!expectIdentity && !arch.identityExported)
+          'no wcf_build_info: expected for a library we did not relink',
+        if (arch.missing > 0) '${arch.missing} names missing',
+        if (arch.unexpected > 0)
+          '${arch.unexpected} unexpected TW* exports (stale symbol list)',
+      ].join('; '),
+    ),
+  ];
 }
 
 // ---------------------------------------------------------------------------

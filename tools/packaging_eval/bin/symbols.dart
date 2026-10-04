@@ -12,14 +12,22 @@ import 'package:wcf_tool_packaging_eval/results.dart';
 
 const _usage = r'''
 Usage: dart run tools/packaging_eval/bin/symbols.dart --artifact FILE \
-           --format macho|elf --target ID [--no-expect-identity]
+           --format macho|elf --target ID [--no-expect-identity] \
+           [--allow-extra NAME]...
 
 Reconciles the exported symbols of a shipped library against the canonical
-list, per architecture, by calling the build's own gate rather than
+list, per architecture. Mach-O calls the build's own gate rather than
 reimplementing it:
 
   tools/native_build/check_exports.sh --binary <artifact> \
-      --symbol-list <derived> --format macho|elf [--nm <llvm-nm>]
+      --symbol-list <derived> --format macho [--nm <llvm-nm>]
+
+ELF reads the dynamic symbol table, the only one a stripped release .so keeps
+and the one dlsym resolves against: the command the gate runs for ELF since
+56560e8, run here so the result does not depend on the gate's version:
+
+  <ndk>/toolchains/llvm/prebuilt/<host>/bin/llvm-nm --dynamic \
+      --defined-only --extern-only <artifact>
 
 The symbol list is derived at run time from
 packages/wallet_core_flutter_bindings/lib/src/generated/inventory.json — the
@@ -38,6 +46,9 @@ Options:
                          we did not relink — upstream's own framework carries
                          no identity symbol, and that is a fact to record, not
                          a failure of a packaging option.
+  --allow-extra NAME     ELF: a TW* export outside the list that is not a
+                         failure (repeatable): upstream's Android JNI glue,
+                         as tools/native_build/build_android.sh allows it.
   --out FILE             Append the JSON result rows to FILE.
   -h, --help             This text.
 
@@ -69,6 +80,7 @@ void main(List<String> arguments) {
       inventoryPath: args.option('inventory'),
       nmPath: nm,
       expectIdentity: !args.flag('no-expect-identity'),
+      allowExtra: args.options('allow-extra'),
     ),
   ];
 
