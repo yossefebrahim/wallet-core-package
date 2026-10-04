@@ -6,7 +6,7 @@
 // built app.
 //
 //   flutter test test/bundled_library_test.dart \
-//       --dart-define=WCF_EXPECTED_ARTIFACT_SET_ID=as_4.8.0_000 \
+//       --dart-define=WCF_EXPECTED_ARTIFACT_SET_ID=as_4.8.0_001 \
 //       --dart-define=WCF_EXPECTED_UPSTREAM_COMMIT=d692ac27749d0c615e17c751b70ab4f0aa75c59b
 //
 // Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library.

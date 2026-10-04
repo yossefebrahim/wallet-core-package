@@ -58,16 +58,22 @@ not_built() {
   row --check "$1" --target "$2" --status unmeasured --summary "$summary" --command "$4" --notes "$notes"
 }
 
-# packaged RC LIB TARGET FORMAT: symbols and size of the binary inside a built
-# app, in that app's column — measured only when RC says the build succeeded
-# in this run.
+# packaged RC LIB TARGET FORMAT [SYMBOLS_ARG...]: symbols and size of the
+# binary inside a built app, in that app's column — measured only when RC says
+# the build succeeded in this run. Any further arguments go to the symbols
+# measurement (the Android `--allow-extra` names).
 packaged() {
-  if [ "$1" -eq 0 ]; then
-    harness symbols --artifact "$2" --format "$4" --target "$3"
-    harness size --artifact "$2" --target "$3"
+  p_rc=$1
+  p_lib=$2
+  p_target=$3
+  p_format=$4
+  shift 4
+  if [ "$p_rc" -eq 0 ]; then
+    harness symbols --artifact "$p_lib" --format "$p_format" --target "$p_target" "$@"
+    harness size --artifact "$p_lib" --target "$p_target"
   else
-    not_built symbols "$3" "$1" "dart run tools/packaging_eval/bin/symbols.dart --artifact $2 --format $4 --target $3"
-    not_built size "$3" "$1" "dart run tools/packaging_eval/bin/size.dart --artifact $2 --target $3"
+    not_built symbols "$p_target" "$p_rc" "dart run tools/packaging_eval/bin/symbols.dart --artifact $p_lib --format $p_format --target $p_target${*:+ $*}"
+    not_built size "$p_target" "$p_rc" "dart run tools/packaging_eval/bin/size.dart --artifact $p_lib --target $p_target"
   fi
 }
 

@@ -69,9 +69,9 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # How wallet_core_flutter_native's build hook gets its artifact here: verified
-# against the evaluation manifest (a locally built, never-published set,
-# as_4.8.0_000), from the git-ignored local build under third_party/, with the
-# network off. See eval/option1/README.md.
+# against the evaluation manifest (the published set as_4.8.0_001), from the
+# git-ignored vendored copy under third_party/, with the network off. See
+# eval/option1/README.md.
 hooks:
   user_defines:
     wallet_core_flutter_native:

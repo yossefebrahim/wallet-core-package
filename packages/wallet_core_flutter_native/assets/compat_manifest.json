@@ -16,21 +16,111 @@
     "headers_sha": "e716ad9bab5eae74e6e5d97965c12a6aac09c72d296a7726a91d9c620b0285fe"
   },
   "artifacts": {
-    "android/arm64-v8a/libTrustWalletCore.so": {
-      "sha256": "TBD-T1.2",
-      "size": 0
+    "ios/arm64/libTrustWalletCore.dylib": {
+      "sha256": "b4ea6f6e07a1b0a6a0e0e829ffbcddfa6ab85aea6f34012968d9fcc05d7675f2",
+      "size": 19721152,
+      "source_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+      "build_workflow": "https://github.com/yossefebrahim/wallet-core-package/actions/runs/37211800874",
+      "linkage": "dynamic",
+      "target_os": "ios",
+      "abi": "arm64",
+      "min_os": "13.0",
+      "toolchain": {
+        "xcode": "17C529",
+        "clang": "Apple clang version 17.0.0 (clang-1700.6.4.2)",
+        "sdk": "iphoneos26.2"
+      },
+      "signature": null,
+      "attestation": null,
+      "provenance": "relinked_from_upstream_release_asset",
+      "asset_name": "as_4.8.0_001__b4ea6f6e07a1b0a6a0e0e829ffbcddfa6ab85aea6f34012968d9fcc05d7675f2__ios-arm64-libTrustWalletCore.dylib",
+      "logical_name": "ios/arm64/libTrustWalletCore.dylib"
     },
-    "android/armeabi-v7a/libTrustWalletCore.so": {
-      "sha256": "TBD-T1.2",
-      "size": 0
+    "ios-simulator/arm64_x86_64/libTrustWalletCore.dylib": {
+      "sha256": "3da219c4b6a1646aac99ef584064a020f983e172e4c2315e737ea8a1ec51aecc",
+      "size": 41225208,
+      "source_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+      "build_workflow": "https://github.com/yossefebrahim/wallet-core-package/actions/runs/37211800874",
+      "linkage": "dynamic",
+      "target_os": "ios-simulator",
+      "abi": "arm64_x86_64",
+      "min_os": "14.0",
+      "toolchain": {
+        "xcode": "17C529",
+        "clang": "Apple clang version 17.0.0 (clang-1700.6.4.2)",
+        "sdk": "iphonesimulator26.2"
+      },
+      "signature": null,
+      "attestation": null,
+      "provenance": "relinked_from_upstream_release_asset",
+      "asset_name": "as_4.8.0_001__3da219c4b6a1646aac99ef584064a020f983e172e4c2315e737ea8a1ec51aecc__ios-simulator-arm64_x86_64-libTrustWalletCore.dylib",
+      "logical_name": "ios-simulator/arm64_x86_64/libTrustWalletCore.dylib"
+    },
+    "macos/arm64_x86_64/libTrustWalletCore.dylib": {
+      "sha256": "4e0fed0a2e62130469fe1ece384e953dcbba5a9a5ea6c3d419d478c2b19a156c",
+      "size": 41258504,
+      "source_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+      "build_workflow": "https://github.com/yossefebrahim/wallet-core-package/actions/runs/37211800874",
+      "linkage": "dynamic",
+      "target_os": "macos",
+      "abi": "arm64_x86_64",
+      "min_os": "26.0",
+      "toolchain": {
+        "xcode": "17C529",
+        "clang": "Apple clang version 17.0.0 (clang-1700.6.4.2)",
+        "sdk": "macosx26.2"
+      },
+      "signature": null,
+      "attestation": null,
+      "provenance": "relinked_from_upstream_release_asset",
+      "asset_name": "as_4.8.0_001__4e0fed0a2e62130469fe1ece384e953dcbba5a9a5ea6c3d419d478c2b19a156c__macos-arm64_x86_64-libTrustWalletCore.dylib",
+      "logical_name": "macos/arm64_x86_64/libTrustWalletCore.dylib"
+    },
+    "android/arm64-v8a/libTrustWalletCore.so": {
+      "sha256": "12265d40e63d0fb1043458095546b149e18429dc40b13edfed47b4555c075d2b",
+      "size": 21822704,
+      "source_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+      "build_workflow": "https://github.com/yossefebrahim/wallet-core-package/actions/runs/37211800874",
+      "linkage": "dynamic",
+      "target_os": "android",
+      "abi": "arm64-v8a",
+      "min_os": "23",
+      "toolchain": {
+        "ndk": "28.0.12674087",
+        "cmake": "3.18.1",
+        "rust": "rustc 1.94.0-nightly (f52090008 2025-12-10)",
+        "gradle": "8.10.2",
+        "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
+        "boost": "1.92.0"
+      },
+      "signature": null,
+      "attestation": null,
+      "provenance": "built_from_source",
+      "asset_name": "as_4.8.0_001__12265d40e63d0fb1043458095546b149e18429dc40b13edfed47b4555c075d2b__android-arm64-v8a-libTrustWalletCore.so",
+      "logical_name": "android/arm64-v8a/libTrustWalletCore.so"
     },
     "android/x86_64/libTrustWalletCore.so": {
-      "sha256": "TBD-T1.2",
-      "size": 0
-    },
-    "ios/TrustWalletCore.xcframework.zip": {
-      "sha256": "TBD-T1.2",
-      "size": 0
+      "sha256": "3dcd1647d790fb8cb5c366202dcd682205261a2a148a4f934e6cb82b9905100a",
+      "size": 23271904,
+      "source_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+      "build_workflow": "https://github.com/yossefebrahim/wallet-core-package/actions/runs/37211800874",
+      "linkage": "dynamic",
+      "target_os": "android",
+      "abi": "x86_64",
+      "min_os": "23",
+      "toolchain": {
+        "ndk": "28.0.12674087",
+        "cmake": "3.18.1",
+        "rust": "rustc 1.94.0-nightly (f52090008 2025-12-10)",
+        "gradle": "8.10.2",
+        "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
+        "boost": "1.92.0"
+      },
+      "signature": null,
+      "attestation": null,
+      "provenance": "built_from_source",
+      "asset_name": "as_4.8.0_001__3dcd1647d790fb8cb5c366202dcd682205261a2a148a4f934e6cb82b9905100a__android-x86_64-libTrustWalletCore.so",
+      "logical_name": "android/x86_64/libTrustWalletCore.so"
     }
   },
   "packages": {
@@ -39,19 +129,20 @@
     "wallet_core_flutter_native": "0.0.1"
   },
   "toolchain": {
-    "ndk": "TBD-T1.2",
-    "xcode": "TBD-T1.2",
-    "cmake": "TBD-T1.2",
-    "rust": "TBD-T1.2"
+    "ndk": "28.0.12674087",
+    "xcode": "17C529",
+    "cmake": "3.18.1",
+    "rust": "rustc 1.94.0-nightly (f52090008 2025-12-10)"
   },
   "release_set": "TBD-T3.11",
   "identity": {
     "symbol": "wcf_build_info",
-    "artifact_set_id": "TBD-T1.2",
-    "upstream_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
+    "artifact_set_id": "as_4.8.0_001",
+    "upstream_commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+    "build_workflow": "https://github.com/yossefebrahim/wallet-core-package/actions/runs/37211800874"
   },
   "retention": {
-    "primary": "TBD-T0.11",
+    "primary": "https://github.com/yossefebrahim/wallet-core-package/releases/download/native-4.8.0-001",
     "mirror": null,
     "policy": "TBD-T3.13"
   },

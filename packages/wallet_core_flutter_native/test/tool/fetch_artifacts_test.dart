@@ -727,11 +727,20 @@ void main() {
     });
   });
 
-  group('the shipped placeholder manifest', () {
+  group('a placeholder manifest', () {
     test('--dry-run lists the blockers, exits 2, and opens no socket', () async {
+      final placeholderFile = File(
+        'test/fixtures/compat_manifest.placeholder.json',
+      );
       final lines = <String>[];
       final code = await runFetchArtifacts(
-        ['--dry-run', '--cache-dir', cache.path],
+        [
+          '--dry-run',
+          '--manifest',
+          placeholderFile.absolute.path,
+          '--cache-dir',
+          cache.path,
+        ],
         scriptDir: scriptDir,
         environment: <String, String>{'HOME': root.path},
         out: lines.add,
@@ -739,7 +748,7 @@ void main() {
       );
       final output = lines.join('\n');
       expect(code, exitManifestBlocked, reason: output);
-      expect(output, contains('assets/compat_manifest.json'));
+      expect(output, contains('compat_manifest.placeholder.json'));
       expect(output, contains('retention.primary'));
       expect(output, contains('TBD-T0.11'));
       expect(output, contains('identity.artifact_set_id'));
@@ -748,14 +757,10 @@ void main() {
       expect(output, contains('no request was made'));
       expect(server.requests, isEmpty);
 
-      // Every artifact the shipped manifest lists appears, whichever they are:
+      // Every artifact the placeholder manifest lists appears, whichever they are:
       // the map is a path grammar, not a fixed set (D0 finding F14).
       final manifest =
-          jsonDecode(
-                File(
-                  '${Directory.current.path}/assets/compat_manifest.json',
-                ).readAsStringSync(),
-              )
+          jsonDecode(placeholderFile.readAsStringSync())
               as Map<String, Object?>;
       final artifacts = manifest['artifacts']! as Map<String, Object?>;
       expect(artifacts, isNotEmpty);
@@ -765,9 +770,17 @@ void main() {
     });
 
     test('a real run refuses it too, before any socket', () async {
+      final placeholderFile = File(
+        'test/fixtures/compat_manifest.placeholder.json',
+      );
       final lines = <String>[];
       final code = await runFetchArtifacts(
-        ['--cache-dir', cache.path],
+        [
+          '--manifest',
+          placeholderFile.absolute.path,
+          '--cache-dir',
+          cache.path,
+        ],
         scriptDir: scriptDir,
         environment: <String, String>{'HOME': root.path},
         out: lines.add,
@@ -776,6 +789,41 @@ void main() {
       expect(code, exitManifestBlocked, reason: lines.join('\n'));
       expect(server.requests, isEmpty);
     });
+  });
+
+  group('the shipped manifest', () {
+    test(
+      '--dry-run exits 0, mentions retention.primary, lists artifacts, and opens no socket',
+      () async {
+        final lines = <String>[];
+        final code = await runFetchArtifacts(
+          ['--dry-run', '--cache-dir', cache.path],
+          scriptDir: scriptDir,
+          environment: <String, String>{'HOME': root.path},
+          out: lines.add,
+          err: lines.add,
+        );
+        final output = lines.join('\n');
+        expect(code, exitOk, reason: output);
+        expect(server.requests, isEmpty);
+
+        final manifestFile = File(
+          '${Directory.current.path}/assets/compat_manifest.json',
+        );
+        final manifest =
+            jsonDecode(manifestFile.readAsStringSync()) as Map<String, Object?>;
+
+        final retention = manifest['retention'] as Map<String, Object?>;
+        final primary = retention['primary'] as String;
+        expect(output, contains(primary));
+
+        final artifacts = manifest['artifacts']! as Map<String, Object?>;
+        expect(artifacts, isNotEmpty);
+        for (final key in artifacts.keys) {
+          expect(output, contains(key));
+        }
+      },
+    );
   });
 
   group('the command line', () {

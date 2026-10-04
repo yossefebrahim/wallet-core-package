@@ -31,12 +31,12 @@ const String androidLibraryFileName = 'libTrustWalletCore.so';
 /// The Android ABI directory name for [architecture], or `null` when no
 /// artifact is shipped for it.
 ///
-/// `ia32` (x86) and `riscv64` are deliberately absent: the artifact set has no
-/// 32-bit x86 or RISC-V library, and PRD §12.2 step 8 ships an ABI only if it
-/// is tested.
+/// `arm` (armeabi-v7a), `ia32` (x86) and `riscv64` are deliberately absent:
+/// PRD §12.2 step 8 ships an ABI only if it is tested, the first published
+/// set (`as_4.8.0_001`) builds no armeabi-v7a library, and no set has a 32-bit
+/// x86 or RISC-V one.
 String? androidAbi(Architecture architecture) => switch (architecture) {
   Architecture.arm64 => 'arm64-v8a',
-  Architecture.arm => 'armeabi-v7a',
   Architecture.x64 => 'x86_64',
   _ => null,
 };
@@ -115,8 +115,10 @@ ArtifactSelection? selectArtifact({
     if (abi == null) {
       throw UnsupportedTarget(
         'Android ${architecture.name} is not shipped: the artifact set has '
-        'arm64-v8a, armeabi-v7a and x86_64 libraries only. Restrict the app '
-        'to those ABIs (android.defaultConfig.ndk.abiFilters).',
+        'arm64-v8a and x86_64 libraries only (PRD §12.2 step 8 ships an ABI '
+        'only if it is tested). Build for those ABIs only: '
+        '--target-platform android-arm64,android-x64 on flutter build apk or '
+        'flutter build appbundle.',
       );
     }
     return ArtifactSelection(

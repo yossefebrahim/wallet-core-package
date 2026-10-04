@@ -12,21 +12,20 @@ import '../../hook/src/targets.dart';
 
 void main() {
   group('Android ABI mapping', () {
-    test('the three shipped ABIs', () {
+    test('the two shipped ABIs', () {
       expect(androidAbi(Architecture.arm64), 'arm64-v8a');
-      expect(androidAbi(Architecture.arm), 'armeabi-v7a');
       expect(androidAbi(Architecture.x64), 'x86_64');
     });
 
-    test('x86 and RISC-V are not shipped', () {
+    test('x86, armeabi-v7a and RISC-V are not shipped', () {
       expect(androidAbi(Architecture.ia32), isNull);
+      expect(androidAbi(Architecture.arm), isNull);
       expect(androidAbi(Architecture.riscv64), isNull);
     });
 
     test('each ABI selects its own .so and checks its own ELF machine', () {
       const expected = {
         Architecture.arm64: ('arm64-v8a', ElfMachine.aarch64),
-        Architecture.arm: ('armeabi-v7a', ElfMachine.arm),
         Architecture.x64: ('x86_64', ElfMachine.x86_64),
       };
       expected.forEach((arch, want) {
@@ -45,6 +44,28 @@ void main() {
             (e) => e.message,
             'message',
             allOf(contains('ia32'), contains('arm64-v8a'), contains('x86_64')),
+          ),
+        ),
+      );
+    });
+
+    // as_4.8.0_001 ships no armeabi-v7a library (PRD §12.2 step 8). A default
+    // `flutter build apk` targets android-arm too; the hook must stop that
+    // build with a message that says how to build for the shipped ABIs, not
+    // fail later on a manifest lookup that talks about xcframeworks.
+    test('armeabi-v7a is refused with the remedy, before any lookup', () {
+      expect(
+        () => selectArtifact(os: OS.android, architecture: Architecture.arm),
+        throwsA(
+          isA<UnsupportedTarget>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('Android arm is not shipped'),
+              contains('PRD §12.2 step 8'),
+              contains('--target-platform android-arm64,android-x64'),
+              isNot(contains('xcframework')),
+            ),
           ),
         ),
       );
@@ -129,11 +150,7 @@ void main() {
 
     test('one file name across every Android ABI', () {
       final names = {
-        for (final arch in [
-          Architecture.arm64,
-          Architecture.arm,
-          Architecture.x64,
-        ])
+        for (final arch in [Architecture.arm64, Architecture.x64])
           selectArtifact(os: OS.android, architecture: arch)!.fileName,
       };
       expect(names, {'libTrustWalletCore.so'});

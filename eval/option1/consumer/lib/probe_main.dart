@@ -2,7 +2,7 @@
 // tests do not run (PRD §12.2 steps 2 and 3):
 //
 //   flutter run --release -t lib/probe_main.dart \
-//       --dart-define=WCF_EXPECTED_ARTIFACT_SET_ID=as_4.8.0_000 \
+//       --dart-define=WCF_EXPECTED_ARTIFACT_SET_ID=as_4.8.0_001 \
 //       --dart-define=WCF_EXPECTED_UPSTREAM_COMMIT=d692ac27749d0c615e17c751b70ab4f0aa75c59b
 //
 // Shows the probe's outcome on screen and prints it, prefixed WCF_PROBE.
