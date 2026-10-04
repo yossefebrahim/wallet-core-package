@@ -1,0 +1,10 @@
+<task>
+LAND T1.16a — git bookkeeping only, one commit, no file content changes.
+Worktree /Users/yossefebrahim/Work/wallet-core-package.worktrees/T1.16 (branch `task/T1.16`, tip `de3fe4c`). `git status --short` must list exactly `?? example/`, `?? tools/consumer_check.sh`, `?? tools/consumer_check/` — anything else: STOP and report. Check `git status --short --ignored example | grep -c '^!!'` is > 0 (build outputs and `.dart_tool` are ignored) and that `git add --dry-run example tools/consumer_check.sh tools/consumer_check | grep -cE "build/|\.dart_tool/|\.idea/|\.iml"` prints 0 — otherwise STOP. Then `git add example tools/consumer_check.sh tools/consumer_check` and commit:
+"T1.16a: example app (M0 flow on the public surface) and consumer_check.sh skeleton"
+body: "Packaging-agnostic half of T1.16. example/: initialize → create/exportMnemonic once → import with live validation → Ethereum address → EvmTransactionRequest signed via KeyLocator → close/shutdown; initialize failure shown as a state; tests on the SDK's testing seam (4) + one native-tagged test; debug APK builds (no libTrustWalletCore.so yet — T1.16b after DECISION-2). tools/consumer_check.sh: create_consumer and publish_locally (committed helper tools/consumer_check/publish_locally.dart over the T1.19 loopback repository) work; packaging stages exit 2 'waiting for DECISION-2 (T1.16b)'. Implemented by claude-delegate (Opus 5.5) on briefs T1.16a / T1.16a-d1 after an agy attempt was rejected; reviewed by the orchestrator (flutter analyze 0 issues, 5 tests, melos gates unchanged)."
+then a blank line and the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+Paste `git log --oneline -1`, `git show --stat --format= HEAD | tail -3`, `git status --short | wc -l` (0).
+</task>
+<action_safety>No push, merge, rebase, reset, checkout, stash, amend, tag, force, file edits, other agents.</action_safety>
+<structured_output_contract>Report: status pastes, the dry-run check counts, commit hash, final pastes.</structured_output_contract>

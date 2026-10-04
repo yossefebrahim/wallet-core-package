@@ -1,0 +1,9 @@
+<task>
+LAND T1.17-pre — git bookkeeping only, one commit, no file content changes.
+Worktree /Users/yossefebrahim/Work/wallet-core-package.worktrees/T1.17 (branch `task/T1.17`, tip `de3fe4c`). `git status --short` must list exactly: ` M .github/dependabot.yml`, ` M AGENTS.md`, ` M pubspec.yaml`, ` M tools/lint/README.md`, ` M tools/lint/pubspec.yaml`, `?? tools/lint/bin/runtime_deps_check.dart`, `?? tools/lint/lib/runtime_deps_check.dart`, `?? tools/lint/test/runtime_deps_test.dart` — anything else: STOP. `git add -A` (the set above is the whole delta) and commit:
+"T1.17-pre: runtime dependency policy check (lint:runtime-deps) and Dependabot pub"
+body: "PRD §16 S4 / AGENTS rule 3: tools/lint/bin/runtime_deps_check.dart computes each published package's transitive runtime closure (dependencies only), requires every entry on a documented allow list, denies known networking/telemetry packages, forbids git:/path: runtime sources beyond the workspace siblings, and scans lib/ for dart:io network symbols (tool/ and hook/ are build time, reported not failed). Wired as melos lint:runtime-deps and in AGENTS.md's gate table; 9 fixture tests (lint package 48 → 57). .github/dependabot.yml gains a weekly grouped pub ecosystem. CI wiring is T1.17 proper. Implemented by agy-delegate on briefs T1.17-pre / -d1; reviewed by the orchestrator (analyze 11/11 clean, format 0 changed, lint:runtime-deps OK for all three packages)."
+then a blank line and the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. Paste `git log --oneline -1`, `git show --stat --format= HEAD | tail -2`, `git status --short | wc -l` (0).
+</task>
+<action_safety>No push, merge, rebase, reset, checkout, stash, amend, tag, force, file edits, other agents.</action_safety>
+<structured_output_contract>Report: status paste, commit hash, final pastes.</structured_output_contract>
