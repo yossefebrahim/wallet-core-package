@@ -237,7 +237,7 @@ final class WalletCoreSession implements WalletCore {
       case SessionState.failed:
         // failed → closed: the executor is already gone; only the Dart side
         // is torn down.
-        return _shutdown = Future<void>.sync(_finishClosed);
+        return _shutdown = _finishClosed();
       case SessionState.initializing:
         return Future<void>.error(
           const SessionStateError(
@@ -282,16 +282,16 @@ final class WalletCoreSession implements WalletCore {
       if (!_forcedTermination) {
         // The executor died during shutdown (closing → failed): handles may
         // not have been released, and the caller is told so.
-        _finishClosed();
+        await _finishClosed();
         rethrow;
       }
     } finally {
       grace.cancel();
     }
-    _finishClosed();
+    await _finishClosed();
   }
 
-  void _finishClosed() {
+  Future<void> _finishClosed() async {
     if (_state == SessionState.closed) return;
     _failAllPending(
       _forcedTermination
@@ -300,7 +300,7 @@ final class WalletCoreSession implements WalletCore {
     );
     _transport.close();
     _transition(SessionState.closed);
-    unawaited(_states.close());
+    await _states.close();
   }
 
   void _onTerminated(WorkerTerminatedError error) {

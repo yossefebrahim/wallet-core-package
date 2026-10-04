@@ -293,6 +293,76 @@ void main() {
       // After closed, the same answer.
       await expectLater(second.close(), throwsA(isA<WorkerTerminatedError>()));
     });
+
+    test('shutdown with an open wallet stream completion', () async {
+      final (core, fake) = await _start();
+      final states = <SessionState>[];
+      var done = false;
+      core.states.listen(states.add, onDone: () => done = true);
+      await core.wallets.create();
+      await core.shutdown();
+      expect(states.last, SessionState.closed);
+      expect(done, isTrue);
+      expect(core.disposedAtShutdown, 1);
+      expect(fake.liveRefCount, 0);
+    });
+
+    test(
+      'a second subscriber added just before shutdown() also sees closed and done',
+      () async {
+        final (core, _) = await _start();
+        final states1 = <SessionState>[];
+        var done1 = false;
+        core.states.listen(states1.add, onDone: () => done1 = true);
+        final states2 = <SessionState>[];
+        var done2 = false;
+        core.states.listen(states2.add, onDone: () => done2 = true);
+        await core.shutdown();
+        expect(states1.last, SessionState.closed);
+        expect(done1, isTrue);
+        expect(states2.last, SessionState.closed);
+        expect(done2, isTrue);
+      },
+    );
+
+    test(
+      'a listener that calls core.shutdown() from inside onData when it sees closing',
+      () async {
+        final (core, _) = await _start();
+        final states = <SessionState>[];
+        var done = false;
+        late Future<void> innerShutdown;
+        core.states.listen((s) {
+          states.add(s);
+          if (s == SessionState.closing) {
+            innerShutdown = core.shutdown();
+          }
+        }, onDone: () => done = true);
+        final outerShutdown = core.shutdown();
+        await outerShutdown.timeout(const Duration(milliseconds: 100));
+        expect(identical(innerShutdown, outerShutdown), isTrue);
+        expect(states.last, SessionState.closed);
+        expect(done, isTrue);
+      },
+    );
+
+    test(
+      'a states subscription made after closed receives only done',
+      () async {
+        final (core, _) = await _start();
+        await core.shutdown();
+        expect(core.state, SessionState.closed);
+
+        final states = <SessionState>[];
+        var done = false;
+        core.states.listen(states.add, onDone: () => done = true);
+
+        // Wait a tick to let it process
+        await Future<void>.delayed(Duration.zero);
+        expect(states, isEmpty, reason: 'no events after closed');
+        expect(done, isTrue, reason: 'onDone fires immediately');
+      },
+    );
   });
 
   group('secret buffers at the transport (A-7)', () {
