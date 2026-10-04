@@ -11,8 +11,8 @@
 #      versions pinned in compat_manifest.json (`generators.protoc`,
 #      `generators.protoc_gen_dart`). Both are printed on mismatch.
 #   2. Runs protoc over every third_party/wallet-core/src/proto/*.proto at the
-#      pinned upstream commit, emitting Dart into the generated proto directory
-#      and a FileDescriptorSet into a temporary file.
+#      pinned upstream commit, emitting Dart into a staging directory and a
+#      FileDescriptorSet into a temporary file. The output is staged and swapped.
 #   3. Derives key_fields.json from that FileDescriptorSet: every message field
 #      whose *proto* name contains `private_key`, keyed by the fully-qualified
 #      protobuf message name — which is exactly what
@@ -134,13 +134,19 @@ command -v python3 >/dev/null 2>&1 ||
 # explicit template does not. Same reasoning as tools/native_build/lib/common.sh.
 tmp_base=${TMPDIR:-/tmp}
 work=$(mktemp -d "${tmp_base%/}/wcf-gen-proto.XXXXXXXX")
-trap 'rm -rf "$work"' EXIT
+staging="$out_dir.staging.$$"
+cleanup() {
+  if [ -d "$out_dir.old" ] && [ ! -e "$out_dir" ]; then
+    mv "$out_dir.old" "$out_dir"
+  fi
+  rm -rf "$out_dir.old"
+  rm -rf "$staging"
+  rm -rf "$work"
+}
+trap cleanup EXIT
 descriptors="$work/descriptors.bin"
 
-# Wipe rather than overwrite, so a .proto upstream deleted since the last run
-# does not leave an orphan .pb.dart behind and break clean regeneration.
-rm -rf "$out_dir"
-mkdir -p "$out_dir"
+mkdir -p "$staging"
 
 pushd "$proto_src" >/dev/null
 # nullglob so an empty directory yields an empty array rather than the literal
@@ -151,19 +157,19 @@ shopt -u nullglob
 [ "${#protos[@]}" -gt 0 ] || die "no .proto files in $proto_src"
 protoc \
   -I . \
-  --dart_out="$out_dir" \
+  --dart_out="$staging" \
   --descriptor_set_out="$descriptors" \
   "${protos[@]}"
 popd >/dev/null
 
 proto_in=${#protos[@]}
-dart_out=$(find "$out_dir" -name '*.dart' | wc -l | tr -d ' ')
+dart_out=$(find "$staging" -name '*.dart' | wc -l | tr -d ' ')
 
 # --------------------------------------------------------------------------
 # 3. key_fields.json, from protoc's own descriptors.
 # --------------------------------------------------------------------------
 
-python3 - "$descriptors" "$manifest" "$proto_src" "$out_dir" <<'PY'
+python3 - "$descriptors" "$manifest" "$proto_src" "$staging" <<'PY'
 import json, os, sys
 
 descriptors, manifest_path, proto_src, out_dir = sys.argv[1:5]
@@ -369,6 +375,11 @@ PY
 # 4. Format, as the last step of generation.
 # --------------------------------------------------------------------------
 
-dart format "$out_dir" >/dev/null
+dart format "$staging" >/dev/null
+
+rm -rf "$out_dir.old"
+if [ -e "$out_dir" ]; then mv "$out_dir" "$out_dir.old"; fi
+mv "$staging" "$out_dir"
+rm -rf "$out_dir.old"
 
 echo "proto.sh: $proto_in .proto in -> $dart_out .dart out in ${out_dir#"$root"/}"

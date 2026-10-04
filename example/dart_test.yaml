@@ -1,0 +1,11 @@
+# Test tags — the SDK package's convention
+# (../packages/wallet_core_flutter/dart_test.yaml).
+#
+# `flutter test` runs with no tag filter, so the `native` test runs too and
+# skips itself when the host library is absent (test/support/host_library.dart).
+# Run it alone, with absence a failure, as
+# `WCF_NATIVE_REQUIRED=1 flutter test --tags native`.
+tags:
+  native:
+    # Loads the real libTrustWalletCore built from the pinned upstream commit.
+    # Needs `melos run native:host-lib` first, or WCF_NATIVE_LIB set.

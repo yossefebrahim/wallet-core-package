@@ -1,0 +1,12 @@
+name: wcf_tool_consumer_check
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  wcf_tool_packaging_eval:
+
+dev_dependencies:
+  lints: ^6.0.0

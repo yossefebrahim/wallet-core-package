@@ -1,0 +1,40 @@
+name: wallet_core_flutter_example
+description: >-
+  Example app for wallet_core_flutter: the M0 flow on the public surface.
+  Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library.
+  Not affiliated with or endorsed by Trust Wallet.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # By path, from this checkout: the example shows the SDK as it is in the
+  # tree. Consuming the packages the way a real app does — hosted, never by
+  # path (PRD §12.2 step 11) — is tools/consumer_check.sh's job (T1.16b).
+  wallet_core_flutter:
+    path: ../packages/wallet_core_flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+# wallet_core_flutter pins its two siblings by exact version (PRD §15.4).
+# Inside the pub workspace those resolve to the checkout; this app is not a
+# workspace member, so they are pointed at the checkout here. The override
+# also makes `native` available to tests without a dev_dependencies entry:
+# the `native`-tagged test names the host library's build identity
+# (`ManifestIdentity`), which only the native package exports.
+dependency_overrides:
+  wallet_core_flutter_bindings:
+    path: ../packages/wallet_core_flutter_bindings
+  wallet_core_flutter_native:
+    path: ../packages/wallet_core_flutter_native
+
+flutter:
+  uses-material-design: true

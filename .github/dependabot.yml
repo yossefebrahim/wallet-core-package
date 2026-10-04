@@ -1,9 +1,19 @@
 version: 2
 
-# Only the GitHub Actions ecosystem for now: no pub ecosystem until the
-# packages carry real dependencies.
+# GitHub Actions and pub ecosystem.
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+  - package-ecosystem: pub
+    # The pub updater's workspace support is unverified.
+    # If its first run touches only the root pubspec, switch to:
+    # directories: ["/", "/packages/*", "/tools/*"]
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      all-pub-updates:
+        patterns:
+          - "*"
