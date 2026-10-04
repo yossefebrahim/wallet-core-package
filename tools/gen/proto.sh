@@ -134,16 +134,17 @@ command -v python3 >/dev/null 2>&1 ||
 # explicit template does not. Same reasoning as tools/native_build/lib/common.sh.
 tmp_base=${TMPDIR:-/tmp}
 work=$(mktemp -d "${tmp_base%/}/wcf-gen-proto.XXXXXXXX")
+staging="$out_dir.staging.$$"
 cleanup() {
   if [ -d "$out_dir.old" ] && [ ! -e "$out_dir" ]; then
     mv "$out_dir.old" "$out_dir"
   fi
   rm -rf "$out_dir.old"
+  rm -rf "$staging"
   rm -rf "$work"
 }
 trap cleanup EXIT
 descriptors="$work/descriptors.bin"
-staging="$work/proto"
 
 mkdir -p "$staging"
 
@@ -377,7 +378,7 @@ PY
 dart format "$staging" >/dev/null
 
 rm -rf "$out_dir.old"
-mv "$out_dir" "$out_dir.old" 2>/dev/null || true
+if [ -e "$out_dir" ]; then mv "$out_dir" "$out_dir.old"; fi
 mv "$staging" "$out_dir"
 rm -rf "$out_dir.old"
 
