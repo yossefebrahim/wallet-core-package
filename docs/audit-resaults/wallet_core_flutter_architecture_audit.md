@@ -1,5 +1,7 @@
 # Wallet Core Flutter Package - Architecture Audit
 
+Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
+
 **Audit date:** September 7, 2026  
 **Reviewed material:** PRD Draft v1.1, delegated execution plan, progress tracker, all phase plans, and task/debate brief templates in `/Users/yossefebrahim/Work/wallet-core-package/docs/`.
 

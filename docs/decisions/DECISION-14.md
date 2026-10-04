@@ -20,7 +20,7 @@ Three upstream facts, all established by T0.5, set the problem:
 2. **Upstream ships no Android binary on GitHub Releases.** Release 4.8.0 has 8 assets, none of them Android; upstream's Android library is on GitHub Packages behind an access token (upstream README line 48). Every Android artifact a consumer of this SDK fetches is one we produced and host.
 3. **The iOS xcframework *is* on GitHub Releases and does carry a checksum** — `WalletCore.xcframework.zip`, sha256 `0c79df1a901a3abfbccee5052229984b1e743696483176b3cfb68eaf90f400bc`, declared in upstream's `Package.swift` for SPM and confirmed byte-for-byte locally. It is the **only** upstream-attested checksum available to us: six of the eight assets have no published checksum at all, including `TrustWalletCore-4.8.0.tar.xz`, which is the input DECISION-9's Apple path relinks.
 
-DECISION-9's recommendation, pending D0, is **Option C**: Apple libraries are relinked from the static archives inside `TrustWalletCore-<tag>.tar.xz` together with our `wcf_build_info.c` (one dynamic library per slice, 464 `TW*` symbols plus ours, and a macOS host library from the same step); Android is built from the git tree at the pinned commit with the identity file in the link; Apple moves to from-source at M3. This record is designed on that shape, and §7 says what changes if D0 picks B-only.
+DECISION-9's recommendation, recorded 2026-09-07 and awaiting ratification (D0 closed 2026-09-07), is **Option C**: Apple libraries are relinked from the static archives inside `TrustWalletCore-<tag>.tar.xz` together with our `wcf_build_info.c` (one dynamic library per slice, 464 `TW*` symbols plus ours, and a macOS host library from the same step); Android is built from the git tree at the pinned commit with the identity file in the link; Apple moves to from-source at M3. This record is designed on that shape, and §7 says what changes if D0 picks B-only.
 
 ## 2. The build-identity symbol
 
@@ -343,6 +343,17 @@ Re-open this record when any of the following occurs:
 4. **pub.dev gains a retraction mechanism that affects existing resolutions** — §4.4's "fix forward only" premise changes.
 5. **DECISION-2 selects build hooks (Option 1)** — the fetch happens inside `hook/build.dart` and §3.1's URL consumer changes, though the scheme itself does not.
 6. **An adopting organisation requires a signed SBOM or a specific attestation format** — §4.5 moves from [REC] to [REQ] with a named format, and T4.5's scope grows.
+
+## 10. Build-time facts established by the first artifact runs (2026-10-03/04) — awaiting ratification at D1a
+
+a. Android ABIs shipped: `arm64-v8a`, `x86_64`; `armeabi-v7a` is not built (PRD §12.2 step 8) — `.github/workflows/build-native.yml:73` `android_abis` default; the manifest's `armeabi-v7a` and `ios/TrustWalletCore.xcframework.zip` rows are placeholders that P0 must drop or replace with the per-slice `.dylib` keys the workflow records.
+b. `-DFLUTTER=ON` is patched into upstream's `android/wallet-core/build.gradle` by `tools/native_build/build_android.sh:368` so the C API is exported (upstream hides it via `cmake/StandardSettings.cmake:4` unless `FLUTTER` is set); without it the SDK cannot call upstream on Android. This is a deviation from an unmodified upstream build; the patch is logged in the artifact record and in the build log.
+c. Export gate reads `.dynsym` for ELF (release `.so` is stripped) — `tools/native_build/check_exports.sh:137`.
+d. Four upstream JNI helpers (`TWDataCreateWithJByteArray`, `TWDataJByteArray`, `TWStringCreateWithJString`, `TWStringJString`) are exported by the Android library and allow-listed as known extras; the 464-symbol list stays authoritative for everything else (`tools/native_build/build_android.sh:441`).
+e. `BOOST_ROOT=$(brew --prefix boost)` exported for Gradle's CMake on the Apple-Silicon runner (`tools/native_build/build_android.sh:311`); licence acceptance step `yes | sdkmanager --licenses` (`.github/workflows/build-native.yml:317`); `xcode_version` default `26.3.0` (`.github/workflows/build-native.yml:81`).
+f. Retry semantics: the publish job refuses an existing release/tag (`.github/workflows/build-native.yml:156` "reserve the release tag" step), so a run that fails after the draft release is created cannot be retried under the same `artifact_set_id` — the next attempt uses the next id (`as_4.8.0_002`). Operating rule, consistent with §4.3's immutability: a failed publish burns its set id. No run has yet reached the publish job.
+g. Comparison 2 (manifest hash) does not run on the default `initialize()` path today: `packages/wallet_core_flutter/lib/src/worker/handler.dart:278` only checks when `manifestBytes` are supplied and `packages/wallet_core_flutter/lib/src/session/wallet_core.dart:44` passes none. Two options are open for the owner at D1a: (i) embed the manifest bytes as a generated Dart constant at `gen:manifest` time and check by default; (ii) amend §2.3 to say comparison 2 is opt-in until T3.11's release-set work. Neither is chosen here.
+h. The identity values (`identity.artifact_set_id`, artifact digests, toolchain) are still `TBD-T1.2` placeholders until P0 (`compat_manifest.json:50`); `manifest:validate` accepts them by design (strict mode reports 12).
 
 ---
 

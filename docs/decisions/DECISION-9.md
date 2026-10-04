@@ -179,3 +179,7 @@ finding in T1.2 that the relinked Apple artifacts differ observably from a from-
 step 3 from a schedule into a defect.
 
 Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+
+### Addendum 2026-10-04 (orchestrator; awaiting ratification)
+
+See DECISION-14 §10 items b–e for Android build-time facts. Option C's Android half has now been exercised end-to-end up to the export gate (run 37158147404: 464/464 TW* exported + `wcf_build_info`), while the publish half is unexecuted (billing).

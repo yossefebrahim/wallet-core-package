@@ -28,7 +28,7 @@ Where the trees stand (verified by file diff, 2026-10-03):
 
 ---
 
-> **Executed 2026-10-03:** Phases A and B are done (plus T1.2-d1 pulled forward from Phase C); `integration/W5` is at `b07f593`, gate-green, reviewed (`reviews/W5-landing-fable.md`) — details and the push list in `PROGRESS.md`. Phase C onward is still yours.
+> **Executed 2026-10-03/04:** Phases A, B and C.1 are done; `integration/W5` landed in `main` `99137b9`, `integration/W6` (Phase D pre-work: T1.16a, T1.17-pre, T1.4-d1/d2, T1.11-d1/d2) in `main` `672e09e`, both pushed. C.2/C.3 (artifact set `as_4.8.0_001`, manifest fill) are blocked on GitHub Actions billing; D1–D7 wait for them. Status and the push/dispatch log live in `PROGRESS.md`; review reports in `reviews/`.
 
 ## Phase A — record and amend (orchestrator + one small Opus task, ~1 hour, no device)
 

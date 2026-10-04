@@ -13,7 +13,7 @@ This file is the single source of the rules that govern every change made in thi
 7. Every test vector entry cites its provenance: upstream file path and commit, a standard (BIP/SLIP) reference, or a published transaction hash.
 8. Docs and README never use the words "zeroization", "secret-free", or "audited" about this SDK; never use "reproducible" about its artifacts until PRD §12.4's independent-rebuild demonstration is recorded (M3, T4.4); and never make a legal claim about AGPL. Package names never contain "trust". The disclaimer "Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet." appears wherever the project is described.
 9. Do not add a dependency without listing it, with version, in the final report.
-10. Do not run `git add`, `git commit`, or `git push`. Do not start another agent session. Leave all work uncommitted for the orchestrator.
+10. Do not run `git add`, `git commit`, or `git push`. Do not start another agent session. Leave all work uncommitted for the orchestrator. Exception: the orchestrator may hand `git`/`gh` write operations to agy through dedicated `LAND_*`/`MERGE_*`/`PUSH_*`/`DISPATCH_*` briefs under the owner's recorded authorization (PROGRESS.md header); implementer briefs never include them.
 11. Touch only the owned paths named in the brief. No unrelated cleanup, renames, or formatting sweeps.
 12. The default public SDK surface never exposes the generated `CoinType`; use the stable coin/network facade (PRD §8, DECISION-11). Public resources of the default surface close asynchronously; synchronous `dispose()` exists only on internal wrappers and on the same-isolate objects of `advanced.dart`, which follow the internal ownership contract (PRD §11.2, §14.3). Signers take a set of `KeyLocator`s and return sealed `SignResult`s (PRD §10.2, DECISION-13).
 
@@ -26,12 +26,14 @@ This file is the single source of the rules that govern every change made in thi
 | `melos run format:check` | `dart format --set-exit-if-changed .` | no |
 | `melos run test` | unit tests in every package (no native library required unless the test says so) | no |
 | `melos run test:native` | unit tests that load the real native library on the host (macOS) | no |
-| `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:matrix` | no |
+| `melos run inventory:check` | header vs generated symbol inventory (T1.3) | no |
+| `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:manifest` (`gen:matrix` arrives with the capability matrix, T3.x) | no |
 | `melos run gen:check` | `gen:all` then `git diff --exit-code` on generated paths | no |
 | `melos run lint:public-api` | public-surface type check (T1.15) | no |
-| `melos run lint:runtime-deps` | runtime dependency policy (T1.17) | no |
+| `melos run lint:runtime-deps` | runtime dependency policy (T1.17-pre) | no |
 | `melos run vectors:validate` | inventory schema + provenance check (T0.8) | no |
 | `melos run manifest:validate` | compat manifest schema + checksum presence (T0.7) | no |
+| `melos run probe:sign-json` | SignJSON availability probe, T1.14; run with `--out` when used as a read-only gate because the default rewrites `docs/decisions/evidence/sign_json_coverage.md` | no |
 | `melos run test:android` | `integration_test` on the running Android emulator | yes |
 | `melos run test:ios` | `integration_test` on the running iOS simulator | yes |
 | `tools/consumer_check.sh` | fresh `flutter create` consumer + add dependency + debug and release builds on both platforms | yes |

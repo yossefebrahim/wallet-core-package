@@ -129,11 +129,14 @@ Codex never implements in this plan. Its only deliverable is its final message.
 | `melos run format:check` | `dart format --set-exit-if-changed .` | no |
 | `melos run test` | unit tests in every package (no native library required unless the test says so) | no |
 | `melos run test:native` | unit tests that load the real native library on the host (macOS) | no |
-| `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:matrix` | no |
+| `melos run inventory:check` | header vs generated symbol inventory (T1.3) | no |
+| `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:manifest` (`gen:matrix` arrives with the capability matrix, T3.x) | no |
 | `melos run gen:check` | `gen:all` then `git diff --exit-code` on generated paths | no |
 | `melos run lint:public-api` | public-surface type check (T1.15) | no |
+| `melos run lint:runtime-deps` | runtime dependency policy (T1.17-pre) | no |
 | `melos run vectors:validate` | inventory schema + provenance check (T0.8) | no |
 | `melos run manifest:validate` | compat manifest schema + checksum presence (T0.7) | no |
+| `melos run probe:sign-json` | SignJSON availability probe, T1.14; run with `--out` when used as a read-only gate because the default rewrites `docs/decisions/evidence/sign_json_coverage.md` | no |
 | `melos run test:android` | `integration_test` on the running Android emulator | yes |
 | `melos run test:ios` | `integration_test` on the running iOS simulator | yes |
 | `tools/consumer_check.sh` | fresh `flutter create` consumer + add dependency + debug and release builds on both platforms | yes |

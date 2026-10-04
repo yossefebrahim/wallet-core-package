@@ -1,5 +1,7 @@
 # Architecture audit — triage
 
+Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
+
 | | |
 |---|---|
 | **Audit** | [wallet_core_flutter_architecture_audit.md](wallet_core_flutter_architecture_audit.md), September 7, 2026 |

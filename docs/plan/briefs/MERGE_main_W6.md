@@ -1,0 +1,14 @@
+<task>
+MERGE integration/W6 → main — owner-authorized ("Go", 2026-10-04, after the orchestrator offered the merge; push/merge authorization of 2026-10-03 stands). Preconditions the orchestrator checked: `integration/W6` at d0959a6 is gate-green locally (SDK 277 tests, lint 61, native 42+74, example 6, lint:runtime-deps OK, gen:check, format, analyze, inventory:check, vectors:validate, manifest:validate, lint:public-api, probe:sign-json) and reviewed in docs/plan/reviews/W6-fable.md; `git merge-tree --write-tree main integration/W6` is clean.
+
+1. Repository root /Users/yossefebrahim/Work/wallet-core-package: `git rev-parse --abbrev-ref HEAD` must print `main`; `git status --short` must list nothing except, possibly, untracked `docs/plan/briefs/*.md` (the orchestrator's briefs — leave them, never `git add -A`); `git fetch origin`; `git log --oneline -1 origin/main` and `git log --oneline -1 main` — if `main` is behind `origin/main`, STOP (do not pull). Then:
+     git merge --no-ff integration/W6 -m "Merge integration/W6: example app, runtime-deps lint, gen:proto atomicity, shutdown ordering, consumer check" -m "integration/W6 at d0959a6: T1.16a (+d1, d2: example/ M0 flow with seam tests), T1.17-pre (+d2: tools/consumer_check, dependabot), T1.4-d1/d2 (gen:proto staging + restore), T1.11-d1/d2 (session close ordering, DECISION-12 §3.8), lint:runtime-deps (61 tests). Gate-green locally; reviewed in docs/plan/reviews/W6-fable.md with follow-ups applied." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+   If git reports a conflict: `git merge --abort`, STOP, report. Record MERGE_HASH. `git status --short` must show nothing new.
+2. Gates on the merged `main`, from the root, `export PATH="$PATH:$HOME/.pub-cache/bin"`, run each with bash (not zsh) and paste the last 15 lines of each: `melos bootstrap`; `melos run analyze`; `melos run format:check`; `melos run test`; `melos run test:native`; `melos run gen:check`; `melos run inventory:check`; `melos run lint:public-api`; `melos run lint:runtime-deps`; `melos run vectors:validate`; `melos run manifest:validate`; `melos run probe:sign-json`. If ANY gate is red, STOP before pushing and report the full failing output (do not reset or revert the merge; the orchestrator decides).
+3. `git push origin main` — plain push, no force. Paste the output. If rejected, STOP (no force, no pull).
+4. Wait 30 seconds, paste `gh run list --limit 5` and `git log --oneline --graph -8 main`.
+</task>
+<action_safety>
+No rebase, reset, checkout, stash, amend, tag, branch deletion, `--force*`, no workflow dispatch, no edits to any file, no other agent. Stop and report on anything unexpected.
+</action_safety>
+<structured_output_contract>Report: step-1 pastes and MERGE_HASH; every gate's tail with pass/fail counts; push output; step-4 pastes; anything that failed or was skipped.</structured_output_contract>
