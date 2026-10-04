@@ -255,7 +255,7 @@ packages:
     source: path
     version: "0.0.1"
   wallet_core_flutter_native:
-    dependency: "direct dev"
+    dependency: "direct overridden"
     description:
       path: "../packages/wallet_core_flutter_native"
       relative: true

@@ -20,6 +20,7 @@ workspace:
   - tools/gen
   - tools/packaging_eval
   - tools/probes
+  - tools/consumer_check
   - tools/lint
 
 dev_dependencies:
