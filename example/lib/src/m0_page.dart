@@ -333,7 +333,9 @@ class _M0PageState extends State<M0Page> {
           ),
           FilledButton(
             key: const ValueKey('shutdown'),
-            onPressed: _canOperate ? _flow.shutdown : null,
+            onPressed: (_canOperate || (_idle && _flow.state?.name == 'failed'))
+                ? _flow.shutdown
+                : null,
             child: const Text('Shut down'),
           ),
         ],

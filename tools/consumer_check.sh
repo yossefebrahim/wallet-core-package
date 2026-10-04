@@ -187,7 +187,7 @@ publish_locally() {
   if [ ! -f "$REPO_ROOT/.dart_tool/package_config.json" ]; then
     fail publish_locally "no workspace package config; run \`melos bootstrap\` first"
   fi
-  if ! (cd "$REPO_ROOT" && dart run tools/consumer_check/publish_locally.dart \
+  if ! (cd "$REPO_ROOT/tools/consumer_check" && dart run publish_locally.dart \
     --staging-dir "$PUB_REPOSITORY_DIR"); then
     fail publish_locally "see the output above"
   fi

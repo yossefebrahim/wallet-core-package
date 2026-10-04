@@ -26,6 +26,7 @@ import 'package:wallet_core_flutter/src/worker/handler.dart'
     show RequestHandler;
 import 'package:wallet_core_flutter/src/worker/protocol.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart';
+// ignore: depend_on_referenced_packages
 import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
     show ManifestIdentity;
 
@@ -102,10 +103,10 @@ final class FakeHandler implements RequestHandler {
       id,
       isValid: mnemonic.trim().split(RegExp(r'\s+')).join(' ') == fakeMnemonic,
     ),
-    ValidateMnemonicWord(:final id, :final word) => MnemonicWordValidated(
-      id,
-      isValid: _words.contains(word),
-    ),
+    ValidateMnemonicWord(:final id, :final word) =>
+      word == 'explode'
+          ? throw Exception('simulated fault')
+          : MnemonicWordValidated(id, isValid: _words.contains(word)),
     SuggestMnemonicWords(:final id, :final prefix) => MnemonicWordsSuggested(
       id,
       [

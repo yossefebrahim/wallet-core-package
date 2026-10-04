@@ -192,4 +192,34 @@ void main() {
 
     await tapKey(tester, 'shutdown');
   });
+
+  testWidgets('session failed state allows shutdown and start over', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ExampleApp(startSession: startFakeSession));
+    await tapKey(tester, 'initialize');
+    expect(textUnder(tester, 'session-state'), 'SessionState: ready');
+
+    // Trigger the simulated fault.
+    await enterKey(tester, 'import-field', 'explode');
+
+    // Wait for the isolate/worker error to propagate.
+    // We expect the state to change to failed without any further interaction,
+    // but we can pump and settle.
+    await tester.pumpAndSettle();
+
+    expect(textUnder(tester, 'session-state'), 'SessionState: failed');
+
+    // Assert that 'Shut down' is enabled and can be tapped.
+    expect(isEnabled(tester, 'shutdown'), isTrue);
+    // 'Start over' should also be present and enabled.
+    expect(isEnabled(tester, 'start-over'), isTrue);
+
+    // Shut down from failed state.
+    await tapKey(tester, 'shutdown');
+    // Session state should not move out of failed from a shutdown directly?
+    // Wait, DECISION-12 says `failed -> closed`.
+    expect(textUnder(tester, 'session-state'), 'SessionState: closed');
+    expect(isEnabled(tester, 'start-over'), isTrue);
+  });
 }

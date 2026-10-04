@@ -23,14 +23,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  # The `native`-tagged test names the host library's build identity
-  # (`ManifestIdentity`), which only the native package exports.
-  wallet_core_flutter_native:
-    path: ../packages/wallet_core_flutter_native
 
 # wallet_core_flutter pins its two siblings by exact version (PRD §15.4).
 # Inside the pub workspace those resolve to the checkout; this app is not a
-# workspace member, so the same two packages are pointed at the checkout here.
+# workspace member, so they are pointed at the checkout here. The override
+# also makes `native` available to tests without a dev_dependencies entry:
+# the `native`-tagged test names the host library's build identity
+# (`ManifestIdentity`), which only the native package exports.
 dependency_overrides:
   wallet_core_flutter_bindings:
     path: ../packages/wallet_core_flutter_bindings

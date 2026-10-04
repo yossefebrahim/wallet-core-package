@@ -198,8 +198,8 @@ final class M0Flow extends ChangeNotifier {
   StepOutcome? initialized;
 
   /// The session's state when step 1 returned, then every state its
-  /// `states` stream reported, in order. The stream delivers asynchronously:
-  /// `closed` arrives after `shutdown()` has returned.
+  /// `states` stream reported, in order. The `closed` state is delivered
+  /// before `shutdown()` returns, though the page receives it asynchronously.
   final List<SessionState> states = <SessionState>[];
 
   /// The strength step 2 creates a wallet with.
@@ -245,7 +245,9 @@ final class M0Flow extends ChangeNotifier {
   bool get isReady => _core?.state == SessionState.ready;
 
   /// Whether a session has ended, so a new one may start.
-  bool get hasEnded => _core?.state == SessionState.closed;
+  bool get hasEnded =>
+      _core?.state == SessionState.closed ||
+      _core?.state == SessionState.failed;
 
   /// Whether there is a created wallet whose mnemonic has not been shown yet.
   bool get canReveal => _created != null && !_mnemonicExported && isReady;
@@ -546,7 +548,7 @@ final class M0Flow extends ChangeNotifier {
     _disposed = true;
     _shownMnemonic = null;
     // Leaving the page ends the session; nothing is left to report to.
-    if (isReady) _core?.shutdown().ignore();
+    if (isReady || state == SessionState.failed) _core?.shutdown().ignore();
     super.dispose();
   }
 
