@@ -35,11 +35,10 @@ name: Build native artifacts
 # pins a later run to an earlier observation of ours, which is the strongest
 # statement available and is not the same as an upstream attestation.
 #
-# NOT YET RUN. At the time this file was written it had never executed: its
-# first run is a human's. The Apple half was exercised end to end on a
-# developer machine (the relink, both gates, the record, and a dart:ffi call
-# into the produced library); the Android half was not, because no NDK, JDK or
-# Gradle was available there.
+# 2026-10-04: Seven runs executed; Apple job succeeded 6 times; Android job built
+# and passed export gate (run 37158147404: 464/464 TW* + wcf_build_info, 4 JNI
+# extras allow-listed) but later steps (16KB alignment, artifact record, assemble,
+# draft release) have not executed due to Actions billing; no release or tag exists.
 
 on:
   workflow_dispatch:
