@@ -33,7 +33,7 @@ library;
 
 /// Manifest `identity.artifact_set_id` — the expected value of comparison 3
 /// (DECISION-14 §2.3): `wcf_build_info().artifact_set_id` must equal it.
-const String identityArtifactSetId = 'TBD-T1.2';
+const String identityArtifactSetId = 'as_4.8.0_001';
 
 /// Manifest `identity.symbol` — the C name of the build-identity symbol the
 /// loader looks up. Its absence is a load failure, not a mismatch.
@@ -49,7 +49,7 @@ const String identityUpstreamCommit =
 /// copy of the same file. See this library's doc comment for why it is the
 /// file's bytes rather than a canonical re-serialisation.
 const String manifestSha256 =
-    '907932a041e333618a9a728de10001b0032df020e9b8f30e783807f3bfb5fbef';
+    'e41050ed55e186d22646badad034eaf729407bb8775f08257d0624cd3007ff0b';
 
 /// Manifest `release_set` — this package's side of comparison 1
 /// (DECISION-14 §2.3), which requires all three packages to carry the same

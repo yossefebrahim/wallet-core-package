@@ -326,12 +326,12 @@ void main() {
     });
   });
 
-  group('the manifest this package ships today', () {
+  group('the placeholder manifest', () {
     late FetchManifest manifest;
 
     setUpAll(() {
       final file = File(
-        '${Directory.current.path}/assets/compat_manifest.json',
+        '${Directory.current.path}/test/fixtures/compat_manifest.placeholder.json',
       );
       expect(
         file.existsSync(),
