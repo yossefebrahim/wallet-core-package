@@ -5,8 +5,11 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.12.0
-  flutter: ">=3.44.0"
+  # DECISION-6: the floor is the toolchain the packaging path was measured on
+  # (Flutter 3.47.5 / Dart 3.13.4); Xcode 27 builds no app from an older
+  # Flutter template, so nothing older is tested.
+  sdk: ^3.13.0
+  flutter: ">=3.47.5"
 
 dependencies:
   # sha256 of the shipped manifest's bytes — DECISION-14 §2.3 comparison 2,
@@ -15,6 +18,20 @@ dependencies:
   crypto: ^3.0.0
   flutter:
     sdk: flutter
+  # DECISION-2 Option 1 (build hooks). `hook/build.dart` imports these two and
+  # nothing under lib/ does: they run in the consumer's build, never in the
+  # app (`lint:runtime-deps` classifies them as build-time (hook) and fails if
+  # lib/ imports them). The floors are the oldest releases whose API the hook
+  # was written against and read in source: hooks 1.0.2 is the first with
+  # `output.dependencies` and a stable protocol; code_assets 1.x accepts both
+  # hooks 1.x (1.0.0) and 2.x (1.1.0+), and 2.0.0 changed the API. In this
+  # workspace ffigen 21.0.0 (pinned by the bindings) needs code_assets ^1.1.0,
+  # so what resolves is code_assets 1.2.1 and hooks 2.0.2 - the versions
+  # Flutter 3.47.5's own tool pins. No libc++_shared.so package: the shipped
+  # Android library links the C++ runtime statically (DT_NEEDED is liblog,
+  # libm, libdl and libc only), so nothing of ours loads one.
+  hooks: ">=1.0.2 <3.0.0"
+  code_assets: ^1.0.0
 
 dev_dependencies:
   flutter_test:

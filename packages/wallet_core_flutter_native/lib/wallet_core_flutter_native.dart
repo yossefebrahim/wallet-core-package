@@ -12,8 +12,10 @@
 /// imports `package:flutter`, so a pure-Dart command-line tool can use the
 /// loader, and the checks are synchronous because they run inside the worker
 /// isolate during `Init`, before `initialize()` returns (DECISION-12 §5).
-/// Nothing under `lib/` opens a socket: artifacts are downloaded only by this
-/// package's build-time tooling under `tool/` (PRD §16 S4).
+/// Nothing under `lib/` opens a socket: artifacts are downloaded only at build
+/// time, by this package's build hook (`hook/build.dart`, through the fetch
+/// tool under `tool/`), which bundles the verified library into the app as a
+/// code asset that [defaultLocations] opens (PRD §16 S4, DECISION-2).
 ///
 /// **The loaded library is never hashed at run time** (PRD §12.3, threat model
 /// TM-13); artifact checksums are verified at build time against the manifest,
@@ -22,6 +24,7 @@
 library;
 
 export 'src/build_identity.dart' show BuildIdentity;
+export 'src/code_asset_locations.dart' show codeAssetLocations;
 export 'src/errors.dart'
     show
         LibraryLoadAttempt,

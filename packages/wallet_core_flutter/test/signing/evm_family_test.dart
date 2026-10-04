@@ -190,14 +190,12 @@ void main() {
     test('equals the generated key_fields.json for every Ethereum message '
         'and every message reachable from the signing input', () {
       final root = repositoryRoot()!;
-      final generated =
-          jsonDecode(
-                File(
-                  '${root.path}/packages/wallet_core_flutter_bindings/lib/src/'
-                  'generated/proto/key_fields.json',
-                ).readAsStringSync(),
-              )
-              as Map<String, dynamic>;
+      final generated = jsonDecode(
+        File(
+          '${root.path}/packages/wallet_core_flutter_bindings/lib/src/'
+          'generated/proto/key_fields.json',
+        ).readAsStringSync(),
+      ) as Map<String, dynamic>;
       final messages = generated['messages'] as Map<String, dynamic>;
       final byFile = generated['byFile'] as Map<String, dynamic>;
 

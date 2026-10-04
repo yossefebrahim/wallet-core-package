@@ -80,9 +80,8 @@ List<String> _publicSignatures(String source, Set<String> shown) {
     );
     statement.clear();
     if (declaration.isEmpty) return false;
-    final classMatch = RegExp(
-      r'\b(?:class|enum|mixin|extension type)\s+(\w+)',
-    ).firstMatch(declaration);
+    final classMatch = RegExp(r'\b(?:class|enum|mixin|extension type)\s+(\w+)')
+        .firstMatch(declaration);
     if (depth == 0 && classMatch != null) {
       inShownClass = shown.contains(classMatch[1]);
       return true;
