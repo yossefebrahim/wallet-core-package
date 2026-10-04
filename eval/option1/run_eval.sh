@@ -465,14 +465,14 @@ rc=0; attempt "$LOGS/android-default-abis.log" "$ABI_APP" flutter build apk --de
 ABI_CMD="dart run eval/option1/tool/eval_tool.dart stage eval/option1/consumer $ABI_APP && cd $ABI_APP && flutter build apk --debug $DEFINES   # no --target-platform: android-arm, android-arm64 and android-x64"
 REFUSAL=$(grep -m1 'Android arm is not shipped' "$LOGS/android-default-abis.log" | sed 's/^ *//' || true)
 if [ $rc -eq 10 ]; then
-  row --check consumer-build --target android/armeabi-v7a --status unmeasured --summary 'refused here' \
+  row --check default-abi-build --target android-emulator-arm64-v8a/debug --status unmeasured --summary 'refused here' \
     --command "$ABI_CMD" --notes "$ORCH; log: $LOGS/android-default-abis.log"
 elif [ $rc -ne 0 ] && [ -n "$REFUSAL" ]; then
-  row --check consumer-build --target android/armeabi-v7a --status skip \
-    --summary 'not shipped (PRD §12.2 step 8)' --command "$ABI_CMD" \
+  row --check default-abi-build --target android-emulator-arm64-v8a/debug --status pass \
+    --summary 'refused at the hook with the remedy --target-platform android-arm64,android-x64' --command "$ABI_CMD" \
     --notes "as_4.8.0_001 builds no armeabi-v7a library. A default-ABI build stops at the hook with: $REFUSAL log: $LOGS/android-default-abis.log"
 else
-  row --check consumer-build --target android/armeabi-v7a --status fail \
+  row --check default-abi-build --target android-emulator-arm64-v8a/debug --status fail \
     --summary 'default-ABI build not refused by the hook' --command "$ABI_CMD" \
     --notes "exit $rc and no refusal line: an APK for android-arm must not build without an armeabi-v7a library; log: $LOGS/android-default-abis.log"
 fi
@@ -792,12 +792,38 @@ else
 fi
 [ $HOST_RC -eq 0 ] && packaged 0 "$HOST_LIB" "$HOST_TARGET" macho
 # The Android libraries as Gradle packaged them, out of step 1's release APK.
+if [ $AND_DEBUG_RC -eq 0 ]; then
+  mkdir -p "$AND_APPS/debug"
+  unzip -o -q "$AND_APPS/app-debug.apk" 'lib/*' -d "$AND_APPS/debug"
+fi
 if [ $AND_RELEASE_RC -eq 0 ]; then
   mkdir -p "$AND_APPS/release"
   unzip -o -q "$AND_APPS/app-release.apk" 'lib/*' -d "$AND_APPS/release"
 fi
 packaged "$AND_RELEASE_RC" "$AND_APPS/release/lib/arm64-v8a/libTrustWalletCore.so" "$AND_ARM/release" elf $JNI_ALLOW
 packaged "$AND_RELEASE_RC" "$AND_APPS/release/lib/x86_64/libTrustWalletCore.so" "$AND_X64/release" elf $JNI_ALLOW
+
+for abi in arm64-v8a x86_64; do
+  manifest_sha="$(jq -r ".artifacts[\"android/$abi/libTrustWalletCore.so\"].sha256" compat_manifest.json)"
+  for mode in release debug; do
+    if [ "$mode" = release ] && [ $AND_RELEASE_RC -ne 0 ]; then continue; fi
+    if [ "$mode" = debug ] && [ $AND_DEBUG_RC -ne 0 ]; then continue; fi
+    apk_sha="$(shasum -a 256 "$AND_APPS/$mode/lib/$abi/libTrustWalletCore.so" | cut -d' ' -f1)"
+    apk_size="$(wc -c < "$AND_APPS/$mode/lib/$abi/libTrustWalletCore.so" | tr -d ' ')"
+    short_apk="$(printf %s "$apk_sha" | cut -c 1-8)"
+    short_man="$(printf %s "$manifest_sha" | cut -c 1-8)"
+    if [ "$apk_sha" = "$manifest_sha" ]; then
+      status=pass; summary="$mode APK: $short_apk = manifest $short_man"
+    else
+      status=fail; summary="$mode APK: $short_apk != manifest $short_man"
+    fi
+    row --check packaged-digest --target "android/$abi" --status "$status" \
+      --command "unzip -p \"\$AND_APPS/app-$mode.apk\" lib/$abi/libTrustWalletCore.so | shasum -a 256" \
+      --value "apk_sha256=$apk_sha" --value "apk_size=$apk_size" --value "manifest_sha256=$manifest_sha" \
+      --summary "$summary" \
+      --notes "lib/$abi/libTrustWalletCore.so in the $mode APK: sha256 $apk_sha, $apk_size B; the manifest pins android/$abi/libTrustWalletCore.so at $manifest_sha"
+  done
+done
 
 # App-size delta: the same template app without the SDK, built the same way:
 # the same Flutter, the same commands and modes, and the same plugin set — the
@@ -880,8 +906,8 @@ floor_row() {
   target=$1
   state=$2
   case $state in
-    pass) row --check min-version-floor --target "$target" --status pass \
-            --summary "builds on $FLUTTER_VERSION (only version tried)" \
+    pass) row --check min-version-floor --target "$target" --status unmeasured \
+            --summary "only Flutter $FLUTTER_VERSION tried" \
             --command "$FLOOR_CMD" --notes "$FLOOR_NOTE" ;;
     skip) row --check min-version-floor --target "$target" --status skip \
             --summary 'no macOS app' --command "$FLOOR_CMD" --notes "$MAC_REASON" ;;
