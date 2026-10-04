@@ -235,7 +235,7 @@ jobs:
           for f in "$RUNNER_TEMP"/out/records/*.json; do echo "--- $f"; cat "$f"; done
 
       - name: Upload the artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apple-artifacts
           path: ${{ runner.temp }}/out/upload/
@@ -243,7 +243,7 @@ jobs:
           retention-days: 7
 
       - name: Upload the metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apple-metadata
           path: |
@@ -353,7 +353,7 @@ jobs:
           for f in "$RUNNER_TEMP"/out/records/*.json; do echo "--- $f"; cat "$f"; done
 
       - name: Upload the artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-artifacts
           path: ${{ runner.temp }}/out/upload/
@@ -361,7 +361,7 @@ jobs:
           retention-days: 7
 
       - name: Upload the metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-metadata
           path: |
