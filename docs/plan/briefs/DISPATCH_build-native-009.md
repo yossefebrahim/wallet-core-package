@@ -1,0 +1,12 @@
+<task>
+Re-dispatch the native build — owner said on 2026-10-04 "billing is fixed, re-dispatch the build using agy" (standing authorization of 2026-10-03: push, merge, dispatch draft). `main` is 5ec6993; it carries every build fix including T1.17-d3's env-based input handling, which this run exercises for the first time. Nothing is published or reserved (`gh release list` empty), so the set id is reusable.
+
+From /Users/yossefebrahim/Work/wallet-core-package, one command per call, paste outputs:
+1. `gh release list` (expect empty) and `gh workflow run build-native.yml --ref main -f upstream_tag=4.8.0 -f upstream_commit=d692ac27749d0c615e17c751b70ab4f0aa75c59b -f artifact_set_id=as_4.8.0_001 -f xcode_version=26.3.0 -f publish_release=false`.
+2. Wait 60 seconds; `gh run list --workflow=build-native.yml --limit 2`; take the newest id as RUN; `gh run view RUN --json url,status,conclusion,jobs -q '{url,status,conclusion,jobs:[.jobs[]|{name,status,conclusion}]}'`. If it already shows `conclusion: failure`, run `for j in $(gh api repos/yossefebrahim/wallet-core-package/actions/runs/RUN/jobs --jq '.jobs[]|select(.conclusion=="failure")|.id'); do gh api repos/yossefebrahim/wallet-core-package/check-runs/$j/annotations --jq '.[].message'; done` — if the text mentions billing/payment/spending limit, report "BILLING STILL BLOCKED" verbatim and stop.
+3. Otherwise also re-run the two CI runs that never started: `gh run rerun 37190606278` (CI on 5ec6993). Paste the output.
+4. Poll until the build finishes (expected 45–75 minutes): `until [[ "$(gh run view RUN --json status -q .status)" == "completed" ]]; do sleep 120; done; gh run view RUN --json conclusion,jobs -q '{conclusion,jobs:[.jobs[]|{name,conclusion}]}'`. Run that as one command (it blocks; that is expected). If your tool limit forces you to stop before completion, paste the last `gh run view RUN --json status,jobs` you have and say so.
+5. When completed: if conclusion is success, paste `gh release list` and `gh release view native-4.8.0-001 --json tagName,isDraft,assets -q '{tagName,isDraft,assets:[.assets[]|{name,size}]}'`. If any job failed, paste `gh run view RUN --log-failed 2>&1 | tail -80`.
+No git commands, no file edits, no second dispatch, no `publish_release=true`, no other agent.
+</task>
+<structured_output_contract>Report: dispatch output; RUN id and URL; the job list at start; rerun output; the final job list with conclusions; release/assets or the failed-log tail; anything skipped.</structured_output_contract>

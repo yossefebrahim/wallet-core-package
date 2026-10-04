@@ -1,0 +1,4 @@
+<task>
+Commit the orchestrator's plan-doc record (owner-authorized commit/push boundary — PROGRESS.md header). Root /Users/yossefebrahim/Work/wallet-core-package, branch `main` (expect `10a804e`). `git status --short` must show only ` M docs/plan/PROGRESS.md` and untracked files under `docs/plan/briefs/` — anything else: STOP. `git add docs/plan`; commit "chore(plan): 2026-10-04 afternoon — public repo, run 37211800874, P0, review-round record re-added, T1.8b/T1.19-d1, briefs" with the trailer "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" after a blank line; `git status --short` must be empty; `git push origin main` (plain; STOP on rejection); paste the hash and push output. No other git commands, no edits, no other agent.
+</task>
+<structured_output_contract>Report: status paste, hash, push output.</structured_output_contract>
