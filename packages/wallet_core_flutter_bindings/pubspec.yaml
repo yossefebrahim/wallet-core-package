@@ -1,8 +1,5 @@
 name: wallet_core_flutter_bindings
-description: >-
-  Generated bindings layer of the wallet_core_flutter workspace: ffigen output,
-  protobuf classes, coin registry metadata, and the memory wrappers. Placeholder
-  scaffold; see the library doc comment for the project disclaimer.
+description: Generated bindings layer and memory wrappers. Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
 version: 0.0.1
 publish_to: none
 resolution: workspace

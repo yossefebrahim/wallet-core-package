@@ -32,10 +32,10 @@
 # C API is exported (which matters because every such patch is something that
 # silently stops applying at the next upstream tag).
 #
-# UNRUN. This script has never been executed: it needs an Android SDK, NDK,
-# JDK, Gradle, a Rust toolchain and boost, none of which were available where
-# it was written. Its first run is the workflow's, and the two gates at the end
-# are what will say whether it worked.
+# 2026-10-04: The script built the library and passed the export gate's symbol check
+# (run 37158147404: 464/464 TW* + wcf_build_info, four JNI extras allow-listed).
+# Steps after the export gate (16 KB alignment, artifact record, assemble) have
+# not yet executed because later runs were blocked by Actions billing.
 
 set -euo pipefail
 # shellcheck source=lib/common.sh

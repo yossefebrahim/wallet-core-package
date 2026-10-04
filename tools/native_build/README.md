@@ -174,12 +174,11 @@ but are **not** manifest artifacts: the manifest's `artifacts` map is the list a
 consumer build fetches and verifies, and a debug bundle is not on that path.
 Their digests are in `SHA256SUMS`.
 
-## Not yet run
+## Current status
 
-`build_android.sh` has never been executed. It needs an Android SDK, an NDK, a
-JDK, Gradle, a Rust toolchain and boost, none of which were present where it
-was written, and there is no Android artifact anywhere upstream to test
-against. Its first run is the workflow's. What has been exercised of it: the
+2026-10-04: Seven workflow runs executed. The Apple job succeeded six times. The Android job built the library and passed the export gate's symbol check (run 37158147404: 464/464 TW* + `wcf_build_info`, four JNI extras now allow-listed), but the steps after the export gate — 16 KB alignment gate, artifact record, assemble, draft release — have not yet executed because later runs were blocked by the account's Actions billing. No release or tag exists.
+
+Exercised before the first workflow run (kept for the record): the
 identity-injection mechanism it uses (a generated `src/*.c` that defines the
 three values and includes the reviewed source from outside upstream's
 `file(GLOB_RECURSE src/*.c)`) was compiled with NDK r27 clang in both the plain

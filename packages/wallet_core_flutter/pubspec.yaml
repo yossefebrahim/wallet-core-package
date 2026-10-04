@@ -1,8 +1,5 @@
 name: wallet_core_flutter
-description: >-
-  Public SDK layer of the wallet_core_flutter workspace: the stable, typed
-  wallet, account, address, request, and signing surface. Placeholder scaffold;
-  see the library doc comment for the project disclaimer.
+description: Typed Dart/Flutter SDK over the generated bindings. Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
 version: 0.0.1
 publish_to: none
 resolution: workspace

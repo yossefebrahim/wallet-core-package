@@ -1,9 +1,5 @@
 name: wallet_core_flutter_native
-description: >-
-  Native distribution layer of the wallet_core_flutter workspace: artifact
-  acquisition and checksum verification at build time, build integration,
-  library loading, and the build-identity check. See the library doc comment
-  for the project disclaimer.
+description: Native distribution layer and shipped manifest. Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
 version: 0.0.1
 publish_to: none
 resolution: workspace
