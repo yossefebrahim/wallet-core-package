@@ -368,6 +368,89 @@ packages:
       );
     });
 
+    test('InternetAddress.lookup -> violation', () async {
+      for (final name in [
+        'wallet_core_flutter',
+        'wallet_core_flutter_bindings',
+        'wallet_core_flutter_native',
+      ]) {
+        File(
+          p.join(root, 'packages', name, 'pubspec.yaml'),
+        ).writeAsStringSync('name: $name\n');
+      }
+      File(
+        p.join(root, 'packages', 'wallet_core_flutter', 'lib', 'test.dart'),
+      ).writeAsStringSync(
+        'final addr = InternetAddress.lookup("example.com");',
+      );
+
+      var outBuffer = StringBuffer();
+      int code = await IOOverrides.runZoned(
+        () => runRuntimeDepsCheck(['--root', root]),
+        stdout: () => _MockStdout(outBuffer),
+      );
+
+      expect(code, exitViolations);
+      expect(
+        outBuffer.toString(),
+        contains(
+          'contains network symbol InternetAddress (not allowed in lib/).',
+        ),
+      );
+    });
+
+    test('RawSocket.connect -> violation', () async {
+      for (final name in [
+        'wallet_core_flutter',
+        'wallet_core_flutter_bindings',
+        'wallet_core_flutter_native',
+      ]) {
+        File(
+          p.join(root, 'packages', name, 'pubspec.yaml'),
+        ).writeAsStringSync('name: $name\n');
+      }
+      File(
+        p.join(root, 'packages', 'wallet_core_flutter', 'lib', 'test.dart'),
+      ).writeAsStringSync('var socket = RawSocket.connect();');
+
+      var outBuffer = StringBuffer();
+      int code = await IOOverrides.runZoned(
+        () => runRuntimeDepsCheck(['--root', root]),
+        stdout: () => _MockStdout(outBuffer),
+      );
+
+      expect(code, exitViolations);
+      expect(
+        outBuffer.toString(),
+        contains('contains network symbol RawSocket (not allowed in lib/).'),
+      );
+    });
+
+    test('InternetAddressType inside a comment or string -> OK', () async {
+      for (final name in [
+        'wallet_core_flutter',
+        'wallet_core_flutter_bindings',
+        'wallet_core_flutter_native',
+      ]) {
+        File(
+          p.join(root, 'packages', name, 'pubspec.yaml'),
+        ).writeAsStringSync('name: $name\n');
+      }
+      File(
+        p.join(root, 'packages', 'wallet_core_flutter', 'lib', 'test.dart'),
+      ).writeAsStringSync(
+        '/// word InternetAddressType\nvar x = "InternetAddressType";',
+      );
+
+      var outBuffer = StringBuffer();
+      int code = await IOOverrides.runZoned(
+        () => runRuntimeDepsCheck(['--root', root]),
+        stdout: () => _MockStdout(outBuffer),
+      );
+
+      expect(code, exitClean);
+    });
+
     test('doc comment with HttpClient -> OK', () async {
       for (final name in [
         'wallet_core_flutter',

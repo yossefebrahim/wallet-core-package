@@ -263,6 +263,20 @@ List<String> _checkNetworkSymbols(String root) {
     'Socket',
     'WebSocket',
     'package:http',
+    'InternetAddress',
+    'RawSocket',
+    'SecureServerSocket',
+    'RawSecureServerSocket',
+    'ConnectionTask',
+    'NetworkInterface',
+    'HttpClientRequest',
+    'HttpClientResponse',
+    'WebSocketChannel',
+    'package:web_socket_channel',
+    'package:dio',
+    'package:grpc',
+    'dart:html',
+    'HttpRequest',
   ];
 
   for (final pkg in siblingPackages) {

@@ -137,11 +137,14 @@ jobs:
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+          UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
+          ARTIFACT_SET_ID: ${{ inputs.artifact_set_id }}
         run: |
           set -euo pipefail
-          tag='${{ inputs.upstream_tag }}'
-          commit='${{ inputs.upstream_commit }}'
-          set_id='${{ inputs.artifact_set_id }}'
+          tag="$UPSTREAM_TAG"
+          commit="$UPSTREAM_COMMIT"
+          set_id="$ARTIFACT_SET_ID"
 
           [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || {
             echo "::error::upstream_commit must be 40 lowercase hex, got $commit"; exit 1; }
@@ -177,11 +180,13 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Select the pinned Xcode
+        env:
+          XCODE_VERSION: ${{ inputs.xcode_version }}
         run: |
           set -euo pipefail
-          app="/Applications/Xcode_${{ inputs.xcode_version }}.app"
+          app="/Applications/Xcode_${XCODE_VERSION}.app"
           if [[ ! -d "$app" ]]; then
-            echo "::error::Xcode ${{ inputs.xcode_version }} is not on this runner. Installed:"
+            echo "::error::Xcode $XCODE_VERSION is not on this runner. Installed:"
             ls -d /Applications/Xcode*.app || true
             exit 1
           fi
@@ -194,10 +199,11 @@ jobs:
       - name: Download TrustWalletCore-${{ inputs.upstream_tag }}.tar.xz
         env:
           GH_TOKEN: ${{ github.token }}
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/upstream"
-          gh release download '${{ inputs.upstream_tag }}' \
+          gh release download "$UPSTREAM_TAG" \
             --repo trustwallet/wallet-core \
             --pattern 'TrustWalletCore-*.tar.xz' \
             --dir "$RUNNER_TEMP/upstream"
@@ -210,17 +216,21 @@ jobs:
       - name: Relink, gate, and record
         env:
           EXPECTED_TARBALL_SHA256: ${{ inputs.expected_tarball_sha256 }}
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+          UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
+          ARTIFACT_SET_ID: ${{ inputs.artifact_set_id }}
+          EXPECTED_SYMBOL_COUNT: ${{ inputs.expected_symbol_count }}
         run: |
           set -euo pipefail
           args=(
-            --tarball "$RUNNER_TEMP/upstream/TrustWalletCore-${{ inputs.upstream_tag }}.tar.xz"
-            --tag '${{ inputs.upstream_tag }}'
-            --commit '${{ inputs.upstream_commit }}'
-            --artifact-set-id '${{ inputs.artifact_set_id }}'
+            --tarball "$RUNNER_TEMP/upstream/TrustWalletCore-$UPSTREAM_TAG.tar.xz"
+            --tag "$UPSTREAM_TAG"
+            --commit "$UPSTREAM_COMMIT"
+            --artifact-set-id "$ARTIFACT_SET_ID"
             --build-workflow "$BUILD_WORKFLOW_URL"
             --out-dir "$RUNNER_TEMP/out"
             --work-dir "$RUNNER_TEMP/work"
-            --expect-symbol-count '${{ inputs.expected_symbol_count }}'
+            --expect-symbol-count "$EXPECTED_SYMBOL_COUNT"
           )
           if [[ -n "$EXPECTED_TARBALL_SHA256" ]]; then
             args+=(--expected-tarball-sha256 "$EXPECTED_TARBALL_SHA256")
@@ -277,11 +287,13 @@ jobs:
           persist-credentials: false
 
       - name: Verify the checkout is the pinned commit
+        env:
+          UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
         run: |
           set -euo pipefail
           head=$(git -C upstream rev-parse HEAD)
-          [[ "$head" == '${{ inputs.upstream_commit }}' ]] || {
-            echo "::error::upstream HEAD is $head, not ${{ inputs.upstream_commit }}"; exit 1; }
+          [[ "$head" == "$UPSTREAM_COMMIT" ]] || {
+            echo "::error::upstream HEAD is $head, not $UPSTREAM_COMMIT"; exit 1; }
           echo "upstream HEAD: $head"
 
       - name: Set up JDK 17
@@ -296,11 +308,13 @@ jobs:
           gradle-version: 8.10.2
 
       - name: Select the pinned Xcode
+        env:
+          XCODE_VERSION: ${{ inputs.xcode_version }}
         run: |
           set -euo pipefail
-          app="/Applications/Xcode_${{ inputs.xcode_version }}.app"
+          app="/Applications/Xcode_${XCODE_VERSION}.app"
           if [[ ! -d "$app" ]]; then
-            echo "::error::Xcode ${{ inputs.xcode_version }} is not on this runner. Installed:"
+            echo "::error::Xcode $XCODE_VERSION is not on this runner. Installed:"
             ls -d /Applications/Xcode*.app || true
             exit 1
           fi
@@ -330,20 +344,28 @@ jobs:
       # toolchain input in this workflow that a version number cannot fix; see
       # tools/native_build/README.md.
       - name: Build, gate, and record
+        env:
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+          UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
+          ARTIFACT_SET_ID: ${{ inputs.artifact_set_id }}
+          ANDROID_ABIS: ${{ inputs.android_abis }}
+          NDK_VERSION: ${{ inputs.ndk_version }}
+          CMAKE_VERSION: ${{ inputs.cmake_version }}
+          EXPECTED_SYMBOL_COUNT: ${{ inputs.expected_symbol_count }}
         run: |
           set -euo pipefail
           tools/native_build/build_android.sh \
             --source-dir upstream \
-            --tag '${{ inputs.upstream_tag }}' \
-            --commit '${{ inputs.upstream_commit }}' \
-            --artifact-set-id '${{ inputs.artifact_set_id }}' \
+            --tag "$UPSTREAM_TAG" \
+            --commit "$UPSTREAM_COMMIT" \
+            --artifact-set-id "$ARTIFACT_SET_ID" \
             --build-workflow "$BUILD_WORKFLOW_URL" \
-            --abis '${{ inputs.android_abis }}' \
-            --ndk-version '${{ inputs.ndk_version }}' \
-            --cmake-version '${{ inputs.cmake_version }}' \
+            --abis "$ANDROID_ABIS" \
+            --ndk-version "$NDK_VERSION" \
+            --cmake-version "$CMAKE_VERSION" \
             --out-dir "$RUNNER_TEMP/out" \
             --work-dir "$RUNNER_TEMP/work" \
-            --expect-symbol-count '${{ inputs.expected_symbol_count }}'
+            --expect-symbol-count "$EXPECTED_SYMBOL_COUNT"
 
       - name: Show what was produced
         run: |
@@ -451,11 +473,14 @@ jobs:
       # reviewed commit (DECISION-14 §4.3 step 2) — so the check runs against a
       # copy with this run's artifacts, identity and toolchain spliced in.
       - name: Validate the artifacts block against the manifest schema
+        env:
+          UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
+          ARTIFACT_SET_ID: ${{ inputs.artifact_set_id }}
         run: |
           set -euo pipefail
           jq --slurpfile a set/artifacts.json \
-             --arg commit '${{ inputs.upstream_commit }}' \
-             --arg set_id '${{ inputs.artifact_set_id }}' \
+             --arg commit "$UPSTREAM_COMMIT" \
+             --arg set_id "$ARTIFACT_SET_ID" \
              --arg workflow "$BUILD_WORKFLOW_URL" '
                .artifacts = $a[0]
                | .identity = {
@@ -470,10 +495,12 @@ jobs:
       # What the human pastes into compat_manifest.json, and what
       # DECISION-14 §4.3 step 2 then reviews and commits.
       - name: Print the manifest fragment to commit
+        env:
+          ARTIFACT_SET_ID: ${{ inputs.artifact_set_id }}
         run: |
           set -euo pipefail
           {
-            echo '## Artifact set `${{ inputs.artifact_set_id }}`'
+            echo "## Artifact set \`$ARTIFACT_SET_ID\`"
             echo
             echo 'Release: `${{ needs.plan.outputs.release_tag }}`'
             echo
@@ -500,33 +527,40 @@ jobs:
       # fact, not an oversight.
 
       - name: Write the release notes
+        env:
+          ARTIFACT_SET_ID: ${{ inputs.artifact_set_id }}
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+          UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
         run: |
           set -euo pipefail
-          cat >set/notes.md <<EOF
-          Artifact set \`${{ inputs.artifact_set_id }}\` for upstream \`${{ inputs.upstream_tag }}\` (\`${{ inputs.upstream_commit }}\`), built by [this workflow run]($BUILD_WORKFLOW_URL).
-
-          Asset names are \`<artifact_set_id>__<sha256>__<flat_name>\` and carry the full 64-hex digest of their own bytes (DECISION-14 §3.1). Verify what you download against \`compat_manifest.json\`.
+          {
+            printf 'Artifact set `%s` for upstream `%s` (`%s`), built by [this workflow run](%s).\n\n' "$ARTIFACT_SET_ID" "$UPSTREAM_TAG" "$UPSTREAM_COMMIT" "$BUILD_WORKFLOW_URL"
+            cat <<'EOF'
+          Asset names are `<artifact_set_id>__<sha256>__<flat_name>` and carry the full 64-hex digest of their own bytes (DECISION-14 §3.1). Verify what you download against `compat_manifest.json`.
 
           **The digests here are first-seen values computed by this project.** Upstream publishes no checksum for the Apple input asset — six of its eight 4.8.0 release assets have none — so nothing upstream attests to these bytes.
 
-          Apple libraries are **relinked from upstream's own release-asset static archives** together with our build-identity object; we did not compile that object code. Android libraries are **built from source** at the pinned commit. Each artifact's \`provenance\` field in the manifest says which.
+          Apple libraries are **relinked from upstream's own release-asset static archives** together with our build-identity object; we did not compile that object code. Android libraries are **built from source** at the pinned commit. Each artifact's `provenance` field in the manifest says which.
 
-          Every artifact carries \`wcf_build_info()\`, which returns this set's id and the upstream commit; \`WalletCore.initialize()\` compares it against the manifest.
+          Every artifact carries `wcf_build_info()`, which returns this set's id and the upstream commit; `WalletCore.initialize()` compares it against the manifest.
 
           Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
           EOF
+          } >set/notes.md
           cat set/notes.md
 
       - name: Create the release and upload the set
         env:
           GH_TOKEN: ${{ github.token }}
+          ARTIFACT_SET_ID: ${{ inputs.artifact_set_id }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release }}
         run: |
           set -euo pipefail
           args=(
             '${{ needs.plan.outputs.release_tag }}'
             --repo '${{ github.repository }}'
-            --title 'Native artifacts ${{ inputs.artifact_set_id }}'
+            --title "Native artifacts $ARTIFACT_SET_ID"
             --notes-file set/notes.md
           )
-          if [[ '${{ inputs.publish_release }}' != 'true' ]]; then args+=(--draft); fi
+          if [[ "$PUBLISH_RELEASE" != 'true' ]]; then args+=(--draft); fi
           gh release create "${args[@]}" set/upload/* set/SHA256SUMS
