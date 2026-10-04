@@ -1,0 +1,3 @@
+<task>
+Commit the Option 1 threat-model rows and progress record (owner-authorized boundary — PROGRESS.md header). Root /Users/yossefebrahim/Work/wallet-core-package, `main` (80fedf5). `git status --short` must show only ` M docs/plan/PROGRESS.md`, ` M docs/security/threat_model.md` and untracked `docs/plan/briefs/*.md`; anything else: STOP. `git add docs`; `git status --short` empty; commit "docs: threat model TM-13/14/16/28/35/36 for DECISION-2 Option 1; progress for D1a, release publish and T1.R1" with trailer "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" after a blank line; `git push origin main` (plain). Paste hash and push output. No other git commands, no edits, no other agent.
+</task>
