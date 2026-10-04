@@ -51,7 +51,8 @@ abstract interface class WalletCore {
 
   /// State changes, as a broadcast stream, so an application can react to
   /// [SessionState.failed] without polling. Closes after
-  /// [SessionState.closed].
+  /// [SessionState.closed]. (When [shutdown] completes, every listener has
+  /// already received `closed` and the stream is done.)
   Stream<SessionState> get states;
 
   /// Creating and importing wallets.
@@ -82,6 +83,8 @@ abstract interface class WalletCore {
   /// every handle, and ends the session.
   ///
   /// Idempotent: concurrent and repeated calls await the same completion.
+  /// When the future completes, every listener of [states] has already
+  /// received [SessionState.closed] and the stream is done.
   /// If the owning isolate does not acknowledge within
   /// [OperationTimeouts.shutdownGrace] it is forced down; the session still
   /// moves to [SessionState.closed].
