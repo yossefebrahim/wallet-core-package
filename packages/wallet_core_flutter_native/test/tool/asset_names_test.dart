@@ -24,9 +24,8 @@ void main() {
 
     test('matches the longest name DECISION-14 §3.1 measures', () {
       expect(
-        flatName(
-          'ios-simulator/arm64_x86_64/libTrustWalletCore.dylib.dSYM.zip',
-        ).length,
+        flatName('ios-simulator/arm64_x86_64/libTrustWalletCore.dylib.dSYM.zip')
+            .length,
         lessThan(80),
       );
     });

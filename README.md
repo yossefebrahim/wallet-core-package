@@ -13,6 +13,15 @@ Status: pre-alpha, nothing published.
 - Product requirements: [docs/wallet_core_flutter_prd.md](docs/wallet_core_flutter_prd.md)
 - Execution plan: [docs/plan/EXECUTION_PLAN.md](docs/plan/EXECUTION_PLAN.md)
 
+## Packaging
+
+The native library reaches an app through a Flutter build hook in `wallet_core_flutter_native` (DECISION-2): at build time the hook verifies the library for each target against the checksum-pinned manifest the package ships, downloading it from the project's release only when it is not already cached or vendored, and bundles it into the app. There is no Gradle, CocoaPods or Xcode step for the library itself. Two things are the app's to do:
+
+- **Android:** build release APKs and app bundles with `--target-platform android-arm64,android-x64`. Only those two ABIs are shipped, and a default build is refused with that remedy.
+- **iOS:** add the library's two required-reason API categories (file timestamp, system boot time) to the app's own `PrivacyInfo.xcprivacy` in the Runner target. The package does not ship a privacy manifest and, as a build-hook package, cannot.
+
+Details, the step-by-step Runner-target edit and the offline/vendored build options: [packages/wallet_core_flutter_native/README.md](packages/wallet_core_flutter_native/README.md#consumer-setup).
+
 <!-- memory-contract -->
 ### Memory and Lifecycle
 

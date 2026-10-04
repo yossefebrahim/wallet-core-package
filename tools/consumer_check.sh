@@ -204,11 +204,11 @@ add_dependency() {
 }
 
 build_debug_android() {
-  waiting build_debug_android "(cd $CONSUMER_DIR && flutter build apk --debug)"
+  waiting build_debug_android "(cd $CONSUMER_DIR && flutter build apk --debug --target-platform android-arm64,android-x64)"
 }
 
 build_release_android() {
-  waiting build_release_android "(cd $CONSUMER_DIR && flutter build apk --release)"
+  waiting build_release_android "(cd $CONSUMER_DIR && flutter build apk --release --target-platform android-arm64,android-x64)"
 }
 
 build_debug_ios() {

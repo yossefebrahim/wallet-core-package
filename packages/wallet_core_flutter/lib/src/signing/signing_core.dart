@@ -60,8 +60,10 @@ abstract interface class SigningCore {
 
 /// The shape of `TWAnySignerSign`: a serialized signing input and a coin in,
 /// a new `TWData` holding the serialized output back.
-typedef AnySignerSign =
-    Pointer<Void> Function(Pointer<Void> input, TWCoinType coin);
+typedef AnySignerSign = Pointer<Void> Function(
+  Pointer<Void> input,
+  TWCoinType coin,
+);
 
 /// Approach A of DECISION-1, in the isolate that owns [context].
 ///

@@ -137,9 +137,8 @@ void main() {
       final key = vectorKey();
       final staged = TWDataHandle.fromBytes(core.context, key);
       try {
-        final view = bindings.TWDataBytes(
-          staged.pointer,
-        ).asTypedList(staged.length);
+        final view = bindings.TWDataBytes(staged.pointer)
+            .asTypedList(staged.length);
         final result = core.sign(
           evmFamily.encodeKeylessInput(vectorRequest(input)),
           family: evmFamily,

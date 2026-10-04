@@ -32,6 +32,9 @@ void main() {
         'http': p.join(root, 'hosted', 'http'),
         'ffi': p.join(root, 'hosted', 'ffi'),
         'bad_pkg': p.join(root, 'hosted', 'bad_pkg'),
+        'hooks': p.join(root, 'hosted', 'hooks'),
+        'code_assets': p.join(root, 'hosted', 'code_assets'),
+        'logging': p.join(root, 'hosted', 'logging'),
       };
 
       for (final path in pkgs.values) {
@@ -499,6 +502,186 @@ packages:
       );
 
       expect(code, exitClean);
+    });
+
+    group('build-time (hook) dependencies', () {
+      // The native package with a build hook that imports hooks and
+      // code_assets; hooks brings logging. [hookDeps] are hooks' own.
+      void writeHookFixture({
+        bool withHook = true,
+        String hookDeps = 'logging',
+      }) {
+        for (final name in [
+          'wallet_core_flutter',
+          'wallet_core_flutter_bindings',
+        ]) {
+          File(
+            p.join(root, 'packages', name, 'pubspec.yaml'),
+          ).writeAsStringSync('''
+name: $name
+dependencies:
+  wallet_core_flutter_native: 0.0.1
+''');
+        }
+        File(
+          p.join(
+            root,
+            'packages',
+            'wallet_core_flutter_native',
+            'pubspec.yaml',
+          ),
+        ).writeAsStringSync('''
+name: wallet_core_flutter_native
+dependencies:
+  ffi: ^2.1.0
+  hooks: ^2.0.0
+  code_assets: ^1.0.0
+''');
+        if (withHook) {
+          File(
+              p.join(
+                root,
+                'packages',
+                'wallet_core_flutter_native',
+                'hook',
+                'build.dart',
+              ),
+            )
+            ..parent.createSync(recursive: true)
+            ..writeAsStringSync(
+              "import 'package:hooks/hooks.dart';\nvoid main() {}\n",
+            );
+        }
+        File(
+          p.join(root, 'hosted', 'ffi', 'pubspec.yaml'),
+        ).writeAsStringSync('name: ffi\n');
+        File(p.join(root, 'hosted', 'hooks', 'pubspec.yaml')).writeAsStringSync(
+          'name: hooks\ndependencies:\n  $hookDeps: ^1.0.0\n',
+        );
+        File(
+          p.join(root, 'hosted', 'code_assets', 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'name: code_assets\ndependencies:\n  hooks: ^2.0.0\n',
+        );
+        File(
+          p.join(root, 'hosted', 'logging', 'pubspec.yaml'),
+        ).writeAsStringSync('name: logging\n');
+        File(
+          p.join(root, 'hosted', 'http', 'pubspec.yaml'),
+        ).writeAsStringSync('name: http\n');
+      }
+
+      Future<(int, String)> run() async {
+        final out = StringBuffer();
+        final code = await IOOverrides.runZoned(
+          () => runRuntimeDepsCheck(['--root', root]),
+          stdout: () => _MockStdout(out),
+        );
+        return (code, out.toString());
+      }
+
+      test(
+        'a hook\'s imports are build-time (hook), not run time -> OK',
+        () async {
+          writeHookFixture();
+          final (code, out) = await run();
+          expect(code, exitClean, reason: out);
+          expect(
+            out,
+            contains('Build-time (hook): [code_assets, hooks, logging]'),
+          );
+          // Not in any run-time closure, the SDK's included.
+          for (final line
+              in out.split('\n').where((l) => l.startsWith('Closure: '))) {
+            expect(line, isNot(contains('hooks')));
+            expect(line, isNot(contains('code_assets')));
+            expect(line, isNot(contains('logging')));
+          }
+          expect(out, contains('Build-time (hook) imports: OK'));
+        },
+      );
+
+      test('without hook/build.dart the same packages are run time -> '
+          'violation', () async {
+        writeHookFixture(withHook: false);
+        final (code, out) = await run();
+        expect(code, exitViolations);
+        expect(
+          out,
+          contains(
+            'hooks is not on the allow list of packages whose runtime use is '
+            'reviewed.',
+          ),
+        );
+        expect(out, isNot(contains('Build-time (hook): [')));
+      });
+
+      test('lib/ importing a build-time package -> violation', () async {
+        writeHookFixture();
+        File(
+          p.join(
+            root,
+            'packages',
+            'wallet_core_flutter_native',
+            'lib',
+            'bad.dart',
+          ),
+        ).writeAsStringSync("import 'package:code_assets/code_assets.dart';\n");
+        final (code, out) = await run();
+        expect(code, exitViolations);
+        expect(
+          out,
+          contains('imports build-time (hook) package code_assets from lib/'),
+        );
+      });
+
+      test('a networking package through the hook is still denied', () async {
+        writeHookFixture(hookDeps: 'http');
+        final (code, out) = await run();
+        expect(code, exitViolations);
+        expect(
+          out,
+          contains(
+            'http is on the deny list of networking/telemetry packages '
+            '(build-time, through the hook).',
+          ),
+        );
+      });
+
+      test('an unreviewed package through the hook -> violation', () async {
+        writeHookFixture(hookDeps: 'bad_pkg');
+        File(
+          p.join(root, 'hosted', 'bad_pkg', 'pubspec.yaml'),
+        ).writeAsStringSync('name: bad_pkg\n');
+        final (code, out) = await run();
+        expect(code, exitViolations);
+        expect(
+          out,
+          contains(
+            'bad_pkg is not on the allow list of packages whose build-time '
+            '(hook) use is reviewed.',
+          ),
+        );
+      });
+
+      test('a network symbol in lib/ is never allowed, hook or not', () async {
+        writeHookFixture();
+        File(
+          p.join(
+            root,
+            'packages',
+            'wallet_core_flutter_native',
+            'lib',
+            'net.dart',
+          ),
+        ).writeAsStringSync('var c = HttpClient(); // wcf: network-ok');
+        final (code, out) = await run();
+        expect(code, exitViolations);
+        expect(
+          out,
+          contains('contains network symbol HttpClient (not allowed in lib/)'),
+        );
+      });
     });
 
     test('the real three packages -> OK', () async {

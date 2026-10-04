@@ -16,11 +16,10 @@ typedef ReplyListener = void Function(WorkerReply reply);
 typedef TerminationListener = void Function(WorkerTerminatedError error);
 
 /// Builds the transport a new session talks through.
-typedef TransportFactory =
-    WorkerTransport Function({
-      required ReplyListener onReply,
-      required TerminationListener onTerminated,
-    });
+typedef TransportFactory = WorkerTransport Function({
+  required ReplyListener onReply,
+  required TerminationListener onTerminated,
+});
 
 /// The session's side of the channel to the executor that owns the handles.
 ///

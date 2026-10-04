@@ -40,21 +40,81 @@ void main() {
       expect(androidLibraryName, 'libTrustWalletCore.so');
     });
 
-    test('iOS tries the process first, then the embedded framework', () {
+    // DECISION-2 (build hooks): the hook's framework is embedded, not linked,
+    // so a process entry would open an image without wcf_build_info and the
+    // framework would never be reached.
+    test('iOS opens the hook-bundled framework, never the process', () {
       final locations = defaultLocations(platform: NativePlatform.ios);
-      expect(locations, hasLength(2));
-      expect(locations[0], isA<ProcessLibrary>());
-      expect(locations[1], isA<NamedLibrary>());
+      expect(locations, hasLength(1));
+      expect(locations.single, isA<NamedLibrary>());
       expect(
-        (locations[1] as NamedLibrary).name,
+        (locations.single as NamedLibrary).name,
         'TrustWalletCore.framework/TrustWalletCore',
       );
       expect(iosFrameworkLibraryPath, endsWith('TrustWalletCore'));
     });
 
+    test('Android and iOS defaults are the code-asset locations', () {
+      for (final platform in const [
+        NativePlatform.android,
+        NativePlatform.ios,
+      ]) {
+        expect(
+          defaultLocations(platform: platform).map((l) => l.description),
+          codeAssetLocations(platform: platform).map((l) => l.description),
+          reason: platform.name,
+        );
+      }
+    });
+
+    test('no default list tries the running process', () {
+      for (final platform in NativePlatform.values) {
+        expect(
+          defaultLocations(
+            platform: platform,
+            executable: '/Applications/A.app/Contents/MacOS/A',
+          ).whereType<ProcessLibrary>(),
+          isEmpty,
+          reason: platform.name,
+        );
+      }
+    });
+
+    test('a macOS app opens its bundled framework before the bare name', () {
+      final locations = defaultLocations(
+        platform: NativePlatform.macos,
+        hostLibraryPath: '/build/libTrustWalletCore.dylib',
+        executable: '/Applications/Some App.app/Contents/MacOS/Some App',
+      );
+      expect(locations.map((l) => l.description), [
+        'host library file "/build/libTrustWalletCore.dylib"',
+        'host library file "/Applications/Some App.app/Contents/Frameworks/'
+            'TrustWalletCore.framework/TrustWalletCore"',
+        'loader search path for "libTrustWalletCore.dylib"',
+      ]);
+    });
+
+    test('outside an app bundle macOS keeps the host seam and bare name', () {
+      // flutter test runs flutter_tester, which is not in an .app: the hook's
+      // framework is not on this list there, and the host library seam is.
+      final locations = defaultLocations(
+        platform: NativePlatform.macos,
+        hostLibraryPath: '/build/libTrustWalletCore.dylib',
+        executable:
+            '/Users/x/flutter/bin/cache/artifacts/engine/darwin-x64/'
+            'flutter_tester',
+      );
+      expect(locations, hasLength(2));
+      expect(locations[0], isA<LibraryFile>());
+      expect(locations[1], isA<NamedLibrary>());
+    });
+
     test('macOS and Linux ask for the bare host library name', () {
       expect(
-        (defaultLocations(platform: NativePlatform.macos).single
+        (defaultLocations(
+                  platform: NativePlatform.macos,
+                  executable: '/usr/local/bin/dart',
+                ).single
                 as NamedLibrary)
             .name,
         'libTrustWalletCore.dylib',

@@ -56,9 +56,9 @@ List<Map<String, Object?>> fieldsOf(Map<String, Object?> entry) =>
     (entry['fields']! as List<Object?>).cast<Map<String, Object?>>();
 
 Map<String, Object?> field(Map<String, Object?> entry, String protoName) {
-  final matches = fieldsOf(
-    entry,
-  ).where((f) => f['protoName'] == protoName).toList();
+  final matches = fieldsOf(entry)
+      .where((f) => f['protoName'] == protoName)
+      .toList();
   expect(matches, hasLength(1), reason: 'expected one $protoName field');
   return matches.single;
 }
@@ -238,13 +238,10 @@ void main() {
   group('provenance', () {
     test('records the upstream pin it was generated from', () {
       final upstream = doc['upstream']! as Map<String, Object?>;
-      final manifest =
-          jsonDecode(
-                File.fromUri(
-                  repoDir.resolve('compat_manifest.json'),
-                ).readAsStringSync(),
-              )
-              as Map<String, Object?>;
+      final manifest = jsonDecode(
+        File.fromUri(repoDir.resolve('compat_manifest.json'))
+            .readAsStringSync(),
+      ) as Map<String, Object?>;
       final pinned = manifest['upstream']! as Map<String, Object?>;
 
       expect(upstream['commit'], pinned['commit']);

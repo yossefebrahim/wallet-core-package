@@ -220,9 +220,9 @@ void main() {
       final locator = KeyLocator.hdPath(wallet.ref, Coin.ethereum, path);
       final encodings = <String>{};
       for (var nonce = 0; nonce < 20; nonce++) {
-        final result =
-            await core.signer.sign(transferTo(to, nonce: nonce), {locator})
-                as EvmSignResult;
+        final result = await core.signer.sign(transferTo(to, nonce: nonce), {
+          locator,
+        }) as EvmSignResult;
         encodings.add(result.encoded.join(','));
         final report = debugLeakReportOf(core)!;
         expect(report.live, 1, reason: 'the wallet only: $report');

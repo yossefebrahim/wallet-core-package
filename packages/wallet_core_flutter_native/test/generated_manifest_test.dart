@@ -65,9 +65,9 @@ void main() {
   });
 
   test('the constants agree with the asset they were generated from', () {
-    final manifest =
-        jsonDecode(utf8.decode(_asset.readAsBytesSync()))
-            as Map<String, Object?>;
+    final manifest = jsonDecode(
+      utf8.decode(_asset.readAsBytesSync()),
+    ) as Map<String, Object?>;
     final upstream = manifest['upstream']! as Map<String, Object?>;
     final identity = manifest['identity']! as Map<String, Object?>;
     expect(upstreamRepo, upstream['repo']);

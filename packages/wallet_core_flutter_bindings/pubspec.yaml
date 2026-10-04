@@ -5,7 +5,11 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.12.0
+  # DECISION-6: the floor is the toolchain the packaging path was measured on
+  # (Flutter 3.47.5 / Dart 3.13.4); Xcode 27 builds no app from an older
+  # Flutter template, so nothing older is tested.
+  sdk: ^3.13.0
+  flutter: ">=3.47.5"
 
 dependencies:
   # The generated bindings need `dart:ffi` and nothing else; `package:ffi`

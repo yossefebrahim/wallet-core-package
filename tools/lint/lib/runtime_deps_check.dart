@@ -45,6 +45,35 @@ const allowList = {
   'wallet_core_flutter_native': 'Sibling package in workspace',
 };
 
+/// The packages a build hook (`hook/build.dart`) imports. A package that has
+/// a hook may list them under `dependencies:` because pub resolves a hook's
+/// imports from there, but they run in the consumer's build, inside the
+/// hooks runner, and never in the app (DECISION-2: build hooks). The closure
+/// walk therefore does not count them as run-time dependencies of a package
+/// with a `hook/build.dart`; it classifies them, and everything reachable
+/// only through them, as **build-time (hook)**.
+const hookEntryPackages = {'hooks', 'code_assets'};
+
+/// Packages reviewed for use at build time inside a hook, reachable only
+/// through [hookEntryPackages]. A package reachable at run time as well is
+/// checked against [allowList] instead. The deny list applies here too.
+const buildTimeHookAllowList = {
+  'hooks':
+      'build-time (hook): the build hook protocol (input, output, '
+      'BuildError); imported only by hook/build.dart',
+  'code_assets':
+      'build-time (hook): CodeAsset, DynamicLoadingBundled and '
+      'the target OS/architecture; imported only by hook/',
+  'logging': 'build-time (hook): dependency of hooks',
+  'pub_semver': 'build-time (hook): dependency of hooks',
+  'record_use': 'build-time (hook): dependency of hooks',
+  'yaml': 'build-time (hook): dependency of hooks (reads pubspec.yaml)',
+  'source_span': 'build-time (hook): dependency of yaml',
+  'string_scanner': 'build-time (hook): dependency of yaml',
+  'term_glyph': 'build-time (hook): dependency of source_span',
+  'path': 'build-time (hook): dependency of source_span',
+};
+
 const siblingPackages = {
   'wallet_core_flutter',
   'wallet_core_flutter_bindings',
@@ -53,10 +82,21 @@ const siblingPackages = {
 
 class DependencyReport {
   final String packageName;
+
+  /// The run-time closure: what can execute in the app.
   final Set<String> closure;
+
+  /// Reachable only through [hookEntryPackages] of a package with a build
+  /// hook: what executes in the consumer's build, never in the app.
+  final Set<String> buildTime;
   final List<String> violations;
 
-  DependencyReport(this.packageName, this.closure, this.violations);
+  DependencyReport(
+    this.packageName,
+    this.closure,
+    this.violations, {
+    this.buildTime = const {},
+  });
 }
 
 Future<int> runRuntimeDepsCheck(List<String> args) async {
@@ -112,10 +152,17 @@ Future<int> runRuntimeDepsCheck(List<String> args) async {
   }
 
   int totalViolations = 0;
+  final buildTimeOnly = <String>{};
+  final runTime = <String>{};
   for (final pkg in siblingPackages) {
     final report = _checkPackage(pkg, packageMap, lockPackages, rootOverrides);
+    buildTimeOnly.addAll(report.buildTime);
+    runTime.addAll(report.closure);
     stdout.writeln('Package: $pkg');
     stdout.writeln('Closure: ${report.closure.toList()..sort()}');
+    if (report.buildTime.isNotEmpty) {
+      stdout.writeln('Build-time (hook): ${report.buildTime.toList()..sort()}');
+    }
     if (report.violations.isEmpty) {
       stdout.writeln('Status: OK');
     } else {
@@ -137,6 +184,20 @@ Future<int> runRuntimeDepsCheck(List<String> args) async {
     totalViolations += netViolations.length;
   } else {
     stdout.writeln('Network Symbols: OK');
+  }
+
+  final importViolations = _checkBuildTimeImports(root, {
+    ...hookEntryPackages,
+    ...buildTimeOnly.difference(runTime),
+  });
+  if (importViolations.isNotEmpty) {
+    stdout.writeln('Build-time (hook) Import Violations:');
+    for (final v in importViolations) {
+      stdout.writeln('  - $v');
+    }
+    totalViolations += importViolations.length;
+  } else {
+    stdout.writeln('Build-time (hook) imports: OK');
   }
 
   return totalViolations == 0 ? exitClean : exitViolations;
@@ -180,27 +241,25 @@ DependencyReport _checkPackage(
     }
   }
 
-  while (queue.isNotEmpty) {
-    final current = queue.removeAt(0);
-    if (closure.contains(current)) continue;
-    closure.add(current);
+  // Run-time closure first. A package with a build hook lists the hook's
+  // imports under `dependencies:` too; those start the build-time walk below
+  // instead of this one.
+  final hookRoots = <String>{};
+  _walk(queue, closure, packageMap, onHookDependency: hookRoots.add);
 
-    final pkgDir = packageMap[current];
-    if (pkgDir == null) continue;
+  // Build-time (hook): reachable from the hook's imports and not at run time.
+  final reachedByHook = <String>{};
+  _walk(
+    hookRoots.toList(),
+    reachedByHook,
+    packageMap,
+    onHookDependency: (_) {},
+    followHookDependencies: true,
+  );
+  final buildTime = reachedByHook.difference(closure);
 
-    final pubspecPath = p.join(pkgDir, 'pubspec.yaml');
-    if (!File(pubspecPath).existsSync()) continue;
-
-    final doc = loadYaml(File(pubspecPath).readAsStringSync());
-    final deps = doc['dependencies'];
-    if (deps is YamlMap) {
-      for (final key in deps.keys) {
-        queue.add(key as String);
-      }
-    }
-  }
-
-  for (final pkg in closure) {
+  for (final pkg in [...closure, ...buildTime]) {
+    final isBuildTime = buildTime.contains(pkg);
     if (rootOverrides != null &&
         rootOverrides.containsKey(pkg) &&
         !siblingPackages.contains(pkg)) {
@@ -233,8 +292,17 @@ DependencyReport _checkPackage(
 
     if (isDenied(pkg)) {
       violations.add(
-        '$pkg is on the deny list of networking/telemetry packages.',
+        '$pkg is on the deny list of networking/telemetry packages'
+        '${isBuildTime ? ' (build-time, through the hook)' : ''}.',
       );
+    } else if (isBuildTime) {
+      if (!allowList.containsKey(pkg) &&
+          !buildTimeHookAllowList.containsKey(pkg)) {
+        violations.add(
+          '$pkg is not on the allow list of packages whose build-time (hook) '
+          'use is reviewed.',
+        );
+      }
     } else if (!allowList.containsKey(pkg)) {
       violations.add(
         '$pkg is not on the allow list of packages whose runtime use is reviewed.',
@@ -242,7 +310,83 @@ DependencyReport _checkPackage(
     }
   }
 
-  return DependencyReport(entryPackage, closure, violations);
+  return DependencyReport(
+    entryPackage,
+    closure,
+    violations,
+    buildTime: buildTime,
+  );
+}
+
+/// Breadth-first over `dependencies:` from [queue], adding to [seen].
+///
+/// A dependency in [hookEntryPackages] of a package that has a
+/// `hook/build.dart` is handed to [onHookDependency] and not followed, unless
+/// [followHookDependencies] is set (the build-time walk).
+void _walk(
+  List<String> queue,
+  Set<String> seen,
+  Map<String, String> packageMap, {
+  required void Function(String) onHookDependency,
+  bool followHookDependencies = false,
+}) {
+  while (queue.isNotEmpty) {
+    final current = queue.removeAt(0);
+    if (seen.contains(current)) continue;
+    seen.add(current);
+
+    final pkgDir = packageMap[current];
+    if (pkgDir == null) continue;
+
+    final pubspecPath = p.join(pkgDir, 'pubspec.yaml');
+    if (!File(pubspecPath).existsSync()) continue;
+
+    final hasHook = File(p.join(pkgDir, 'hook', 'build.dart')).existsSync();
+    final doc = loadYaml(File(pubspecPath).readAsStringSync());
+    final deps = doc['dependencies'];
+    if (deps is YamlMap) {
+      for (final key in deps.keys) {
+        final dep = key as String;
+        if (hasHook &&
+            !followHookDependencies &&
+            hookEntryPackages.contains(dep)) {
+          onHookDependency(dep);
+        } else {
+          queue.add(dep);
+        }
+      }
+    }
+  }
+}
+
+/// `lib/` of the three packages must not import or export a build-time
+/// (hook) package: that would make it a run-time dependency the closure walk
+/// classified as build-time.
+List<String> _checkBuildTimeImports(String root, Set<String> buildTimeOnly) {
+  final violations = <String>[];
+  final directive = RegExp(
+    r'''^\s*(?:import|export)\s+['"]package:([A-Za-z0-9_]+)/''',
+  );
+  for (final pkg in siblingPackages) {
+    final libDir = Directory(p.join(root, 'packages', pkg, 'lib'));
+    if (!libDir.existsSync()) continue;
+    for (final file in libDir.listSync(recursive: true).whereType<File>()) {
+      if (!file.path.endsWith('.dart')) continue;
+      final lines = file.readAsLinesSync();
+      for (var i = 0; i < lines.length; i++) {
+        final match = directive.firstMatch(lines[i]);
+        if (match == null) continue;
+        final imported = match.group(1)!;
+        if (buildTimeOnly.contains(imported)) {
+          violations.add(
+            '${file.path}:${i + 1}: imports build-time (hook) package '
+            '$imported from lib/; it may be used only under hook/.',
+          );
+        }
+      }
+    }
+  }
+  return violations;
 }
 
 List<String> _checkNetworkSymbols(String root) {

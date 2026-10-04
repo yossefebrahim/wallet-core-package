@@ -164,11 +164,9 @@ void main() {
       final EvmSignResult result;
       final wallet = await core.wallets.importMnemonic(mnemonic);
       try {
-        result =
-            await core.signer.sign(request, {
-                  KeyLocator.hdPath(wallet.ref, Coin.ethereum, path),
-                })
-                as EvmSignResult;
+        result = await core.signer.sign(request, {
+          KeyLocator.hdPath(wallet.ref, Coin.ethereum, path),
+        }) as EvmSignResult;
       } finally {
         await wallet.close();
         await core.shutdown();

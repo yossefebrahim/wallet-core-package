@@ -42,6 +42,10 @@ dart run tools/lint/bin/public_api_lint.dart [--package packages/wallet_core_flu
 - The root `pubspec.lock` and `pubspec.yaml` are checked to ensure every package in the closure uses an allowed source (`hosted` on `https://pub.dev`, `sdk`, or a `path` to a workspace sibling). Custom hosted URLs, `git`, and other `path` sources are forbidden. Root `dependency_overrides` touching a closure package are forbidden unless it is a sibling.
 - No `dart:io` networking symbols (`HttpClient`, `Socket`, `WebSocket`, etc.) or `package:http` usages appear in `lib/`. They are only permitted in `tool/` or `hook/` directories with a `// wcf: network-ok <reason>` marker, or implicitly allowed inside `packages/wallet_core_flutter_native/tool/` (the build-time artifact fetch tool, per rule 3). Note that the network symbol scan is a guard, not a proof.
 
+A separate **build-time (hook)** category exists for packages reachable only from `hook/`. These packages run in the consumer's build and never ship in the application.
+
+The listed build-time packages are `code_assets`, `hooks`, `logging`, `path`, `pub_semver`, `record_use`, `source_span`, `string_scanner`, `term_glyph`, and `yaml`. The deny list still applies to them, and any attempt to import one of these packages from a `lib/` directory will fail the lint.
+
 ## How to run
 ```bash
 dart run tools/lint/bin/runtime_deps_check.dart [--root <dir>]
