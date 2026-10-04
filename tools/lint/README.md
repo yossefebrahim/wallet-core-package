@@ -20,4 +20,22 @@ dart run tools/lint/bin/public_api_lint.dart [--package packages/wallet_core_flu
 - `2`: no verdict — an entry is missing or not a library, analysis reports errors in it, its parts, or any library it exports transitively, or a walked signature has an unresolved type.
 - `64`: usage error.
 
+# Runtime Dependency Check
+
+`melos run lint:runtime-deps` computes the **transitive runtime dependency closure** of `packages/wallet_core_flutter`, `packages/wallet_core_flutter_bindings`, and `packages/wallet_core_flutter_native` (following only `dependencies:`, never `dev_dependencies:`). It enforces PRD §16 S4 by checking:
+
+- Packages in the closure cannot be on the **deny list** (e.g., networking/telemetry packages like `http`, `dio`, `firebase_*`, `sentry*`).
+- Packages must be explicitly on the **allow list** (`ffi`, `protobuf`, `fixnum`, `crypto`, `collection`, `meta`, `path`, `typed_data`, `flutter`, `sky_engine`, `characters`, `material_color_utilities`, `vector_math` and siblings). Extending this allow list requires a reviewed decision.
+- The sibling published packages' `pubspec.yaml` files cannot use `git:` or `path:` sources for dependencies (except `path:` for the workspace siblings).
+- No `dart:io` networking symbols (`HttpClient`, `Socket`, `WebSocket`, etc.) or `package:http` usages appear in `lib/`. They are only permitted in `tool/` or `hook/` directories with a `// wcf: network-ok <reason>` marker, or implicitly allowed inside `packages/wallet_core_flutter_native/tool/` (the build-time artifact fetch tool, per rule 3).
+
+## How to run
+```bash
+dart run tools/lint/bin/runtime_deps_check.dart [--json] [--root <dir>]
+```
+Output: the closure of each published package, violations, network symbol checks, and the exit code.
+
+## Exit codes
+- `0`: no violations. `1`: violations.
+
 *Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.*

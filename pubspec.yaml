@@ -175,3 +175,7 @@ melos:
         --out-dir "${WCF_PACKAGING_OUT:-${TMPDIR:-/tmp}/wcf-packaging}"
     probe:sign-json: dart run tools/probes/bin/sign_json_probe.dart
     lint:public-api: dart run tools/lint/bin/public_api_lint.dart
+    lint:runtime-deps:
+      description: runtime dependency policy, PRD §16 S4 (T1.17)
+      run: dart run tools/lint/bin/runtime_deps_check.dart
+

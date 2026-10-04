@@ -29,6 +29,7 @@ This file is the single source of the rules that govern every change made in thi
 | `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:matrix` | no |
 | `melos run gen:check` | `gen:all` then `git diff --exit-code` on generated paths | no |
 | `melos run lint:public-api` | public-surface type check (T1.15) | no |
+| `melos run lint:runtime-deps` | runtime dependency policy (T1.17) | no |
 | `melos run vectors:validate` | inventory schema + provenance check (T0.8) | no |
 | `melos run manifest:validate` | compat manifest schema + checksum presence (T0.7) | no |
 | `melos run test:android` | `integration_test` on the running Android emulator | yes |
