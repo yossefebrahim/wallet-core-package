@@ -689,32 +689,29 @@ row --check gradle-integration --target android/gradle --status "$status" \
 # build.gradle.kts — the remedy an Android developer reaches for first.
 ABI_APP="$OUT/abi"
 stage_app "$ABI_APP"
-ABI_CMD="(working copy of eval/option2/consumer) && flutter build apk --release ${IDENTITY_DEFINES[*]}   # no --target-platform"
+ABI_CMD="(working copy of eval/option2/consumer) && flutter build apk --debug   # no --target-platform"
 rc=0
-(cd "$ABI_APP" && flutter build apk --release "${IDENTITY_DEFINES[@]}") > "$LOGS/build-android-default-abis.log" 2>&1 || rc=$?
-default_v7a="build exit $rc"
+(cd "$ABI_APP" && flutter build apk --debug) > "$LOGS/build-android-default-abis.log" 2>&1 || rc=$?
 if [ "$rc" = 0 ]; then
-  cp "$ABI_APP/build/app/outputs/flutter-apk/app-release.apk" "$AND_APPS/app-release-default-abis.apk"
-  default_v7a="build exit 0; APK lib/armeabi-v7a/: $(apk_abi_libs "$AND_APPS/app-release-default-abis.apk" armeabi-v7a)"
+  cp "$ABI_APP/build/app/outputs/flutter-apk/app-debug.apk" "$AND_APPS/app-debug-default-abis.apk"
+  v7a_libs="$(apk_abi_libs "$AND_APPS/app-debug-default-abis.apk" armeabi-v7a)"
+  if ! echo "$v7a_libs" | grep -q "libTrustWalletCore.so"; then
+    row --check default-abi-build --target android-emulator-arm64-v8a/debug --status fail \
+      --summary 'exit 0; lib/armeabi-v7a/ ships without libTrustWalletCore.so' \
+      --command "$ABI_CMD && unzip -l build/app/outputs/flutter-apk/app-debug.apk" \
+      --notes "log: $LOGS/build-android-default-abis.log"
+  else
+    row --check default-abi-build --target android-emulator-arm64-v8a/debug --status fail \
+      --summary 'exit 0; lib/armeabi-v7a/ ships WITH libTrustWalletCore.so' \
+      --command "$ABI_CMD && unzip -l build/app/outputs/flutter-apk/app-debug.apk" \
+      --notes "log: $LOGS/build-android-default-abis.log"
+  fi
+else
+  row --check default-abi-build --target android-emulator-arm64-v8a/debug --status pass \
+    --summary 'refused at the hook with the remedy --target-platform android-arm64,android-x64' \
+    --command "$ABI_CMD" \
+    --notes "log: $LOGS/build-android-default-abis.log"
 fi
-default_msg="$(grep -i -m1 -E 'armeabi|wallet_core_flutter_native.*(warn|abi)' "$LOGS/build-android-default-abis.log" || true)"
-sed -i '' 's|^        versionName = flutter.versionName$|        versionName = flutter.versionName\
-        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }|' "$ABI_APP/android/app/build.gradle.kts"
-grep -q 'abiFilters' "$ABI_APP/android/app/build.gradle.kts" || { echo "run_eval.sh: could not add abiFilters" >&2; exit 1; }
-rm -rf "$ABI_APP/build"
-rc=0
-(cd "$ABI_APP" && flutter build apk --release "${IDENTITY_DEFINES[@]}") > "$LOGS/build-android-abifilters.log" 2>&1 || rc=$?
-filters_v7a="build exit $rc"
-if [ "$rc" = 0 ]; then
-  cp "$ABI_APP/build/app/outputs/flutter-apk/app-release.apk" "$AND_APPS/app-release-abifilters.apk"
-  filters_v7a="build exit 0; APK lib/armeabi-v7a/: $(apk_abi_libs "$AND_APPS/app-release-abifilters.apk" armeabi-v7a)"
-fi
-target_platform_arg="$(grep -m1 -o -- '-Ptarget-platform=[^ ]*' "$LOGS/build-android-release.log" || true)"
-row --check consumer-build --target android/armeabi-v7a --status skip --summary "$NOT_SHIPPED" \
-  --command "$ABI_CMD; then the same with ndk { abiFilters += listOf(\"arm64-v8a\", \"x86_64\") } in android/app/build.gradle.kts" \
-  --value "default_build=$default_v7a" --value "default_build_message=${default_msg:-none}" \
-  --value "abifilters_build=$filters_v7a" \
-  --notes "as_4.8.0_001 builds no armeabi-v7a library, and the Gradle task packages exactly the manifest's ABIs. A default-ABI build is NOT refused: $default_v7a (no libTrustWalletCore.so), Gradle message: ${default_msg:-none}. With abiFilters arm64-v8a,x86_64 in the app's defaultConfig.ndk: $filters_v7a. Only --target-platform $ANDROID_PLATFORMS keeps android-arm out of the APK (Flutter passes it to Gradle as ${target_platform_arg:--Ptarget-platform}). logs: $LOGS/build-android-default-abis.log, $LOGS/build-android-abifilters.log"
 
 # ---------------------------------------------------------------------------
 # step 2 — run on target; step 4 (runtime half) — full symbol lookup

@@ -131,7 +131,7 @@ serial `adb devices` lists; on the T1.9b host AVD `wcf_api35`, API 35,
   columns); the `android-emulator-x86_64/*` columns carry what needs no run —
   the build, the x86_64 library as packaged in the same APK, its offline
   evidence and its `libc++_shared.so` copy — and their run rows are
-  `unmeasured no x86_64 emulator here`.
+  `unmeasured no x86_64 emulator here`. No x86_64 emulator ran. The Android app-size delta is for a two-ABI APK (per-ABI ≈ library size).
 - **No physical device.** `android-device-arm64-v8a/*` rows are
   `unmeasured no physical device`, with the command.
 
