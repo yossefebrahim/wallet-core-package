@@ -195,20 +195,159 @@ jobs:
       - name: melos run test:no-network
         run: melos run test:no-network
 
-  # placeholder — device jobs are implemented by task T1.17
+  # The device jobs run example/integration_test (the M0 flow, through the
+  # public surface) on a real emulator / simulator. They are slow and cost
+  # runner minutes, so they run on a push to main and on demand, not on every
+  # pull request. Both go through `tools/device_test.sh`, which refuses to pick
+  # a device: the job names it. No `offline` or `vendored_dir` user-define is
+  # set: on an artifact-cache miss (the first run for a manifest, or after
+  # eviction) these jobs exercise the real build-hook fetch of the release
+  # asset; on a hit the hook re-hashes the restored file against the manifest
+  # and downloads nothing. `tools/consumer_check.sh` exercises the fetch on
+  # every local run.
+  # The artifact cache below is safe because the hook hashes whatever it
+  # bundles against the manifest's sha256 and size, whether it came from the
+  # cache or the network.
   android-emulator:
     name: Android emulator
-    runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    env:
+      WCF_ANDROID_DEVICE: emulator-5554
     steps:
-      - name: Placeholder
-        run: echo "placeholder — device jobs are implemented by task T1.17"
+      - name: Check out the repository
+        uses: actions/checkout@v7
 
-  # placeholder — device jobs are implemented by task T1.17
+      # The hosted runner has /dev/kvm but not world-accessible; the emulator
+      # needs it for x86_64 hardware acceleration.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Put the pub global bin directory on PATH
+        run: echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Activate melos
+        run: dart pub global activate melos 8.6.0
+
+      - name: melos bootstrap
+        run: melos bootstrap
+
+      - name: Cache the verified native artifacts
+        uses: actions/cache@v5
+        with:
+          path: example/.dart_tool/hooks_runner/shared/wallet_core_flutter_native/build/artifacts
+          key: wcf-artifacts-android-${{ hashFiles('compat_manifest.json') }}
+
+      - name: Cache the AVD snapshot
+        id: avd-cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-35-google_apis-x86_64-v1
+
+      # On a cache miss, boot once to create the AVD and its quick-boot
+      # snapshot; the cache step saves both when the job ends.
+      - name: Create the AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated the AVD snapshot for caching."
+
+      # The first execution of the x86_64 library on a device: a failure here
+      # is a finding about the artifact, not something this job works around.
+      - name: melos run test:android
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: melos run test:android
+
   ios-simulator:
     name: iOS simulator
-    runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    timeout-minutes: 45
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
-      - name: Placeholder
-        run: echo "placeholder — device jobs are implemented by task T1.17"
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Put the pub global bin directory on PATH
+        run: echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Activate melos
+        run: dart pub global activate melos 8.6.0
+
+      - name: melos bootstrap
+        run: melos bootstrap
+
+      - name: Cache the verified native artifacts
+        uses: actions/cache@v5
+        with:
+          path: example/.dart_tool/hooks_runner/shared/wallet_core_flutter_native/build/artifacts
+          key: wcf-artifacts-ios-${{ hashFiles('compat_manifest.json') }}
+
+      - name: Select the pinned Xcode
+        run: |
+          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+
+      # Exactly one simulator: this name on this runtime. Nothing is picked by
+      # "first available", so a runner-image change fails loudly here instead
+      # of moving the test to a different device.
+      - name: Boot the simulator
+        env:
+          SIM_NAME: iPhone 17
+          SIM_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-26-5
+        run: |
+          set -euo pipefail
+          udid="$(xcrun simctl list devices available -j \
+            | jq -r --arg name "$SIM_NAME" --arg rt "$SIM_RUNTIME" \
+                '(.devices[$rt] // []) | map(select(.name == $name)) | .[0].udid // empty')"
+          if [ -z "$udid" ]; then
+            echo "::error::No available simulator named '$SIM_NAME' on runtime $SIM_RUNTIME. Installed:"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          echo "WCF_IOS_DEVICE=$udid" >> "$GITHUB_ENV"
+
+      - name: melos run test:ios
+        run: melos run test:ios

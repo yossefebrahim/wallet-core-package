@@ -150,6 +150,22 @@ melos:
       description: >-
         Run test:native under sandbox-exec (macOS only): outbound network denied except loopback, DNS blocked, a network attempt SIGKILLs the process that makes it — the run fails when that is the test process; an attempt from a spawned subprocess is blocked but not detected (the bindings suite runs via flutter test --no-pub); self-checks the sandbox first. Needs melos bootstrap and a prior melos run test:native (warm build-hook cache).
       run: bash tools/native_build/run_no_network_test.sh
+    test:android:
+      description: >-
+        Run example/integration_test (the M0 flow) on the Android device or
+        emulator whose adb serial is in $WCF_ANDROID_DEVICE (for example
+        emulator-5554). Never picks a device itself; fails with the remedy
+        printed (tools/device_test.sh exits 2; melos reports exit 1) when the
+        variable is unset or the device is not online. See tools/device_test.sh.
+      run: bash tools/device_test.sh android
+    test:ios:
+      description: >-
+        Run example/integration_test (the M0 flow) on the booted iOS simulator
+        whose UDID is in $WCF_IOS_DEVICE. Never picks a device itself; fails with the remedy
+        printed (tools/device_test.sh exits 2; melos reports exit 1) when the
+        variable is unset or the simulator is not booted. See
+        tools/device_test.sh.
+      run: bash tools/device_test.sh ios
     gen:manifest:
       description: >-
         Embed compat_manifest.json into wallet_core_flutter_native: the const
