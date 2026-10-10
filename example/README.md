@@ -74,25 +74,21 @@ The tests start their sessions through the SDK's internal test entry point
 `test/support/test_seam.dart`, as in the SDK package's own tests; nothing under
 `lib/` uses it.
 
-## What depends on packaging
+## Run on a device
 
-The app builds today (`flutter build apk --debug` succeeds), but no native
-library is packaged into it: the APK carries `libflutter.so` and no
-`libTrustWalletCore.so`, so step 1 on a device or emulator shows
-`NativeLoadError` (or `ManifestMismatchError` if a library with another
-identity is found). Shipping
-the library is DECISION-2's packaging mechanism — build hooks or
-Gradle/podspec — and the shipped manifest's identity is a placeholder until the
-first native release.
+The app's native packaging uses build hooks (DECISION-2 Option 1): the hook fetches the native library from a published release and verifies its sha256 checksum during the build.
 
-TODO(T1.16b, after DECISION-2): wire the chosen packaging into a consumer the
-way a real app would (a hosted dependency, no edits under `android/` or `ios/`),
-then run this flow on the Android emulator and the iOS simulator in debug and
-release. That is `tools/consumer_check.sh`; today its `create_consumer` and
-`publish_locally` stages run, and the packaging-dependent stages exit 2,
-"waiting for DECISION-2 (T1.16b)".
+To run the M0 flow on a device or emulator:
+```sh
+# flutter run builds only the attached device's ABI, so no target platforms are needed
+flutter run -d <android-device-id>
+flutter run -d <simulator-id>
+```
+To run the integration test on a device:
+```sh
+flutter test integration_test -d <android-device-id>
+flutter test integration_test -d <simulator-id>
+```
+Get the device IDs from `flutter devices`.
 
-`android/` and `ios/` are exactly what
-`flutter create --platforms=android,ios --org dev.wcf.example --project-name wallet_core_flutter_example`
-wrote, under an empty `HOME` so that no Apple development team was recorded.
-They carry no native edits (PRD §12.2 step 1).
+The `android/` and `ios/` directories are what `flutter create --platforms=android,ios --org dev.wcf.example --project-name wallet_core_flutter_example` wrote under an empty `HOME` (so no Apple development team was recorded). `example/pubspec.yaml` enables Swift Package Manager for this project (`flutter: config: enable-swift-package-manager: true`), so iOS builds need no CocoaPods and `ios/` stays exactly what `flutter create` wrote. They carry no native edits (PRD §12.2 step 1).

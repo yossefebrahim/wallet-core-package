@@ -15,13 +15,12 @@
 //      sibling hosted at this repository;
 //   3. GET the archive_url it lists: its sha256 is the listed archive_sha256
 //      and the archive has a pubspec.yaml and a lib/ at its root;
-//   4. stop the server.
+//   4. stop the server (unless --keep-alive).
 //
-// Why the server does not outlive this command: its port is chosen when it
-// starts and is written into every staged pubspec, so a consumer's
-// `flutter pub get` has to run against that same running server, in one
-// process — as tools/packaging_eval/lib/consumer_gen.dart does. That is
-// add_dependency's job, which waits for DECISION-2 (T1.16b).
+// With --keep-alive the process does not exit after a successful check — it
+// writes <staging-dir>/port, writes its own pid to --pid-file if given,
+// and serves until killed; on a failed check it closes the server and exits 1;
+// --pid-file is ignored without --keep-alive.
 //
 // Build-time tooling on loopback only: nothing in the three packages reaches
 // this server, or any network, at runtime (AGENTS.md rule 3). Everything is
@@ -36,6 +35,7 @@
 
 // ignore_for_file: depend_on_referenced_packages
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -49,15 +49,33 @@ const List<String> _packageNames = [
 ];
 
 const String _usage = '''
-Usage: dart run tools/consumer_check/publish_locally.dart --staging-dir DIR
+Usage: dart run tools/consumer_check/publish_locally.dart --staging-dir DIR [--keep-alive] [--pid-file PATH]
 
 Stages the three packages, serves them from a loopback package repository,
-fetches every listing and archive back over HTTP and checks them, then stops
-the server. DIR is emptied first and must be outside the repository.
+fetches every listing and archive back over HTTP and checks them.
+With --keep-alive the process does not exit after a successful check — it writes
+<staging-dir>/port, writes its own pid to --pid-file if given, and serves until
+killed; on a failed check it closes the server and exits 1; --pid-file is
+ignored without --keep-alive. DIR is emptied first and must be outside the repository.
 ''';
 
 Future<void> main(List<String> arguments) async {
-  if (arguments.length != 2 || arguments.first != '--staging-dir') {
+  String? stagingPath;
+  String? pidFile;
+  bool keepAlive = false;
+
+  for (var i = 0; i < arguments.length; i++) {
+    final arg = arguments[i];
+    if (arg == '--staging-dir' && i + 1 < arguments.length) {
+      stagingPath = arguments[++i];
+    } else if (arg == '--pid-file' && i + 1 < arguments.length) {
+      pidFile = arguments[++i];
+    } else if (arg == '--keep-alive') {
+      keepAlive = true;
+    }
+  }
+
+  if (stagingPath == null) {
     stderr.write(_usage);
     exitCode = 64;
     return;
@@ -69,7 +87,7 @@ Future<void> main(List<String> arguments) async {
     exitCode = 70;
     return;
   }
-  final staging = Directory(arguments[1]).absolute;
+  final staging = Directory(stagingPath).absolute;
   if (_isInside(staging, root)) {
     stderr.writeln(
       'publish_locally: --staging-dir must be outside the repository',
@@ -97,24 +115,46 @@ Future<void> main(List<String> arguments) async {
     }
   } finally {
     client.close(force: true);
+  }
+
+  if (!keepAlive) {
     await repository.close();
   }
   final routes = repository.requestLog.toSet().toList()..sort();
   stdout.writeln('publish_locally: routes served: ${routes.join(' ')}');
-  stdout.writeln(
-    'publish_locally: server stopped; staged under ${staging.path}',
-  );
+  if (!keepAlive) {
+    stdout.writeln(
+      'publish_locally: server stopped; staged under ${staging.path}',
+    );
+  }
   if (problems.isNotEmpty) {
+    if (keepAlive) {
+      await repository.close();
+    }
     for (final problem in problems) {
       stderr.writeln('publish_locally: FAIL $problem');
     }
     exitCode = 1;
     return;
   }
+  if (keepAlive) {
+    stdout.writeln(
+      'publish_locally: server kept alive; staged under ${staging.path}',
+    );
+  }
   stdout.writeln(
     'publish_locally: OK — ${_packageNames.length} packages published to '
     'the loopback repository and fetched back intact',
   );
+  if (keepAlive) {
+    if (pidFile != null) {
+      File(pidFile).writeAsStringSync('$pid');
+    }
+    File(
+      '${staging.path}/port',
+    ).writeAsStringSync('${Uri.parse(repository.baseUrl).port}');
+    await Completer<void>().future;
+  }
 }
 
 /// Fetches [name]'s listing and archive from [repository]; returns what is
