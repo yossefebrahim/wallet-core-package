@@ -23,6 +23,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
 # wallet_core_flutter pins its two siblings by exact version (PRD §15.4).
 # Inside the pub workspace those resolve to the checkout; this app is not a
@@ -38,3 +40,6 @@ dependency_overrides:
 
 flutter:
   uses-material-design: true
+  config:
+    # Project-level override: build iOS through Swift Package Manager on every host, without CocoaPods.
+    enable-swift-package-manager: true
