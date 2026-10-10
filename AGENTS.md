@@ -26,6 +26,7 @@ This file is the single source of the rules that govern every change made in thi
 | `melos run format:check` | `dart format --set-exit-if-changed .` | no |
 | `melos run test` | unit tests in every package (no native library required unless the test says so) | no |
 | `melos run test:native` | unit tests that load the real native library on the host (macOS) | no |
+| `melos run test:no-network` | test:native under `sandbox-exec` (macOS; bindings suite via `flutter test --no-pub`): outbound network denied except loopback, DNS blocked (T1.17) | no |
 | `melos run inventory:check` | header vs generated symbol inventory (T1.3) | no |
 | `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:manifest` (`gen:matrix` arrives with the capability matrix, T3.x) | no |
 | `melos run gen:check` | `gen:all` then `git diff --exit-code` on generated paths | no |

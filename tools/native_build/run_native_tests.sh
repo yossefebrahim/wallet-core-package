@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # run_native_tests.sh — `melos run test:native`: the `native`-tagged unit tests
-# of wallet_core_flutter_bindings (`dart test`) and wallet_core_flutter
-# (`flutter test`), against the real host library, with an absent library a
+# of wallet_core_flutter_bindings (`dart test`, or `flutter test --no-pub` when
+# WCF_NO_NETWORK=1, set by test:no-network) and wallet_core_flutter
+# (`flutter test --no-pub`), against the real host library, with an absent library a
 # failure rather than a skip.
 #
 # Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library.
@@ -51,12 +52,24 @@ echo "test:native: WCF_NATIVE_LIB=$WCF_NATIVE_LIB"
 
 status=0
 
-echo "test:native: wallet_core_flutter_bindings (dart test --tags native)"
-(cd "$root/packages/wallet_core_flutter_bindings" && dart test --tags native) \
+bindings_cmd="dart test"
+# WCF_NO_NETWORK is set by test:no-network. `dart test` has no `--no-pub`; its implicit
+# resolution re-checks online (pub.dev advisories) whenever the checkout leaves
+# pubspec.yaml newer than pubspec.lock or the lock newer than package_config.json, and
+# pub never rewrites an unchanged lockfile, so an offline `dart pub get` does not
+# prevent it; under the sandbox that fetch is SIGKILLed. Analytics is handled
+# separately by FLUTTER_SUPPRESS_ANALYTICS in run_no_network_test.sh.
+if [ "${WCF_NO_NETWORK:-0}" = "1" ]; then
+  # flutter test supports --no-pub, which skips dependency resolution
+  bindings_cmd="flutter test --no-pub"
+fi
+
+echo "test:native: wallet_core_flutter_bindings ($bindings_cmd --tags native)"
+(cd "$root/packages/wallet_core_flutter_bindings" && $bindings_cmd --tags native) \
   || status=1
 
-echo "test:native: wallet_core_flutter (flutter test --tags native)"
-(cd "$root/packages/wallet_core_flutter" && flutter test --tags native) \
+echo "test:native: wallet_core_flutter (flutter test --no-pub --tags native)"
+(cd "$root/packages/wallet_core_flutter" && flutter test --no-pub --tags native) \
   || status=1
 
 if [ "$status" -ne 0 ]; then

@@ -50,6 +50,15 @@ jobs:
       - name: melos run test
         run: melos run test
 
+      - name: melos run lint:public-api
+        run: melos run lint:public-api
+
+      - name: melos run vectors:validate
+        run: melos run vectors:validate
+
+      - name: melos run lint:runtime-deps
+        run: melos run lint:runtime-deps
+
       # The lockfile is committed; bootstrap must not change the resolution.
       - name: Check pubspec.lock is unchanged
         run: git diff --exit-code pubspec.lock
@@ -140,6 +149,51 @@ jobs:
 
       - name: melos run manifest:validate
         run: melos run manifest:validate
+
+  native:
+    name: Native tests
+    runs-on: macos-latest
+    env:
+      UPSTREAM_TAG: "4.8.0"
+      UPSTREAM_TARBALL_SHA256: "30b0532d9f143b6409aa405f3ba124625fb01e70f13d8e52b3904334c617ff60"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Put the pub global bin directory on PATH
+        run: echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Activate melos
+        run: dart pub global activate melos 8.6.0
+
+      - name: melos bootstrap
+        run: melos bootstrap
+
+      - name: Fetch upstream 4.8.0 release asset (FIRST-SEEN digest)
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cache/wcf-upstream/$UPSTREAM_TAG"
+          curl -sSL --retry 3 -o "$HOME/.cache/wcf-upstream/$UPSTREAM_TAG/TrustWalletCore-$UPSTREAM_TAG.tar.xz" \
+            "https://github.com/trustwallet/wallet-core/releases/download/$UPSTREAM_TAG/TrustWalletCore-$UPSTREAM_TAG.tar.xz"
+          echo "$UPSTREAM_TARBALL_SHA256  $HOME/.cache/wcf-upstream/$UPSTREAM_TAG/TrustWalletCore-$UPSTREAM_TAG.tar.xz" | shasum -a 256 -c -
+
+      - name: Build host library
+        run: |
+          melos run native:host-lib -- --expected-tarball-sha256 "$UPSTREAM_TARBALL_SHA256"
+
+      # test:native must run before test:no-network to warm the build-hook artifact cache
+      - name: melos run test:native
+        run: melos run test:native
+
+      - name: melos run test:no-network
+        run: melos run test:no-network
 
   # placeholder — device jobs are implemented by task T1.17
   android-emulator:

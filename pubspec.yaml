@@ -146,6 +146,10 @@ melos:
         when present and otherwise to the path native:host-lib writes to. See
         tools/native_build/run_native_tests.sh.
       run: bash tools/native_build/run_native_tests.sh
+    test:no-network:
+      description: >-
+        Run test:native under sandbox-exec (macOS only): outbound network denied except loopback, DNS blocked, a network attempt SIGKILLs the process that makes it — the run fails when that is the test process; an attempt from a spawned subprocess is blocked but not detected (the bindings suite runs via flutter test --no-pub); self-checks the sandbox first. Needs melos bootstrap and a prior melos run test:native (warm build-hook cache).
+      run: bash tools/native_build/run_no_network_test.sh
     gen:manifest:
       description: >-
         Embed compat_manifest.json into wallet_core_flutter_native: the const
