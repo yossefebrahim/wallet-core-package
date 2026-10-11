@@ -2,12 +2,16 @@
 #
 # device_test.sh — run example/integration_test on one already-running device.
 #
-# Usage: tools/device_test.sh android|ios
+# Usage: tools/device_test.sh android|ios [flutter test arguments...]
 #
 #   android  needs WCF_ANDROID_DEVICE, an adb serial (for example emulator-5554),
 #            and `adb -s <serial> get-state` must report `device`.
 #   ios      needs WCF_IOS_DEVICE, a simulator UDID, and that UDID must be listed
 #            by `xcrun simctl list devices booted`.
+#
+# Every argument after the platform is passed through, unchanged, to
+# `flutter test integration_test -d <device>` (for example
+# `--verbose --reporter expanded`).
 #
 # The script never starts a device and never picks one: the caller names the
 # device, so a run can never land on a device the caller did not mean. A missing
@@ -21,13 +25,15 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
 usage() {
-  echo "usage: tools/device_test.sh android|ios" >&2
+  echo "usage: tools/device_test.sh android|ios [flutter test arguments...]" >&2
   exit 2
 }
 
-[ "$#" -eq 1 ] || usage
+[ "$#" -ge 1 ] || usage
+platform="$1"
+shift
 
-case "$1" in
+case "$platform" in
   android)
     id="${WCF_ANDROID_DEVICE:-}"
     if [ -z "$id" ]; then
@@ -74,4 +80,4 @@ case "$1" in
 esac
 
 cd "$root/example"
-exec flutter test integration_test -d "$id"
+exec flutter test integration_test -d "$id" "$@"
