@@ -280,7 +280,22 @@ jobs:
 
       # The first execution of the x86_64 library on a device: a failure here
       # is a finding about the artifact, not something this job works around.
-      - name: melos run test:android
+      # `tools/ci/android_device_diag.sh` runs what `melos run test:android`
+      # runs (`tools/device_test.sh android`, verbose, under a 15-minute kill)
+      # while recording logcat, a heartbeat and the post-run device state into
+      # DIAG_DIR, so a hang fails with evidence instead of a silent job timeout.
+      # It is one command because the runner action executes each `script`
+      # line as its own `sh -c`.
+      - name: Android M0 flow (test:android under diagnostics)
+        timeout-minutes: 25
+        env:
+          DIAG_DIR: ${{ runner.temp }}/android-diag
+          # flutter/flutter#192736: on x86_64 Linux hosts with SwiftShader,
+          # Impeller's OpenGL ES backend (always used on emulators since Flutter
+          # 3.44) kills or stalls the emulator. `--no-enable-impeller` launches
+          # this test run without Impeller; the workaround is scoped to this CI
+          # lane only. Remove it when the upstream issue is fixed.
+          WCF_TEST_EXTRA: --no-enable-impeller
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
@@ -289,7 +304,15 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: melos run test:android
+          script: bash tools/ci/android_device_diag.sh
+
+      - name: Upload Android diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-diag
+          path: ${{ runner.temp }}/android-diag
+          if-no-files-found: warn
 
   ios-simulator:
     name: iOS simulator

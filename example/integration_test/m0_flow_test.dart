@@ -62,5 +62,5 @@ void main() {
     await flow.shutdown();
     expect(flow.shutDown!.error, isNull);
     expect(flow.hasEnded, isTrue);
-  });
+  }, timeout: const Timeout(Duration(minutes: 5)));
 }
