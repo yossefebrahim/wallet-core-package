@@ -150,6 +150,23 @@ class Matrix {
     return Counts(generated, exposed, tested);
   }
 
+  /// Chains (coins) with at least one operation generated / with at least one
+  /// exposed variant / with at least one tested variant. The README's
+  /// "N chains generated, M exposed, K tested" (PRD §13.2).
+  Counts chainTotals() {
+    var generated = 0, exposed = 0, tested = 0;
+    for (final row in coins) {
+      final cells = row.operations.values.where(
+        (c) => c.generated == Generated.yes,
+      );
+      if (cells.isEmpty) continue;
+      generated++;
+      if (cells.any((c) => c.anyExposed)) exposed++;
+      if (cells.any((c) => c.anyTested)) tested++;
+    }
+    return Counts(generated, exposed, tested);
+  }
+
   /// Coins, per (operation, family, variant). A family with no variants for an
   /// operation (the single cell [anyVariant]) appears only when some coin of it
   /// has the operation generated.

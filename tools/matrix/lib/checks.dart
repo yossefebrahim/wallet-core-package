@@ -5,6 +5,7 @@ import 'package:wcf_tool_vectors/inventory.dart';
 
 import 'inputs.dart';
 import 'matrix.dart';
+import 'readme_counts.dart';
 import 'render.dart';
 import 'variants.dart';
 
@@ -62,6 +63,31 @@ String? _firstDifference(String committed, String regenerated) {
     if (a[i] != b[i]) return 'first at line ${i + 1}';
   }
   return 'committed has ${a.length} lines, regenerated ${b.length}';
+}
+
+// ---------------------------------------------------------------------------
+// (d) the README counts are regenerated, never edited
+// ---------------------------------------------------------------------------
+
+/// T2.11: the region of `README.md` between the `matrix-counts` markers equals
+/// a fresh regeneration from [matrix]; a README with broken markers fails too.
+List<String> checkReadme(MatrixPaths paths, Matrix matrix) {
+  final String expected;
+  try {
+    expected = regeneratedReadme(paths, matrix);
+  } on FormatException catch (e) {
+    return ['(d) ${e.message}'];
+  }
+  final difference = _firstDifference(
+    File(paths.readmeFile).readAsStringSync(),
+    expected,
+  );
+  if (difference == null) return [];
+  return [
+    '(d) README.md differs from the regenerated matrix counts ($difference); '
+        'the region between $openMarker and $closeMarker is generated, never '
+        'edited — run `melos run gen:matrix`',
+  ];
 }
 
 // ---------------------------------------------------------------------------

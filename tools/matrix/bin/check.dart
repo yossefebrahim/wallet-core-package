@@ -13,7 +13,7 @@ const usage =
     'Exit 0 all checks pass; 1 one or more fail (one line each on stderr); '
     '64 usage.';
 
-/// `melos run matrix:check`: PRD §13.2 (a)–(c).
+/// `melos run matrix:check`: PRD §13.2 (a)–(c), and (d), T2.11.
 ///
 /// * (a) every `platforms_verified` claim is `pass` in the matching
 ///   `test_vectors/results/<platform>.json`; a claim with no results file is
@@ -23,6 +23,8 @@ const usage =
 ///   committed matrix (`git show <ref>:docs/capability_matrix.json`, `HEAD`
 ///   unless `--baseline-ref`, or the file of `--baseline`), unless
 ///   `exclusions.yaml` has an entry with a reason.
+/// * (d) the README region between the `matrix-counts` markers equals a fresh
+///   regeneration.
 void main(List<String> args) {
   final options = parseArgs(args, forCheck: true);
   if (options == null) {
@@ -46,6 +48,9 @@ void main(List<String> args) {
 
   // (b)
   violations.addAll(checkRegeneration(paths, result.matrix));
+
+  // (d)
+  violations.addAll(checkReadme(paths, result.matrix));
 
   // (c)
   violations.addAll(checkExclusions(inputs.inventory.exclusions));

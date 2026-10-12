@@ -122,7 +122,7 @@ melos:
         rather than reviewed.
       steps:
         - melos run gen:all
-        - git diff --exit-code -- "packages/*/lib/src/generated/" "docs/capability_matrix.*" "packages/wallet_core_flutter_native/assets/compat_manifest.json"
+        - git diff --exit-code -- "packages/*/lib/src/generated/" "docs/capability_matrix.*" README.md "packages/wallet_core_flutter_native/assets/compat_manifest.json"
         # `git diff` cannot see a file that is not tracked yet, so a pin bump
         # that only *adds* a generated file (a new .proto upstream, say) would
         # pass the step above. This one catches it.
@@ -208,19 +208,23 @@ melos:
       run: dart run tools/probes/bin/coverage_probe.dart
     gen:matrix:
       description: >-
-        Generate docs/capability_matrix.md and .json (PRD §13, T2.8) from the
+        Generate docs/capability_matrix.md and .json (PRD §13, T2.8), and the
+        README.md region between <!-- matrix-counts --> and
+        <!-- /matrix-counts --> (T2.11), from the
         generated registry and proto tree, the T2.9 coverage evidence
         (docs/decisions/evidence/compiler_and_message_coverage.json), the SDK's
         exposed-capability snapshot (docs/capability_exposed.json) and the
         vector inventory (test_vectors/). Exits 1, writing nothing, when the
-        inputs are inconsistent.
+        inputs are inconsistent or a README marker is missing, repeated or out
+        of order.
       run: dart run tools/matrix/bin/gen.dart
     matrix:check:
       description: >-
         PRD §13.2 coverage checks: (a) every platforms_verified claim is `pass`
         in test_vectors/results/<platform>.json, (b) the committed matrix equals
         a fresh regeneration, (c) no level went down and no vector disappeared
-        against the previous committed matrix without an exclusions.yaml entry.
+        against the previous committed matrix without an exclusions.yaml entry,
+        (d) the README.md counts region equals a fresh regeneration (T2.11).
         --strict also fails a claim with no results file; the CI `matrix` job
         passes it. Exit 0 / 1 / 64.
       run: dart run tools/matrix/bin/check.dart

@@ -15,6 +15,12 @@ import 'package:wcf_tool_matrix/matrix.dart';
 const pinnedTag = '9.9.9';
 const pinnedCommit = 'abcdef0123456789abcdef0123456789abcdef01';
 
+/// The fixture's README: text around an empty generated region. The trailing
+/// line has no final newline on purpose, to check that outside bytes survive.
+const fixtureReadme =
+    '# fixture\n\nbefore  \n\n<!-- matrix-counts -->\n<!-- /matrix-counts -->\n'
+    '\nafter\r\n  trailing';
+
 /// One fixture registry coin.
 class FixtureCoin {
   const FixtureCoin(
@@ -156,6 +162,7 @@ class FixtureRepo {
           ],
     });
     Directory('${repo.root.path}/test_vectors').createSync();
+    repo.writeText('README.md', fixtureReadme);
     return repo;
   }
 

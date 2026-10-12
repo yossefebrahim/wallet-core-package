@@ -32,6 +32,7 @@ const _pathOptions = {
   '--registry-dir',
   '--proto-dir',
   '--manifest',
+  '--readme',
 };
 
 const _checkOnlyOptions = {'--baseline', '--baseline-ref'};
@@ -66,6 +67,7 @@ CliOptions? parseArgs(List<String> args, {required bool forCheck}) {
       registryDir: values['--registry-dir'],
       protoDir: values['--proto-dir'],
       manifestFile: values['--manifest'],
+      readmeFile: values['--readme'],
     ),
     baselinePath: values['--baseline'],
     baselineRef: values['--baseline-ref'] ?? 'HEAD',
@@ -76,4 +78,5 @@ CliOptions? parseArgs(List<String> args, {required bool forCheck}) {
 const pathOptionsUsage =
     '  [--root <dir>] [--vectors <dir>] [--docs-dir <dir>] [--exposed <file>]\n'
     '  [--evidence <file>] [--results-dir <dir>] [--registry-dir <dir>]\n'
-    '  [--proto-dir <dir>] [--manifest <file>]';
+    '  [--proto-dir <dir>] [--manifest <file>]\n'
+    '  [--readme <file>]';

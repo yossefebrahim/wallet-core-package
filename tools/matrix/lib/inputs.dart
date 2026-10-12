@@ -20,6 +20,7 @@ class MatrixPaths {
     String? registryDir,
     String? protoDir,
     String? manifestFile,
+    String? readmeFile,
   }) : vectorsDir = vectorsDir ?? '$root/test_vectors',
        docsDir = docsDir ?? '$root/docs',
        exposedFile = exposedFile ?? '$root/docs/capability_exposed.json',
@@ -33,7 +34,8 @@ class MatrixPaths {
        protoDir =
            protoDir ??
            '$root/packages/wallet_core_flutter_bindings/lib/src/generated/proto',
-       manifestFile = manifestFile ?? '$root/compat_manifest.json';
+       manifestFile = manifestFile ?? '$root/compat_manifest.json',
+       readmeFile = readmeFile ?? '$root/README.md';
 
   final String root;
   final String vectorsDir;
@@ -44,6 +46,7 @@ class MatrixPaths {
   final String registryDir;
   final String protoDir;
   final String manifestFile;
+  final String readmeFile;
 
   String get matrixJson => '$docsDir/capability_matrix.json';
   String get matrixMarkdown => '$docsDir/capability_matrix.md';

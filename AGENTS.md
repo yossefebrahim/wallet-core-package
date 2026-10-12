@@ -28,13 +28,13 @@ This file is the single source of the rules that govern every change made in thi
 | `melos run test:native` | unit tests that load the real native library on the host (macOS) | no |
 | `melos run test:no-network` | test:native under `sandbox-exec` (macOS; bindings suite via `flutter test --no-pub`): outbound network denied except loopback, DNS blocked (T1.17) | no |
 | `melos run inventory:check` | header vs generated symbol inventory (T1.3) | no |
-| `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:manifest`, `gen:matrix` (writes `docs/capability_matrix.{md,json}`, T2.8) | no |
+| `melos run gen:all` | `gen:ffi`, `gen:proto`, `gen:registry`, `gen:manifest`, `gen:matrix` (writes `docs/capability_matrix.{md,json}`, T2.8, and the generated counts region of `README.md`, T2.11) | no |
 | `melos run gen:check` | `gen:all` then `git diff --exit-code` on generated paths | no |
 | `melos run lint:public-api` | public-surface type check (T1.15) | no |
 | `melos run lint:runtime-deps` | runtime dependency policy (T1.17-pre) | no |
 | `melos run vectors:validate` | inventory schema + provenance check (T0.8) | no |
 | `melos run manifest:validate` | compat manifest schema + checksum presence (T0.7) | no |
-| `melos run matrix:check` | PRD §13.2 (a) platform claims vs `test_vectors/results/`, (b) matrix equals regeneration, (c) no level or vector lost without an exclusion (T2.8); CI's `matrix` job runs it with `--strict --baseline-ref origin/main` over the device results (T2.8b) | no |
+| `melos run matrix:check` | PRD §13.2 (a) platform claims vs `test_vectors/results/`, (b) matrix equals regeneration, (c) no level or vector lost without an exclusion, (d) the `README.md` counts region equals regeneration (T2.8, T2.11); CI's `matrix` job runs it with `--strict --baseline-ref origin/main` over the device results (T2.8b) | no |
 | `melos run probe:sign-json` | SignJSON availability probe, T1.14; run with `--out` when used as a read-only gate because the default rewrites `docs/decisions/evidence/sign_json_coverage.md` | no |
 | `melos run test:android` | `integration_test` on the running Android emulator | yes |
 | `melos run test:ios` | `integration_test` on the running iOS simulator | yes |

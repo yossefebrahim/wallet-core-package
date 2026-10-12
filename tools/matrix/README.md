@@ -6,8 +6,8 @@ shipped or reachable from the SDK packages.
 Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
 
 ```
-melos run gen:matrix     # writes docs/capability_matrix.md and .json
-melos run matrix:check   # PRD §13.2 (a)–(c); exit 0 / 1 / 64
+melos run gen:matrix     # writes docs/capability_matrix.md and .json, and the README counts region
+melos run matrix:check   # PRD §13.2 (a)–(c), and (d) README counts; exit 0 / 1 / 64
 ```
 
 ## Inputs
@@ -21,6 +21,7 @@ melos run matrix:check   # PRD §13.2 (a)–(c); exit 0 / 1 / 64
 | `test_vectors/**` | the **Tested** column (`platforms_verified`) and the exclusions |
 | `test_vectors/results/<platform>.json` | check (a) only (schema in [`test_vectors/results/README.md`](../../test_vectors/results/README.md)); written by CI, absent in a local checkout |
 | `compat_manifest.json` | the upstream tag and commit stamped on the outputs |
+| `README.md` (`--readme`) | the file whose `matrix-counts` region `gen:matrix` rewrites and check (d) compares |
 
 ## Generated column
 
@@ -78,6 +79,12 @@ violations.
   skipped with a note. In CI the baseline must be the PR's base
   (`--baseline-ref origin/main`): `HEAD` there already contains the PR's matrix.
 
+- **(d)** (T2.11) the region of `README.md` between `<!-- matrix-counts -->` and
+  `<!-- /matrix-counts -->` equals a fresh regeneration; a README with a missing,
+  repeated or reversed marker fails too. Message:
+  `(d) README.md differs from the regenerated matrix counts (first at line N); …
+  run melos run gen:matrix`.
+
 Exit codes: 0 all pass; 1 a check failed (one line per violation on stderr);
 64 usage.
 
@@ -89,6 +96,26 @@ Bitcoin variant means nothing for an EVM chain), and within a table every coin
 with the same cell texts shares one row. 167 coins × 5 operations as one table
 would be 835 near-identical rows and unreadable; the per-coin detail with the
 evidence behind each verdict is in `capability_matrix.json`.
+
+## README counts (T2.11)
+
+`lib/readme_counts.dart`, called by `bin/gen.dart` (so `gen:all` keeps it
+current), rewrites only the text between `<!-- matrix-counts -->` and
+`<!-- /matrix-counts -->` in `README.md`; every byte outside the markers is kept.
+A missing README, a missing, repeated or reversed marker is an error (exit 1,
+nothing written), never an append. The region is generated from the same
+`Matrix` as `capability_matrix.json`, with no number typed by hand:
+
+- the headline `N chains generated, M exposed, K tested` — a chain is a registry
+  coin, counted at a level when at least one of its operations has a variant at
+  that level (`Matrix.chainTotals`);
+- while K is 0, the sentence "No variant is verified on a device yet"; when K is
+  above 0, the per-variant caveat instead;
+- the level meanings, shared constants with `capability_matrix.md` (`render.dart`);
+- the per-variant table, one row per `totals.variants` entry, in JSON order.
+
+`gen:check` includes `README.md` in its `git diff --exit-code` paths, and check
+(d) above catches a hand edit.
 
 ## Results collection (T2.8b)
 
