@@ -9,7 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Evidence** | `docs/security/threat_model.md` §1.4, TM-01, TM-23, TM-25, TM-26; `docs/decisions/evidence/prefetch-2026-09-07/upstream-src/TWHDWallet.h` (handle-returning constructors, all `_Nullable`, all requiring `TWHDWalletDelete`) |
 | **Interface sketch** | [`docs/architecture/lifecycle.md`](../architecture/lifecycle.md) |
 | **Recommendation** | **Protocol as specified below** (PRD §14.3 written out in full); per-call isolates rejected here, and the residual worker-vs-pool question left to DECISION-3 |
-| **Status** | **Recorded 2026-09-07** - recommendation adopted as written, with the T0.R2/T0.R4 fixes. See the Decision section. Recorded by the orchestrator under the owner's standing authorization; subject to their ratification. |
+| **Status** | **Recorded 2026-09-07** - recommendation adopted as written, with the T0.R2/T0.R4 fixes. See the Decision section. Recorded by the orchestrator under the owner's standing authorization. **Ratified by the owner 2026-10-12 (D1), as built, including the four error types of §6 and the 2026-10-03 amendment.** |
 | **Amended** | **2026-10-03**, by the owner's decision: §8 trigger 6 fired, and the secret-bearing payload set of §3.2 was reopened and amended from four to eight; §3.5 records the per-operation `OperationDeadline`; §3.2's message table now lists the messages the code declares, with the absent ones marked planned. See "Amendment 2026-10-03" in the Decision section. |
 
 ---
@@ -75,7 +75,7 @@ What Option B genuinely buys — no long-lived seed residency (TM-02) — is ava
 | `initializing` | nothing from the caller; `initialize()` has not returned yet. A second `initialize()` on the same session object returns the same `Future`. | `SessionStateError(actual: initializing)` for any operation reached through a leaked reference |
 | `ready` | every operation; `close()` on any proxy; `shutdown()` | — |
 | `closing` | a `Dispose(ref)` still in flight from `ready`, or one posted by an explicit `close()` racing `shutdown()` (accepted, §3.7 — a finalizer posts nothing once the session leaves `ready`); a second `shutdown()` (returns the same `Future`); a second `close()` on a proxy already closing (returns the same `Future`) | every new operation with `SessionStateError(actual: closing)` |
-| `closed` | `shutdown()` (no-op, returns immediately); `close()` on any proxy (no-op); a late `Dispose` that was already in flight (dropped) | every operation with `ClosedError` |
+| `closed` | `shutdown()` (no-op, returns immediately); `close()` on any proxy (a no-op, **except** that after `failed → closed` or a forced shutdown it completes with `WorkerTerminatedError`, because nothing confirmed the wallet's release: `session.dart:509-518`, `releaseWallet`; test `session_test.dart:231`); a late `Dispose` that was already in flight (dropped) | every operation with `ClosedError` |
 | `failed` | `shutdown()` (transitions to `closed` without a worker round trip) | every operation with `WorkerTerminatedError(kind)` |
 
 Transitions, exhaustively: `initializing → ready` (health check passed), `initializing → failed` (library load, identity mismatch, or symbol lookup failed — the failure cause is attached), `ready → closing` (`shutdown()`), `ready → failed` (worker terminated unexpectedly), `closing → closed` (worker acknowledged shutdown and exited, **or** the shutdown grace period elapsed), `closing → failed` (the worker died during shutdown; handles may not have been disposed, and the session says so), `failed → closed` (`shutdown()` after a failure, which only tears down the Dart side). There is no transition out of `closed`; recovery is a new `WalletCore.initialize()`.
@@ -388,7 +388,7 @@ member** (section 3.10).
 Binding on **T1.11**, **T2.1** (state machine), and **T2.12** (fault tests). The residual worker-versus-pool question
 stays with DECISION-3 at D2; adopting this record does not pre-judge it.
 
-Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published. **Ratified by the owner 2026-10-12 (D1), as built; the sentence above states the position on 2026-09-07.**
 
 Read before ratifying: section 3.2 (the secret-bearing payloads — eight since the amendment of 2026-10-03) and section 3.5 (why no dispose deadline exists). Section 3.4's
 reserved control capacity is the implementer's number, not a fixed part of this record.

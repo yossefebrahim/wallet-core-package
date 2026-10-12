@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Question** | PRD §11.4: where is the signing protobuf, with its private key, assembled — in Dart (Approach A), in a thin native adapter (Approach B), or A now and B later behind the same `Signer`? |
 | **This document** | Evidence for one side of that question: Approach A as it was built for the EVM family in T1.12a/T1.12b, measured from the code and the host-library tests. Approach B's evidence is T1.13's. |
-| **Status** | **Evidence only.** DECISION-1 is the owner's to decide at M0 exit; nothing here decides it. |
+| **Status** | **Evidence only.** The decision is [`DECISION-1.md`](DECISION-1.md) ("A now, B later", owner, 2026-10-12); nothing here decides it. |
 | **Pinned upstream** | tag `4.8.0`, commit `d692ac27749d0c615e17c751b70ab4f0aa75c59b`; host library `third_party/wcf-native/macos/arm64_x86_64/libTrustWalletCore.dylib` (artifact set `as_4.8.0_000`, built locally) |
 | **Date** | 2026-10-02; revised the same day after two reviews (T1.12 delta 1): the key field is now **prepended**, not appended (§1, §5) |
 
@@ -47,7 +47,7 @@ Counted from the code, for one `wc.signer.sign(request, {KeyLocator.hdPath(...)}
 
 **Copies of the key on the Dart heap: 0.**
 **Dart-allocated native buffers holding the key: 1.**
-**Native objects holding the key that this SDK causes to exist: 3.**
+**Native objects holding the key that this SDK causes to exist: 3** (upstream's #1, #2 and #4; counting the SDK-allocated staging buffer #3 as a fourth native allocation gives the "4 native objects" of `DECISION-1-approach-b.md` §2.1 — the same four rows, framed two ways).
 
 | # | Where the key is | Created by | Lifetime | What becomes of it |
 |---|---|---|---|---|
@@ -63,13 +63,13 @@ The tag-and-length header holds the key's *length*, not its bytes. The key-less 
 
 ### 2.1 What cannot be overwritten by this SDK
 
-- **Copies upstream makes while signing.** `TWAnySignerSign` passes the input by reference into `TW::anyCoinSign`, which hands it to upstream's Rust EVM signer; whatever that path copies, decodes, or derives (its own `Data`, its protobuf parse, its private-key value) is upstream's to wipe or not. Not reachable from Dart, not verified here.
+- **Copies upstream makes while signing.** `TWAnySignerSign` passes the input by reference into `TW::anyCoinSign`, which hands it to upstream's Rust EVM signer. **Verified at the pinned commit (D1, 2026-10-12): the Rust copy of the keyed input is freed without being overwritten.** Ethereum's `Entry` is a `RustCoinEntry` (`src/Ethereum/Entry.h:13`, `src/rust/RustCoinEntry.h:17`, `:30`); its `sign` copies the whole keyed input into a Rust `TWData` with `tw_data_create_with_bytes` (`src/rust/RustCoinEntry.cpp:98-100`); that `TWData` is a `Vec<u8>` filled by `to_vec()` (`rust/tw_memory/src/ffi/tw_data.rs:14`, `:23-24`) and `tw_data_delete` frees it by dropping the owner (`:75-78`), with no `Drop` implementation for `TWData` and no memory-wiping call (`memzero`, a wiping crate, a fill with zeros) anywhere in `rust/tw_memory/src`. This holds under Approach B alike (DECISION-1 §1.3). What the Rust signer copies beyond that (its protobuf parse, its private-key value) was not traced; it is upstream's to wipe or not, and not reachable from Dart.
 - **Copies upstream makes while deriving.** `TWHDWalletGetKey` derives through trezor-crypto's HD node; its intermediates are upstream's.
 - **The wallet's seed.** It lives in the `TWHDWallet` for as long as the wallet is open, not per operation; `Wallet.close()` and `shutdown()` release it.
 - **A process killed mid-operation.** #1–#4 stay as they were. A native finalizer runs only in a live process.
 - **Anything the caller put on the Dart heap.** The mnemonic a caller imported is a `String` (PRD §11.3).
 
-These are limits, stated as such; this document makes no claim about upstream's internal handling beyond the two lines of source cited in the table.
+These are limits, stated as such; this document makes no claim about upstream's internal handling beyond the lines of source cited in the table and in the first item above.
 
 ## 3. Native calls involved
 

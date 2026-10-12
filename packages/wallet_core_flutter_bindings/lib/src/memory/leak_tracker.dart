@@ -153,9 +153,11 @@ final class LeakReport {
 /// along with the records and the report (PRD §16 S8, threat model TM-30). That
 /// is the mechanism: not a `kDebugMode` check that a reader has to trust, but
 /// an unreachable constructor. The release-mode proof — a compiled program
-/// showing [maybeCreate] returns `null` — belongs to **T1.17**, which owns the
-/// release-mode CI gate; the tests in this package run under `dart test`, where
-/// assertions are on, and prove the debug-mode behaviour.
+/// showing [maybeCreate] returns `null` — is
+/// `test/memory/leak_tracker_release_aot_test.dart` (tag `aot`), which compiles
+/// `test/support/leak_tracker_release_probe_main.dart` ahead of time and runs
+/// it; the other tests in this package run under `dart test`, where assertions
+/// are on, and prove the debug-mode behaviour.
 ///
 /// **What it observes, and what it cannot.** Creation and disposal are exact:
 /// they are reported by [NativeResource] itself through the [ResourceObserver]

@@ -2,7 +2,7 @@
 
 Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
 
-Describes the SDK as of task T1.12 (EVM signing).
+Describes the SDK as of `0d7e274`: the EVM signing path of task T1.12, with the Phase 1 changes up to T1.R2b.
 
 This page covers how objects are created, released and failed. What happens to secrets in memory is on the [Memory Contract](memory_contract.md) page. Paths are relative to the repository root.
 
@@ -123,6 +123,8 @@ In every case no session is handed out. The session moves to `failed`, fails any
   - `EngineRequestHandler.discard` releases a wallet the operation created.
   - A key-less `Failed(OperationTimeoutError)` is posted in its place.
   - A late exported mnemonic is never posted.
+
+**No public cancellation exists in this version.** The only `Cancel` the session posts is the one above, on a deadline (`WalletCoreSession._expire`); `WalletCoreSession.cancel` is internal and nothing public calls it, so `OperationCancelledError`, although exported, cannot be raised for an app today. A public cancel-before-start arrives with the worker isolate, T2.1 (DECISION-12 §3.5, "Recorded for T2.1"). Until then an app cannot withdraw a queued operation except by letting its deadline pass or by calling `shutdown()`.
 
 **The session's backstop.** A reply that arrives after the caller's future has completed is dropped (`WalletCoreSession._onReply`). If it is a `WalletCreated`, the session posts a `DisposeRef` for that wallet while `ready` (`WalletCoreSession._discardLate`).
 

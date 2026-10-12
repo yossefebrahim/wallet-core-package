@@ -7,7 +7,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Question** | Where does this project's native libraries come from, given that PRD §12.3 requires every artifact set to carry a build-identity symbol `wcf_build_info()` that upstream does not provide? |
 | **Governing PRD sections** | §12.1–12.4, §15.3, §22 DECISION-9 and DECISION-14 |
 | **Evidence** | [`evidence/release-assets-4.8.0.md`](evidence/release-assets-4.8.0.md) (T0.5, 2026-09-07), built on `evidence/prefetch-2026-09-07/` |
-| **Status** | **Recorded 2026-09-07 - Option C adopted** (section 7). Recommended by T0.5, adjudicated at D0, contested there, and decided against that contest for the reasons stated. DECISION-14 (distribution contract) depends on this; DECISION-2 (packaging mechanism) consumes finding F2. |
+| **Status** | **Recorded 2026-09-07 - Option C adopted** (section 7). Recommended by T0.5, adjudicated at D0, contested there, and decided against that contest for the reasons stated. DECISION-14 (distribution contract) depends on this; DECISION-2 (packaging mechanism) consumes finding F2. **Ratified by the owner 2026-10-12 (D1), as built, including the 2026-10-04 addendum of §7.** |
 | **Recommendation** | **Option C**, in the specific shape of §5 below: relink upstream's release-asset static archives on Apple platforms, build from source in CI on Android, one identity symbol linked into both. |
 
 ---
@@ -178,8 +178,8 @@ built, this decision loses its safety net and B-only becomes the right answer.
 finding in T1.2 that the relinked Apple artifacts differ observably from a from-source build. Either turns section 4
 step 3 from a schedule into a defect.
 
-Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published. **Ratified by the owner 2026-10-12 (D1), as built; the sentence above states the position on 2026-09-07.**
 
-### Addendum 2026-10-04 (orchestrator; awaiting ratification)
+### Addendum 2026-10-04 (orchestrator; ratified by the owner 2026-10-12)
 
 See DECISION-14 §10 items b–e for Android build-time facts. Option C's Android half has now been exercised end-to-end up to the export gate (run 37158147404: 464/464 TW* exported + `wcf_build_info`), while the publish half is unexecuted (billing).

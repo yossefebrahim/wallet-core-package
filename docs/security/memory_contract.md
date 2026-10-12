@@ -2,7 +2,7 @@
 
 Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
 
-Describes the SDK as of task T1.12 (EVM signing).
+Describes the SDK as of `0d7e274`: the EVM signing path of task T1.12, with the Phase 1 changes up to T1.R2b (the owner's DECISION-1, 2026-10-12, keeps Approach A: `docs/decisions/DECISION-1.md`).
 
 This page lists where the SDK puts secrets (mnemonics, passphrases, entropy, private keys), which copies are overwritten and by whom, and which are not. It describes behaviour and its limits. It does not promise any security property.
 
@@ -196,6 +196,7 @@ The only other callers are the wrappers themselves: `ResourceScope`'s `data`/`st
 - Copies the caller made, and platform keyboard or clipboard buffers.
 - Copies the Dart garbage collector made while moving objects.
 - Upstream's internal copies: those marked "no one" or "not verified" above, and any copy not traced here.
+- **Upstream's Rust copy of the keyed input (row 6), verified.** At the pinned commit `RustCoinEntry::sign` copies the whole keyed input into a Rust `TWData` (`third_party/wallet-core/src/rust/RustCoinEntry.cpp:98-100`); that `TWData` is a `Vec<u8>` (`third_party/wallet-core/rust/tw_memory/src/ffi/tw_data.rs:14`, `:23-24`), `tw_data_delete` frees it by dropping it (`:75-78`), it has no `Drop` implementation, and nothing under `third_party/wallet-core/rust/tw_memory/src` overwrites memory. A copy of the key-carrying input is therefore freed unwiped on every signing operation. This does not depend on how the SDK assembles the input: a native adapter in place of the Dart assembly (Approach B) would leave it unchanged (`docs/decisions/DECISION-1.md` §1.3). What the Rust signer copies beyond it (rows 7 and 8) is not verified.
 - Memory beyond a native buffer's current size, and buffers upstream reallocated.
 - Memory swapped to disk or captured in a crash dump, and anything left behind when the process is killed.
 
@@ -207,7 +208,7 @@ It is constructed only inside an `assert` in `LeakTracker.maybeCreate`. In a rel
 
 This page does not claim that the compiler removes the class from release builds:
 
-- The `LeakTracker` doc assigns the release-mode proof to T1.17.
+- The release-mode proof is a test, not a compiler claim: `packages/wallet_core_flutter_bindings/test/memory/leak_tracker_release_aot_test.dart` (tag `aot`) compiles a small program ahead of time with assertions off and asserts that `LeakTracker.maybeCreate()` returns `null`; a control compiled with `--enable-asserts` must report the tracker built.
 - Code outside the assert still names the type: `observer is LeakTracker` in `EngineRequestHandler._shutdown` and in `debugLeakReportOf` (`packages/wallet_core_flutter/lib/src/session/testing.dart`).
 
 ## Not verified
@@ -216,5 +217,5 @@ This page does not claim that the compiler removes the class from release builds
 - **`k256` `SigningKey`:** whether the external crate behind the Rust `PrivateKey` overwrites its scalar on drop (row 8). The crate is not in this repository.
 - **Deeper upstream derivation:** key derivation below `HDWallet::getKeyByCurve` (trezor-crypto) was not traced.
 - **Dart runtime internals:** whether `utf8.encode` and `utf8.decode` allocate intermediate buffers.
-- **Release-build tree-shaking of `LeakTracker`:** left to T1.17.
+- **Release-build tree-shaking of `LeakTracker`:** not claimed and not tested. The AOT test above shows only that no tracker is constructed.
 - **Phase 2 transport:** that a worker-isolate transport (T2.1) will honour the `WorkerTransport.send` copy-and-overwrite contract. It is not written yet.

@@ -25,7 +25,7 @@ Details, the step-by-step Runner-target edit and the offline/vendored build opti
 <!-- memory-contract -->
 ### Memory and Lifecycle
 
-Two pages describe how the SDK behaves as of task T1.12 (EVM signing):
+Two pages describe how the SDK behaves as of `0d7e274` (the EVM signing path, with the Phase 1 changes up to T1.R2b):
 
 - [Memory Contract](docs/security/memory_contract.md): where mnemonics, passphrases, entropy and private keys exist in memory, including during signing. It says which copies this SDK overwrites, which upstream overwrites, and which nobody overwrites as far as the sources show. The default API never returns private-key bytes.
 - [Lifecycle](docs/security/lifecycle.md): proxies and internal handles, finalizers, session states, the errors `initialize()` can throw, scopes, deadlines, failures and shutdown.

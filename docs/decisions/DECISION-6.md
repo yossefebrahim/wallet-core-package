@@ -5,8 +5,8 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | | |
 |---|---|
 | **Question** | What are the minimum Flutter and Dart SDK versions required by this package? |
-| **Status** | **Decided by the owner 2026-10-05** |
-| **Evidence** | [`eval/option1` evidence](evidence/DECISION-2-option1.md) |
+| **Status** | **Decided by the owner 2026-10-05; ratified as built by the owner 2026-10-12 (D1).** All four `pubspec.yaml`s and the CI Flutter pin carry 3.47.5 / Dart 3.13.4, the only measured version. A second Flutter version is a pre-alpha gate (DECISION-2 §2). |
+| **Evidence** | [`eval/option1` evidence](DECISION-2-option1.md) |
 
 ## 1. Decision and Bounds
 

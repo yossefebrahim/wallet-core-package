@@ -38,6 +38,8 @@ Plan additions: DECISION-6 (minimum Flutter/Dart versions) and DECISION-14 (dist
 | D1a | Checkpoint debate: DECISION-2, DECISION-6, DECISION-14 | codex | — | T1.8, T1.9, T1.2 | none | read-only |
 | D1 | Phase-1 debate: DECISION-1, M0 exit criteria, §11.2 and §14.3 audit | codex | — | all | none | read-only |
 
+Note on T1.17: its device tests live in `example/integration_test/` (the M0 flow and, since T1.R2b, `m0_exit_clauses_test.dart`), not in the package-level `packages/wallet_core_flutter/integration_test/` named above, which was never created.
+
 ## Task notes
 
 **T1.1 — Upstream pin and fetch.** `tools/upstream/fetch.dart` reads `upstream.tag` from the manifest, downloads the source archive for the tag (or accepts `--from <path>` when pre-fetched), resolves the commit sha and writes it to `upstream.commit` (or verifies it if already set), extracts to `third_party/wallet-core/`, computes deterministic hashes for `include/TrustWalletCore/`, `src/proto/`, and `registry.json` into `schemas.*`, and copies the upstream NOTICE/LICENSE text into `THIRD_PARTY_NOTICES.md`. Script `melos run upstream:fetch`. Acceptance: idempotent; `manifest:validate` green; hashes stable across two runs.
@@ -102,7 +104,7 @@ Critical path: T1.1 → T1.3 → T1.6 → T1.11 → T1.12 → T1.16 → T1.17 �
 
 - **Agreed points:** each M0 exit criterion with evidence (test names, device results, example app, consumer-check log from packaged dependencies, identity-mismatch negative test, decision docs).
 - **Contested points:** DECISION-1: Approach A vs B vs "A now, B later" using T1.12 copy counts, T1.13 effort and generalization notes, and T1.14 coverage; ratification of DECISION-2, DECISION-6, DECISION-14.
-- **Questions:** For each item 1–8 of PRD §11.2, satisfied / not / unprovable, citing `packages/*_bindings/lib/src/memory/` and the proxy `Finalizer` in the SDK. Can any public object free a native pointer synchronously? Does `close()` during an in-flight operation behave as §14.3 says? Is the key-field check applied before every injection? Is any validation (S5) missing before a native call? Is any generated file hand-edited? Does the public export leak any forbidden type, including the generated `CoinType`? Spot-check two vectors' provenance against the pinned commit. Does the README or any doc use a forbidden word?
+- **Questions:** For each item 1–8 of PRD §11.2, satisfied / not / unprovable, citing `packages/*_bindings/lib/src/memory/` and the proxy `Finalizer` in the SDK. Can any public object free a native pointer synchronously? Does `close()` during an in-flight operation behave as §14.3 says? Is the key-field check applied before every injection? Is any validation (S5) missing before a native call? Is any generated file hand-edited? Does the public export leak any forbidden type, including the generated `CoinType`? Spot-check two vectors' provenance against the pinned commit. Does the README or any doc use a forbidden word? **Mandatory (PRD §16 S6):** which threat-model rows (`docs/security/threat_model.md`) changed owner or residual risk this phase, and is the threat model updated? The edits land as `T<n>.R` rework before the tag.
 
 ## D0 follow-ups binding on Phase 1 (added 2026-09-07)
 

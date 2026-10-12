@@ -5,7 +5,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | | |
 |---|---|
 | **Question** | How should the native library be packaged and distributed to consumer applications? |
-| **Status** | **Decided by the owner 2026-10-05 at D1a; provisional condition met 2026-10-11 — T1.16b's networked, hosted fetch passed (`f5bc961`, merge `9205d93`)** |
+| **Status** | **Final — ratified by the owner 2026-10-12 (D1).** Decided by the owner 2026-10-05 at D1a; the provisional condition was met 2026-10-11 (T1.16b's networked, hosted fetch passed, `f5bc961`, merge `9205d93`); made final as built at D1. The pre-alpha gates of §2 remain open. |
 | **Evidence** | [`eval/option1` evidence](DECISION-2-option1.md) (from eval/option1 3ba7826), [`eval/option2` evidence](DECISION-2-option2.md) (from eval/option2 de63ff5), [`D1a Opus debate`](../plan/reviews/D1a-opus-debate.md), [`D1a Codex debate`](../plan/reviews/D1a-codex-debate.md) |
 
 ## 1. Positions and Data
@@ -31,8 +31,18 @@ Conditions:
 - Keep the build-time refusal of unshipped ABIs.
 - Document the consumer iOS privacy-manifest step (must be verified on a signed archive before the alpha).
 - Keep `eval/option2` unmerged as a fallback.
-- The decision is provisional until T1.16b's networked, hosted fetch passes. **Met 2026-10-11:** `tools/consumer_check.sh` built a fresh consumer with the three packages as hosted dependencies; the build hook fetched both Android libraries from release `native-4.8.0-001` and their sha256 matched the manifest; the M0 flow passed on the Android emulator (debug and release) and the iOS simulator (debug).
-- Publish release tag `native-4.8.0-001` now.
+- Provisional until T1.16b's networked, hosted fetch passed. **Met 2026-10-11:** `tools/consumer_check.sh` built a fresh consumer with the three packages as hosted dependencies; the build hook fetched both Android libraries from release `native-4.8.0-001` and their sha256 matched the manifest; the M0 flow passed on the Android emulator (debug and release) and the iOS simulator (debug).
+- Publish release tag `native-4.8.0-001`. **Done 2026-10-05** (DECISION-14 §10 h).
+
+That consumer flow (`tools/consumer_check.sh:414-453`) checked the derived address, the invalid mnemonic and a non-empty signed result; it did not compare the signed bytes with the vector. The M0 exit clauses are asserted on a device or simulator since T1.R2b (`example/integration_test/m0_exit_clauses_test.dart`).
+
+**Pre-alpha gates (owner, 2026-10-12).** Not Phase-1 gates; each must be met, or waived by the owner in `docs/plan/PROGRESS.md`, before the first alpha:
+
+1. A signed App Store Connect archive of a consumer app is validated (this is the check the privacy-manifest condition above names).
+2. An Android App Bundle (AAB) build of a consumer app, with the result recorded (`packages/wallet_core_flutter_native/README.md:56` gives the command; no result is recorded).
+3. A second Flutter version, beyond 3.47.5, builds and runs the consumer flow (DECISION-6 §3).
+
+Separately, for `phase-1-closed`: one physical iPhone run, debug and release (owner action); physical Android is waived, with a re-check before the first publish (`docs/plan/PROGRESS.md` → "D1 (2026-10-12)").
 
 ## 3. Measured Facts that Drove It
 
