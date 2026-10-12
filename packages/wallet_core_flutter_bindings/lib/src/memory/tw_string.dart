@@ -41,9 +41,24 @@ final class TWStringHandle extends NativeResource {
   /// `package:ffi` and freed in a `finally`, so an exception cannot leak it
   /// (PRD §11.2 item 4).
   ///
+  /// Throws [ArgumentError] if [value] contains a U+0000 or an unpaired UTF-16
+  /// surrogate: upstream reads a NUL-terminated buffer, so the first would
+  /// silently cut the text short and the second has no UTF-8 encoding and
+  /// would become U+FFFD — either way a *different* string, and for a
+  /// passphrase a different wallet. The message never quotes [value].
+  ///
   /// Throws [RangeError] if the UTF-8 encoding of [value] is longer than
   /// [maxNativeBufferBytes].
   factory TWStringHandle.fromString(NativeContext context, String value) {
+    if (!_isNativeSafeString(value)) {
+      throw ArgumentError.value(
+        null,
+        'value',
+        'TWStringHandle.fromString: the string contains a NUL character or an '
+            'unpaired UTF-16 surrogate, which cannot reach native code '
+            'unchanged',
+      );
+    }
     final encoded = utf8.encode(value);
     final size = checkNativeLength(
       encoded.length,
@@ -154,6 +169,32 @@ final class TWStringHandle extends NativeResource {
     if (isDisposed) return 'TWStringHandle(disposed: true)';
     return 'TWStringHandle(length: $length, disposed: false)';
   }
+}
+
+/// Whether [value] reaches native code exactly as written: it holds no U+0000
+/// and no unpaired UTF-16 surrogate.
+///
+/// The same predicate as `isNativeSafeString` in the SDK package's
+/// `lib/src/core/input_checks.dart`, which cannot import this one (the
+/// bindings' public barrel does not export it). The two are kept in step by
+/// `test/core/native_safe_string_agreement_native_test.dart` in that package,
+/// which feeds one table of inputs to both.
+bool _isNativeSafeString(String value) {
+  for (var i = 0; i < value.length; i++) {
+    final unit = value.codeUnitAt(i);
+    if (unit == 0) return false;
+    if (unit >= 0xD800 && unit <= 0xDBFF) {
+      // A high surrogate must be followed by a low one.
+      if (i + 1 >= value.length) return false;
+      final next = value.codeUnitAt(i + 1);
+      if (next < 0xDC00 || next > 0xDFFF) return false;
+      i++;
+    } else if (unit >= 0xDC00 && unit <= 0xDFFF) {
+      // A low surrogate with no high one before it.
+      return false;
+    }
+  }
+  return true;
 }
 
 /// Copies [value] into a `TWString`, runs [body] on it, and disposes it on the

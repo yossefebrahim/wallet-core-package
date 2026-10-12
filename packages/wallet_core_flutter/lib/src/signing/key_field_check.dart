@@ -16,8 +16,8 @@ import '../families/family.dart';
 import '../requests/requests.dart';
 import 'sign_result.dart';
 
-/// Throws [InvalidInputError] (`inputName: 'signingInput'`) unless
-/// [keylessInput] decodes as [family]'s signing input and carries none of the
+/// Throws [InvalidInputError] (`inputName: 'signingInput'`) when
+/// [keylessInput] is empty, and unless it decodes as [family]'s signing input and carries none of the
 /// fields in its reviewed key-field list, at any depth.
 ///
 /// A key field present means the family encoder — or whoever produced the
@@ -47,6 +47,15 @@ void checkKeylessInput(
   Uint8List keylessInput,
   TransactionFamily<TransactionRequest, SignResult> family,
 ) {
+  if (keylessInput.isEmpty) {
+    // Zero bytes decode as a valid, empty message, but injection needs one
+    // *complete* message and a family encoder never writes nothing.
+    throw InvalidInputError(
+      'the key-less signing input is empty; it must be a serialized '
+      '${family.signingInputMessage}',
+      inputName: 'signingInput',
+    );
+  }
   final GeneratedMessage message;
   try {
     message = family.decodeSigningInput(keylessInput);

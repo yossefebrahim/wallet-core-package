@@ -19,6 +19,7 @@ import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
 import 'package:wcf_tool_vectors/inventory.dart';
 
 import '../support/fixtures.dart';
+import '../support/gc_pressure.dart';
 import '../support/host_library.dart';
 
 /// The host library's identity: `tools/native_build/build_apple.sh` at the
@@ -39,17 +40,6 @@ Matcher _invalid(String inputName) => throwsA(
 /// that nothing in the caller's frame keeps the proxy reachable.
 Future<void> _createAndDrop(WalletCore core) async {
   await core.wallets.create();
-}
-
-Object? _garbageSink;
-
-/// Allocates a few megabytes nobody keeps, to give the collector a reason to
-/// run.
-void _makeGarbage() {
-  for (var i = 0; i < 32; i++) {
-    _garbageSink = Uint8List(1 << 16)..[0] = i;
-  }
-  if (_garbageSink != null) _garbageSink = null;
 }
 
 void main() {
@@ -374,41 +364,32 @@ void main() {
       });
     });
 
-    test(
-      'a dropped proxy is released by its finalizer while the session is '
-      'ready (best effort: skips when the collector does not run in time)',
-      () async {
-        final core = await start();
-        await _createAndDrop(core);
-        expect(debugHandlerOf(core).liveRefCount, 1);
-        const budget = Duration(seconds: 5);
-        final deadline = DateTime.now().add(budget);
-        while (debugHandlerOf(core).liveRefCount > 0 &&
-            DateTime.now().isBefore(deadline)) {
-          _makeGarbage();
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-        }
-        final released = debugHandlerOf(core).liveRefCount == 0;
-        if (released) {
-          final report = debugLeakReportOf(core)!;
-          expect(report.live, 0, reason: '$report');
-          expect(
-            report.finalizedWithoutDispose,
-            0,
-            reason: 'the proxy finalizer disposed it; nothing was leaked',
-          );
-        }
-        await core.shutdown();
-        if (!released) {
-          // Never a failure: a managed Finalizer runs "as early as possible"
-          // after unreachability and nothing in Dart can force a collection
-          // (PRD §11.1 [VERIFIED]); shutdown released the wallet instead.
-          markTestSkipped(
-            'the collector did not run within ${budget.inSeconds}s; the '
-            'finalizer path could not be observed.',
-          );
-        }
-      },
-    );
+    test('a dropped proxy is released by its finalizer while the session is '
+        'ready', () async {
+      final core = await start();
+      await _createAndDrop(core);
+      expect(debugHandlerOf(core).liveRefCount, 1);
+
+      // Retained-then-dropped multi-MB buffers make the collector run
+      // (`../support/gc_pressure.dart`); running out of budget is a failure,
+      // because the finalizer path is the thing under test.
+      final released = await pumpUntil(
+        () => debugHandlerOf(core).liveRefCount == 0,
+      );
+      expect(
+        released,
+        isTrue,
+        reason: 'the proxy finalizer did not release the wallet in time',
+      );
+
+      final report = debugLeakReportOf(core)!;
+      expect(report.live, 0, reason: '$report');
+      expect(
+        report.finalizedWithoutDispose,
+        0,
+        reason: 'the proxy finalizer disposed it; nothing was leaked',
+      );
+      await core.shutdown();
+    });
   });
 }

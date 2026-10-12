@@ -4,11 +4,11 @@
 /// Two of the three things the tracker reports are exact and are asserted here:
 /// creation and disposal, which `NativeResource` tells it about. The third —
 /// collection without disposal — depends on when the garbage collector runs,
-/// which Dart gives no way to force, so the test for it is **best effort**: it
-/// allocates, drops every reference, and makes garbage until either the count
-/// moves or a time budget expires, and it **skips** rather than fails when the
-/// collector did not run in time. A test that cannot observe what it claims
-/// says so; it never asserts on a coin flip.
+/// which Dart gives no way to force, so the test for it is **time-bounded**: it
+/// allocates, drops every reference, and applies garbage-collector pressure
+/// (`../support/gc_pressure.dart`) until the count moves or a generous budget
+/// expires, and it **fails** when the budget expires: a collection that never
+/// comes is the thing under test, not a reason to pass.
 ///
 /// The `maybeCreate` test at the bottom runs whether or not the library is
 /// present: it is about the release-mode mechanism, not about native memory.
@@ -22,6 +22,7 @@ import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:wallet_core_flutter_bindings/wallet_core_flutter_bindings.dart';
 
+import '../support/gc_pressure.dart';
 import '../support/host_library.dart';
 import '../support/observers.dart';
 
@@ -45,23 +46,6 @@ void _allocateUndisposed(NativeContext context, int count) {
   for (var i = 0; i < count; i++) {
     TWDataHandle.fromBytes(context, _secretBytes);
   }
-}
-
-/// Where the garbage below is parked for an instant.
-///
-/// A static field, so the allocations escape and the compiler cannot decide
-/// they never happened.
-Object? _garbageSink;
-
-/// Allocates a couple of megabytes nobody keeps, to give the collector a reason
-/// to run.
-void _makeGarbage() {
-  for (var i = 0; i < 32; i++) {
-    _garbageSink = Uint8List(1 << 16)..[0] = i;
-  }
-  // Read, then dropped: a field only ever written to is one the compiler may
-  // remove along with the allocations that fed it.
-  if (_garbageSink != null) _garbageSink = null;
 }
 
 void main() {
@@ -182,38 +166,29 @@ void main() {
     });
 
     test(
-      'item 7 — a handle collected without dispose() is reported as a leak '
-      '(best effort: skips when the collector does not run in time)',
+      'item 7 — a handle collected without dispose() is reported as a leak',
       () async {
-        const budget = Duration(seconds: 5);
         const handles = 64;
 
         _allocateUndisposed(context, handles);
         expect(tracker.report.live, handles);
 
-        final deadline = DateTime.now().add(budget);
-        var report = tracker.report;
-        while (report.finalizedWithoutDispose == 0 &&
-            DateTime.now().isBefore(deadline)) {
-          _makeGarbage();
-          // A managed Finalizer's callback runs on the event loop, so the
-          // count cannot move without yielding to it.
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-          report = tracker.report;
-        }
-
-        if (report.finalizedWithoutDispose == 0) {
-          // Never a failure: `NativeFinalizer` and `Finalizer` run "as early as
-          // possible" after unreachability and are guaranteed only at
-          // isolate-group shutdown (PRD §11.1 [VERIFIED]). Nothing in Dart can
-          // force a collection, so not observing one proves nothing.
-          markTestSkipped(
-            'the collector did not run within ${budget.inSeconds}s, so the '
-            'finalized-without-dispose path could not be observed. This is a '
-            'timing limitation of the runtime, not a failure of the tracker.',
-          );
-          return;
-        }
+        // A managed Finalizer's callback runs on the event loop, so the count
+        // cannot move without yielding to it. Retained-then-dropped multi-MB
+        // buffers (`../support/gc_pressure.dart`) make the collector run; the
+        // budget running out is a failure, because the tracker's
+        // finalized-without-dispose path is the thing under test.
+        final observed = await pumpUntil(
+          () => tracker.report.finalizedWithoutDispose > 0,
+        );
+        expect(
+          observed,
+          isTrue,
+          reason:
+              'no handle was reported as finalized without dispose within the '
+              'budget: ${tracker.report}',
+        );
+        final report = tracker.report;
 
         expect(report.finalizedWithoutDispose, lessThanOrEqualTo(handles));
         expect(report.leaks, hasLength(report.finalizedWithoutDispose));
@@ -247,8 +222,8 @@ void main() {
     // assert in `maybeCreate` happens and this is non-null. In a release build
     // the assert — and with it the only reachable call to the private
     // constructor — is removed, `maybeCreate` returns null, and the class is
-    // tree-shaken. Proving *that* needs a compiled release-mode program and
-    // belongs to T1.17, which owns the release-mode CI gate.
+    // tree-shaken. Proving *that* needs a compiled release-mode program, which
+    // `leak_tracker_release_aot_test.dart` builds and runs.
     var assertionsEnabled = false;
     assert(() {
       assertionsEnabled = true;

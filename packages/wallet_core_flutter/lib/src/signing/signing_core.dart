@@ -45,7 +45,9 @@ abstract interface class SigningCore {
   ///
   /// Throws [InvalidInputError] when [coin] is not in [family]'s chain family
   /// (`inputName: 'coin'`) or when [keylessInput] fails the key-field check
-  /// (`inputName: 'signingInput'`) — both before the key is read;
+  /// (`inputName: 'signingInput'`) — both before the key is read — or when the
+  /// keyed input (key field and key-less bytes together) is longer than one
+  /// native buffer may be (`inputName: 'signingInput'`);
   /// [UnsupportedOperationError] for a coin upstream removed; and
   /// [SigningError] for upstream's failure or an output that cannot be
   /// accepted.
@@ -175,10 +177,18 @@ final class SyncSigningCore implements SigningCore {
     TWDataHandle? input;
     TWDataHandle? output;
     try {
-      input = secretDataFromParts(
-        context,
-        keyedInputParts(keylessInput, field, privateKey),
-      );
+      final parts = keyedInputParts(keylessInput, field, privateKey);
+      try {
+        input = secretDataFromParts(context, parts);
+      } on RangeError {
+        // The keyed input is longer than one native buffer may be: the
+        // input's size, never a defect of this SDK, so it is reported as the
+        // input's fault and cannot end the session. No length, no content.
+        throw const InvalidInputError(
+          'the keyed signing input is longer than one native buffer allows',
+          inputName: 'signingInput',
+        );
+      }
       final pointer = _anySignerSign(input.pointer, coinType);
       if (pointer == nullptr) {
         throw const SigningError(

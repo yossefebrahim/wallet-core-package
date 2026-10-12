@@ -85,6 +85,9 @@ final class PrivateKeyHandle extends NativeResource {
 }
 
 /// Owns one upstream `TWPublicKey` and frees it with `TWPublicKeyDelete`.
+///
+/// **`dispose()` is the primary cleanup path**; the native finalizer is a
+/// safety net for a handle a caller forgot (PRD §11.2 item 1).
 final class PublicKeyHandle extends NativeResource {
   PublicKeyHandle._(NativeContext context, Pointer<TWPublicKey> pointer)
     : super(
@@ -109,6 +112,9 @@ final class PublicKeyHandle extends NativeResource {
 }
 
 /// Owns one upstream `TWAnyAddress` and frees it with `TWAnyAddressDelete`.
+///
+/// **`dispose()` is the primary cleanup path**; the native finalizer is a
+/// safety net for a handle a caller forgot (PRD §11.2 item 1).
 final class AnyAddressHandle extends NativeResource {
   AnyAddressHandle._(NativeContext context, Pointer<TWAnyAddress> pointer)
     : super(

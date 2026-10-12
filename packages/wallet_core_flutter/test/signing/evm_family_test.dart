@@ -287,6 +287,22 @@ void main() {
       );
     });
 
+    test('rejects a zero-byte input: no complete message to inject into', () {
+      // Zero bytes decode as an empty message; the check refuses them anyway,
+      // since a family encoder never writes nothing (D1-B C10).
+      expect(() => checkKeylessInput(Uint8List(0), evmFamily), _tampered());
+      expect(
+        () => checkKeylessInput(Uint8List(0), evmFamily),
+        throwsA(
+          isA<InvalidInputError>().having(
+            (e) => e.message,
+            'message',
+            contains('empty'),
+          ),
+        ),
+      );
+    });
+
     test('walks nested messages', () {
       // A list naming a field one message down, to prove the walk recurses:
       // Transaction.Transfer.amount is set in every encoded transfer.
