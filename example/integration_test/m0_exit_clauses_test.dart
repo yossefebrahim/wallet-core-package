@@ -113,12 +113,13 @@ void main() {
     expect(result.coin, Coin.ethereum);
     expect(result.usedKeys, usedKeys);
     if (tracker != null) {
-      // The key's TWData copy, the keyed input and the output: all created
-      // and disposed inside the call (the borrowed key handle is the test's).
+      // Four disposals since the snapshot: inside the call, the key's TWData
+      // copy, the keyed input and the output; after it, the test's own key
+      // handle (the core only borrows it, so the `finally` above disposes it).
       expect(tracker.report.live, 0, reason: '${tracker.report}');
       expect(
         tracker.report.disposed - disposedBeforeSign!,
-        3,
+        4,
         reason: '${tracker.report}',
       );
       tracker.stop();
