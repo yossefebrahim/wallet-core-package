@@ -9,6 +9,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Status** | **Evidence only.** The decision is [`DECISION-1.md`](DECISION-1.md) ("A now, B later", owner, 2026-10-12); nothing here decides it. |
 | **Pinned upstream** | tag `4.8.0`, commit `d692ac27749d0c615e17c751b70ab4f0aa75c59b`; host library `third_party/wcf-native/macos/arm64_x86_64/libTrustWalletCore.dylib` (artifact set `as_4.8.0_000`, built locally) |
 | **Date** | 2026-10-02; revised the same day after two reviews (T1.12 delta 1): the key field is now **prepended**, not appended (§1, §5) |
+| **Superseded in part** | **By T2.0 (2026-10-12), see [`docs/architecture/signing.md`](../architecture/signing.md) §6.1.** This document describes the single-key flow as T1.12 built it: `withDerivedKey` handing the core a `Uint8List` view (§1, §1.1, §2, §3 and the line numbers of §4). T2.0 replaced `withDerivedKey` with `withDerivedKeys`, which lends one borrowed `PrivateKeyHandle` per `KeyRole`; the core now reads each key's `TWData` itself and disposes it after the assembly, before `TWAnySignerSign`, and one staging buffer holds all the keys. The counts and the upstream evidence below are otherwise unchanged. |
 
 ---
 

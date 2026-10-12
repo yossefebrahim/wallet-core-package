@@ -2,7 +2,7 @@
 
 Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not affiliated with or endorsed by Trust Wallet.
 
-Describes the SDK as of `0d7e274`: the EVM signing path of task T1.12, with the Phase 1 changes up to T1.R2b (the owner's DECISION-1, 2026-10-12, keeps Approach A: `docs/decisions/DECISION-1.md`).
+Describes the SDK as of `d01a153`: the EVM signing path of task T1.12, with the Phase 1 changes up to T1.R2b (the owner's DECISION-1, 2026-10-12, keeps Approach A: `docs/decisions/DECISION-1.md`) and the signing seam of T2.0, which moved the key read into the signing core (`docs/architecture/signing.md` §6.1).
 
 This page lists where the SDK puts secrets (mnemonics, passphrases, entropy, private keys), which copies are overwritten and by whom, and which are not. It describes behaviour and its limits. It does not promise any security property.
 
@@ -89,7 +89,7 @@ The requests `ValidateMnemonic`, `ValidateMnemonicWord`, and `SuggestMnemonicWor
   - `HDWallet`. None of its members returns a private key: `create`, `fromMnemonic`, `fromEntropy`, `exportMnemonic` (a mnemonic), `deriveAccount` and `dispose`.
   - `NativeResultError`.
   - Everything in the bindings barrel (`packages/wallet_core_flutter_bindings/lib/wallet_core_flutter_bindings.dart`): the generated `WalletCoreBindings`, the memory wrappers and the coin registry.
-- **No function `advanced.dart` provides returns key bytes.** `withDerivedKey` is never exported, not even from `advanced.dart` (`withDerivedKey` doc).
+- **No function `advanced.dart` provides returns key bytes.** `withDerivedKeys` is never exported, not even from `advanced.dart`, which exports only `HDWallet` from `hd_wallet.dart` (`packages/wallet_core_flutter/lib/advanced.dart:51`; `withDerivedKeys` doc, `hd_wallet.dart:313-316`). It makes no `TWPrivateKeyData` call and returns no key bytes: it lends native `PrivateKeyHandle`s (`hd_wallet.dart:324-328`).
 - **A caller of `advanced.dart` can still get key bytes by calling upstream directly.** The generated bindings include `TWHDWalletGetKey` and `TWPrivateKeyData` (`packages/wallet_core_flutter_bindings/lib/src/generated/ffi/wallet_core_bindings.dart`), and `HDWallet` inherits the public `NativeResource.rawPointer`. Anything done that way is outside this contract (`advanced.dart` library doc, statement 3).
 
 ### Deriving an account (`wallet.account(...)`)
@@ -106,26 +106,26 @@ No Dart view or copy of the private key exists on this path.
 
 `SessionSigner.sign` (`packages/wallet_core_flutter/lib/src/signing/local_signer.dart`) sends a `Sign` request. It carries the transaction request and `LocatorSpec`s (names), never a key (`protocol.dart`, `Sign`).
 
-In the executor, `EngineRequestHandler._sign` runs these steps in order, and no key exists before step 5:
+In the executor, `EngineRequestHandler._sign` (`packages/wallet_core_flutter/lib/src/worker/handler.dart:330-363`) runs these steps in order, and no key exists before step 5:
 
-1. Resolve the locators.
-2. Check the path.
-3. Check the recipient.
-4. Encode the input with no key in it, and check that it has no key field.
-5. Derive the key (`withDerivedKey`, `hd_wallet.dart`).
-6. Sign (`SyncSigningCore.sign`, `packages/wallet_core_flutter/lib/src/signing/signing_core.dart`).
+1. Resolve the locators, one per `KeyRole` the family requires (`handler.dart:338`).
+2. Check the path of each (`:342`).
+3. Check the recipient (`:345-348`).
+4. Encode the input with no key in it, and check that it has no key field (`:349-350`).
+5. Derive one key per role (`withDerivedKeys`, `hd_wallet.dart:349-388`, called at `handler.dart:352`). This step creates `TWPrivateKey` objects only. No key bytes are read.
+6. Sign (`SyncSigningCore.sign`, `packages/wallet_core_flutter/lib/src/signing/signing_core.dart:199-247`). The core borrows the handles and reads each key's bytes from its handle only while it assembles the keyed input (`_stage`, `signing_core.dart:252-297`).
 7. Parse the output, release everything, then reply.
 
-Every place the key exists during one call:
+Every place the keys exist during one call, for a signature with `n` keys (`n` is 1 for EVM; one key per `KeyRole` the family requires):
 
 | # | Where the key is | Created by | Released by | Overwritten by |
 |---|---|---|---|---|
-| 1 | Upstream `TWPrivateKey` (C++ `PrivateKey`) | `TWHDWalletGetKey`, in `withDerivedKey` | The SDK: `PrivateKeyHandle`, disposed by `withDerivedKey`'s scope, last | **Upstream**: `~PrivateKey` → `PrivateKey::cleanup` (`third_party/wallet-core/src/PrivateKey.h`, `third_party/wallet-core/src/PrivateKey.cpp`) |
+| 1 | Upstream `TWPrivateKey` (C++ `PrivateKey`), one per role | `TWHDWalletGetKey`, in `withDerivedKeys` (`hd_wallet.dart:373`) | The SDK: each `PrivateKeyHandle` is registered with `withDerivedKeys`'s scope (`:384`) and disposed when the scope closes, last first, after `SyncSigningCore.sign` returned. The core never disposes one (`signing_core.dart:50-54`) | **Upstream**: `~PrivateKey` → `PrivateKey::cleanup` (`third_party/wallet-core/src/PrivateKey.h`, `third_party/wallet-core/src/PrivateKey.cpp`) |
 | 2 | Upstream's derivation temporaries | `HDWallet::getKeyByCurve` (`third_party/wallet-core/src/HDWallet.cpp`) | Upstream, before `TWHDWalletGetKey` returns | The HD node is overwritten by upstream (`TW::memzero(&node)`). **The local `Data data` key copy is released with no overwrite** as far as that function shows. Deeper derivation code (`getNode`, trezor-crypto) was not traced |
-| 3 | Upstream `TWData` holding the key's bytes | `TWPrivateKeyData`, which is `TWDataCreateWithBytes(pk->impl.bytes…)` (`third_party/wallet-core/src/interface/TWPrivateKey.cpp`) | The SDK: `TWDataHandle`, disposed by `withDerivedKey`'s scope before #1 | **Upstream**: `TWDataDelete` |
-| — | Dart `Uint8List` **view** over #3's buffer | `TWDataBytes(…).asTypedList(length)` in `withDerivedKey` | Not a copy. It dangles once #3 is released and is never retained | Nothing to overwrite: no key bytes are on the Dart heap |
-| 4 | `calloc` staging buffer: field header, key, then the key-less input | `secretDataFromParts` (`secret_buffers.dart`), called by `SyncSigningCore.sign` | The SDK, in `secretDataFromParts`'s `finally` | **This SDK**: filled with zeros before `calloc.free`, whether or not `TWDataCreateWithBytes` succeeded |
-| 5 | Keyed-input `TWData` (C++ `Data`) | `TWDataCreateWithBytes`, from #4 | The SDK: `input?.dispose()` in `SyncSigningCore.sign`'s `finally` | **Upstream**: `TWDataDelete` |
+| 3 | Upstream `TWData` holding one key's bytes; `n` of them, alive together | `TWPrivateKeyData`, which is `TWDataCreateWithBytes(pk->impl.bytes…)` (`third_party/wallet-core/src/interface/TWPrivateKey.cpp`), called once per key in `SyncSigningCore._stage` (`signing_core.dart:261`, adopted at `:265`) | The SDK: each `TWDataHandle` is disposed in `_stage`'s `finally` (`signing_core.dart:292-296`) as soon as the assembly is done, on success and on failure, **before `TWAnySignerSign` is called** (`:219-220`). Each lives from its own `TWPrivateKeyData` call to the end of the assembly of all `n` keys, not for the call | **Upstream**: `TWDataDelete` |
+| — | Dart `Uint8List` **view** over #3's buffer, one per key | `TWDataBytes(…).asTypedList(length)` in `_stage` (`signing_core.dart:271-275`) | Not a copy. It dangles once #3 is released and is never retained: the list of views is a local of `_stage` | Nothing to overwrite: no key bytes are on the Dart heap |
+| 4 | One `calloc` staging buffer: `n` × (field header, key), then the key-less input | `secretDataFromParts` (`secret_buffers.dart:116-148`), called by `_stage` (`signing_core.dart:278-282`) with the parts from `keyedInputParts` (`:357-366`) | The SDK, in `secretDataFromParts`'s `finally` (`secret_buffers.dart:144-146`) | **This SDK**: filled with zeros before `allocator.free`, whether or not `TWDataCreateWithBytes` succeeded |
+| 5 | Keyed-input `TWData` (C++ `Data`) | `TWDataCreateWithBytes`, from #4 (`secret_buffers.dart:139`) | The SDK: `input?.dispose()` in `SyncSigningCore.sign`'s `finally` (`signing_core.dart:243-246`) | **Upstream**: `TWDataDelete` |
 | 6 | Rust copy of the keyed input | `RustCoinEntry::sign` calls `tw_data_create_with_bytes`, which copies into a Rust `TWData(Vec<u8>)` (`third_party/wallet-core/src/rust/RustCoinEntry.cpp`; `third_party/wallet-core/rust/tw_memory/src/ffi/tw_data.rs`, `TWData::from_raw_data`) | Upstream: `TWDataWrapper` (`third_party/wallet-core/src/rust/Wrapper.h`) deletes it with `tw_data_delete` when `RustCoinEntry::sign` returns | **No one, as far as the sources show.** `tw_data_delete` only drops the `Vec`, and `TWData` defines no drop behaviour that overwrites it (`tw_data.rs`, `tw_data_delete`, `TWData`) |
 | 7 | The `private_key` field of the decoded Rust `SigningInput` | `tw_proto::deserialize` (`third_party/wallet-core/rust/tw_proto/src/lib.rs`) | Upstream | Not verified: whether the field borrows #6 or copies it |
 | 8 | Rust `secp256k1::PrivateKey` | `Signer::sign_proto_impl` (`third_party/wallet-core/rust/tw_evm/src/modules/signer.rs`) | Upstream, when the value is dropped | Upstream declares an overwrite-on-drop derive on the type (`third_party/wallet-core/rust/tw_keypair/src/ecdsa/secp256k1/private.rs`, `PrivateKey`). What the external `k256` `SigningKey` it wraps does was not verified |
@@ -133,18 +133,18 @@ Every place the key exists during one call:
 What the path does not hold:
 
 - `TWAnySignerSign` passes #5 to `TW::anyCoinSign` by reference, without copying it (`third_party/wallet-core/src/interface/TWAnySigner.cpp`; `third_party/wallet-core/src/Coin.cpp`, `anyCoinSign`).
-- The field header holds the key's length, not its bytes (`lengthDelimitedHeader`).
+- Each field header holds a key's length, not its bytes (`lengthDelimitedHeader`, `signing_core.dart:371-380`).
 - The key-less input, the decoded key-less message, the request, the locators and the reply hold no key.
 - Upstream's output holds no key: the fields of the EVM `SigningOutput` are `encoded`, `v`, `r`, `s`, `data`, `error`, `error_message` and `pre_hash` (`third_party/wallet-core/src/proto/Ethereum.proto`, `SigningOutput`). `SyncSigningCore.sign` copies it out with `TWDataHandle.copyBytes`.
 - No protobuf message ever holds the key, because the key field is prepended as bytes (`SyncSigningCore.sign` doc).
 
 Ordering:
 
-- **Parse before release, release before reply** (DECISION-12 §3.9, `docs/decisions/DECISION-12.md`). #5 and the output are released in `SyncSigningCore.sign`'s `finally`. #3, then #1, are released in `withDerivedKey`'s scope. Only then does `EngineRequestHandler.handle` return the reply for the loop to post.
+- **Parse before release, release before reply** (DECISION-12 §3.9, `docs/decisions/DECISION-12.md`). #3 are released in `SyncSigningCore._stage`'s `finally`, right after the assembly and before `TWAnySignerSign`. #5 and the output are released in `SyncSigningCore.sign`'s `finally` (`signing_core.dart:243-246`). #1 are released last, in `withDerivedKeys`'s scope (`hd_wallet.dart:365-387`), after `sign` returned. Only then does `EngineRequestHandler.handle` return the reply for the loop to post (`worker_loop.dart:241-263`).
 - **The same releases happen on every error path.** If the deadline passes while signing runs, the result is then dropped and never posted (`WorkerLoop._drainOne`).
 - **No error carries key bytes** (`SyncSigningCore.sign` doc, "never puts key bytes in an error").
 
-If the process is killed mid-operation, #1–#6 stay as they were, because a native finalizer runs only in a live process (PRD §11.1).
+If the process is killed mid-operation, whichever of #1–#6 exist at that moment stay as they were (#3 and #4 exist only during the assembly), because a native finalizer runs only in a live process (PRD §11.1).
 
 ## Where the executor runs in this version
 
@@ -161,7 +161,7 @@ The sender's copy and the executor's copy of entropy are kept separate by `execu
 | Executor's entropy copy | `executorCopy` | Yes, by the executor (see above) |
 | `String` returned by `readSecretString` (an exported mnemonic, suggested words) | `HDWallet.exportMnemonic`, `WalletEngine.suggestMnemonicWords` | No: a Dart `String` |
 
-No copy of the private key is made on the Dart heap on the signing path. The key reaches the signing core as a view over native memory (table above).
+No copy of the private key is made on the Dart heap on the signing path. The signing core receives native handles, not bytes; while it assembles the keyed input it reads each key as a view over native memory (table above). The code that makes this checkable: no `Uint8List.fromList` or key `List<int>` in `_stage` (`signing_core.dart:252-297`), and no protobuf message with a key field, because the key fields are prepended as bytes (`keyedInputParts`, `:357-366`).
 
 ## Known gaps in the current code
 
@@ -185,7 +185,7 @@ Current callers in `packages/wallet_core_flutter/lib/`. None of them carries a m
 | `packages/wallet_core_flutter/lib/src/engine/engine.dart` | `WalletEngine.isValidAddress` | `_string` | Address; testnet HRP |
 | `packages/wallet_core_flutter/lib/src/engine/engine.dart` | `WalletEngine.checkRecipient` | `_string`, `TWStringHandle.toDartString` | Recipient address; upstream's rendering of it |
 | `packages/wallet_core_flutter/lib/src/engine/hd_wallet.dart` | `HDWallet.deriveAccount` | `ResourceScope.string`, `TWDataHandle.copyBytes`, `TWStringHandle.toDartString` | Derivation path; public key; address |
-| `packages/wallet_core_flutter/lib/src/engine/hd_wallet.dart` | `withDerivedKey` | `ResourceScope.string` | Derivation path |
+| `packages/wallet_core_flutter/lib/src/engine/hd_wallet.dart` | `withDerivedKeys` | `ResourceScope.string` | Derivation path |
 | `packages/wallet_core_flutter/lib/src/signing/signing_core.dart` | `SyncSigningCore.sign` | `TWDataHandle.copyBytes` | Upstream's signing output (no key, see above) |
 
 The only other callers are the wrappers themselves: `ResourceScope`'s `data`/`string`, `withTWData` and `withTWString`. Code written against `advanced.dart` can pass anything to these wrappers. That is outside this contract.
