@@ -30,6 +30,8 @@ Counted from the code on this branch, one `wc.signer.sign(request, {KeyLocator.h
 
 `DECISION-1-approach-a.md` counts "3 native objects + 1 buffer" and the Approach B document counts "4 native objects" for A: the same four items, the three upstream ones plus the SDK-allocated staging buffer. What B removes is the view, the staging buffer, and the time the key `TWData` stays alive (B holds the key `TWData` only until before `TWAnySignerSign`, A holds it across the call).
 
+*After this decision, T2.0 (2026-10-12, base `d01a153`) moved the view into the signing core (`SyncSigningCore._stage` reads each key through `TWPrivateKeyData`, `signing_core.dart:261-275`; `withDerivedKeys`, `engine/hd_wallet.dart:349-388`, lends handles only) and shortened the key `TWData`'s life to the assembly: it is disposed in `_stage`'s `finally` (`signing_core.dart:292-296`), before `TWAnySignerSign` (`:220`), so the "A holds it across the call" clause above no longer holds; the line citations in the table are those of `0d7e274`, and `docs/architecture/signing.md` §6.1 is the current account.*
+
 ### 1.2 Approach B, measured and what it would take to ship on mobile
 
 Measured on the macOS host only (`DECISION-1-approach-b.md` §4–§5.1): about 105 lines of C statements (263 lines with header), about 130 lines of Dart, +109 lines of build scripts; one session of 143 turns (PROGRESS, T1.13 row); the shim library is **+384 bytes** and builds in the same 5 s. It passed its own 22 shim tests.
