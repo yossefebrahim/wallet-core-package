@@ -8,9 +8,9 @@ Status: pre-alpha, nothing published.
 
 <!-- matrix-counts -->
 
-**167 chains generated, 167 exposed, 0 tested.** Per-coin detail is in the [capability matrix](docs/capability_matrix.md), which names the exact variants verified.
+**167 chains generated, 167 exposed, 3 tested.** Per-coin detail is in the [capability matrix](docs/capability_matrix.md), which names the exact variants verified.
 
-No variant is verified on a device yet: every exposed chain is exposed, unverified.
+3 of 167 chains have at least one variant tested on both Android and iOS. Testing is per variant; the table below lists which.
 
 A chain counts at a level when at least one of its operations has a variant at that level. The levels, as the matrix defines them:
 
@@ -23,27 +23,27 @@ Per variant, in chains (upstream 4.8.0, commit `d692ac27749d0c615e17c751b70ab4f0
 | operation | family | variant | generated | exposed | tested |
 |---|---|---|---|---|---|
 | address | evm | n/a | 60 | 60 | 0 |
-| address | utxo | n/a | 14 | 14 | 0 |
-| address | solana | n/a | 1 | 1 | 0 |
+| address | utxo | n/a | 14 | 14 | 1 |
+| address | solana | n/a | 1 | 1 | 1 |
 | address | other | n/a | 92 | 92 | 0 |
 | sign | evm | legacy | 60 | 60 | 0 |
-| sign | evm | eip1559 | 60 | 60 | 0 |
+| sign | evm | eip1559 | 60 | 60 | 1 |
 | sign | evm | contract_call | 60 | 60 | 0 |
 | sign | utxo | p2pkh | 14 | 0 | 0 |
-| sign | utxo | p2wpkh | 14 | 1 | 0 |
+| sign | utxo | p2wpkh | 14 | 1 | 1 |
 | sign | utxo | taproot | 14 | 0 | 0 |
-| sign | utxo | multi_input | 14 | 1 | 0 |
-| sign | solana | legacy | 1 | 1 | 0 |
+| sign | utxo | multi_input | 14 | 1 | 1 |
+| sign | solana | legacy | 1 | 1 | 1 |
 | sign | solana | versioned | 1 | 0 | 0 |
 | sign | other | any | 92 | 0 | 0 |
-| sign_message | evm | personal | 60 | 60 | 0 |
-| sign_message | evm | eip712 | 60 | 60 | 0 |
+| sign_message | evm | personal | 60 | 60 | 1 |
+| sign_message | evm | eip712 | 60 | 60 | 1 |
 | sign_message | solana | personal | 1 | 0 | 0 |
 | sign_message | other | any | 2 | 0 | 0 |
 | plan | utxo | p2pkh | 14 | 0 | 0 |
-| plan | utxo | p2wpkh | 14 | 1 | 0 |
+| plan | utxo | p2wpkh | 14 | 1 | 1 |
 | plan | utxo | taproot | 14 | 0 | 0 |
-| plan | utxo | multi_input | 14 | 1 | 0 |
+| plan | utxo | multi_input | 14 | 1 | 1 |
 | plan | other | any | 14 | 0 | 0 |
 | compile | evm | legacy | 60 | 0 | 0 |
 | compile | evm | eip1559 | 60 | 0 | 0 |
