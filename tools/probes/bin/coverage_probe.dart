@@ -11,7 +11,7 @@ typedef WcfBuildInfoC = Pointer<Int8> Function();
 typedef WcfBuildInfoDart = Pointer<Int8> Function();
 
 const usage =
-    'Usage: probe:coverage [--lib <path>] [--out <path>]\n'
+    'Usage: probe:coverage [--lib <path>] [--out <path>] [--json-out <path>]\n'
     '  (internal child mode: --coin <id> --part compiler|message)';
 
 const defaultOut = 'docs/decisions/evidence/compiler_and_message_coverage.md';
@@ -55,6 +55,7 @@ DynamicLibrary _open(String libPath) {
 Future<void> main(List<String> args) async {
   String? libArg;
   String outPath = defaultOut;
+  String? jsonOutPath;
   int? coin;
   String? part;
 
@@ -65,6 +66,8 @@ Future<void> main(List<String> args) async {
         libArg = args[++i];
       case '--out' when hasValue:
         outPath = args[++i];
+      case '--json-out' when hasValue:
+        jsonOutPath = args[++i];
       case '--coin' when hasValue:
         coin = int.tryParse(args[++i]);
         if (coin == null) _usage();
@@ -148,6 +151,22 @@ Future<void> main(List<String> args) async {
   final outFile = File(outPath);
   outFile.parent.createSync(recursive: true);
   outFile.writeAsStringSync(markdown);
+
+  if (jsonOutPath != null) {
+    final jsonFile = File(jsonOutPath);
+    jsonFile.parent.createSync(recursive: true);
+    jsonFile.writeAsStringSync(
+      renderCoverageJson(
+        compilerRows,
+        messageRows,
+        upstreamTag: manifestTag,
+        upstreamCommit: manifestCommit,
+        libraryCommit: libraryCommit,
+        artifactSetId: artifactSetId,
+        librarySha256: librarySha256,
+      ),
+    );
+  }
   exit(0);
 }
 

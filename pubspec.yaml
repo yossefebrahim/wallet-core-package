@@ -22,6 +22,7 @@ workspace:
   - tools/probes
   - tools/consumer_check
   - tools/lint
+  - tools/matrix
 
 dev_dependencies:
   lints: ^6.0.0
@@ -112,6 +113,7 @@ melos:
         - melos run gen:proto
         - melos run gen:registry
         - melos run gen:manifest
+        - melos run gen:matrix
 
     gen:check:
       description: >-
@@ -204,4 +206,22 @@ melos:
         transaction compiler and message signing coverage probe (T2.9); rewrites
         docs/decisions/evidence/compiler_and_message_coverage.md unless --out is given
       run: dart run tools/probes/bin/coverage_probe.dart
+    gen:matrix:
+      description: >-
+        Generate docs/capability_matrix.md and .json (PRD §13, T2.8) from the
+        generated registry and proto tree, the T2.9 coverage evidence
+        (docs/decisions/evidence/compiler_and_message_coverage.json), the SDK's
+        exposed-capability snapshot (docs/capability_exposed.json) and the
+        vector inventory (test_vectors/). Exits 1, writing nothing, when the
+        inputs are inconsistent.
+      run: dart run tools/matrix/bin/gen.dart
+    matrix:check:
+      description: >-
+        PRD §13.2 coverage checks: (a) every platforms_verified claim is `pass`
+        in test_vectors/results/<platform>.json, (b) the committed matrix equals
+        a fresh regeneration, (c) no level went down and no vector disappeared
+        against the previous committed matrix without an exclusions.yaml entry.
+        --strict also fails a claim with no results file; CI passes it once
+        T2.8b lands. Exit 0 / 1 / 64.
+      run: dart run tools/matrix/bin/check.dart
 
