@@ -8,7 +8,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 | **Governing PRD sections** | §12.3 (artifact acquisition, identity, durability), §12.4 (the two separate integrity requirements), §15.3 (manifest), §15.4 (versioning, publication order, recovery release), §16 S3, §22 DECISION-14 |
 | **Depends on** | [`DECISION-9`](DECISION-9.md) (T0.5) and [`evidence/release-assets-4.8.0.md`](evidence/release-assets-4.8.0.md) |
 | **Fills manifest fields** | `identity`, `release_set`, `retention`, `sbom`, and the full per-artifact record of §5.1 (PRD §12.3's durability list plus DECISION-9's `provenance`) |
-| **Status** | §§2–5 recorded 2026-09-07, §10 ratified 2026-10-05, overall ratification of the record still owed. |
+| **Status** | §§2–5 recorded 2026-09-07; §10 ratified 2026-10-05; **§§2–5 ratified as built by the owner 2026-10-12 (D1), with the text of §10 g and h corrected the same day.** |
 
 ---
 
@@ -344,7 +344,7 @@ Re-open this record when any of the following occurs:
 5. **DECISION-2 selects build hooks (Option 1)** — the fetch happens inside `hook/build.dart` and §3.1's URL consumer changes, though the scheme itself does not.
 6. **An adopting organisation requires a signed SBOM or a specific attestation format** — §4.5 moves from [REC] to [REQ] with a named format, and T4.5's scope grows.
 
-## 10. Build-time facts established by the first artifact runs (2026-10-03/04) — awaiting ratification at D1a
+## 10. Build-time facts established by the first artifact runs (2026-10-03/04) — ratified 2026-10-05 (D1a); g and h text corrected 2026-10-12
 
 a. Ratified by the owner 2026-10-05: x86_64 must get a runtime run before Phase 1 closes or be dropped. Unshipped ABIs are refused at build time. Android ABIs shipped: `arm64-v8a`, `x86_64`; `armeabi-v7a` is not built (PRD §12.2 step 8) — `.github/workflows/build-native.yml:73` `android_abis` default; the manifest's `armeabi-v7a` and `ios/TrustWalletCore.xcframework.zip` rows are placeholders that P0 must drop or replace with the per-slice `.dylib` keys the workflow records.
 b. Ratified by the owner 2026-10-05: to be recorded per artifact by a T1.2 follow-up. `-DFLUTTER=ON` is patched into upstream's `android/wallet-core/build.gradle` by `tools/native_build/build_android.sh:368` so the C API is exported (upstream hides it via `cmake/StandardSettings.cmake:4` unless `FLUTTER` is set); without it the SDK cannot call upstream on Android. This is a deviation from an unmodified upstream build; logged in the workflow build log; the artifact record has no field for it (T1.2 follow-up: add a `patches` array to `emit_artifact_record.sh`).
@@ -352,8 +352,8 @@ c. Ratified by the owner 2026-10-05. Export gate reads `.dynsym` for ELF (releas
 d. Ratified by the owner 2026-10-05. Four upstream JNI helpers (`TWDataCreateWithJByteArray`, `TWDataJByteArray`, `TWStringCreateWithJString`, `TWStringJString`) are exported by the Android library and allow-listed as known extras; the 464-symbol list stays authoritative for everything else (`tools/native_build/build_android.sh:441`).
 e. Ratified by the owner 2026-10-05. `BOOST_ROOT=$(brew --prefix boost)` exported for Gradle's CMake on the Apple-Silicon runner (`tools/native_build/build_android.sh:311`); licence acceptance step `yes | sdkmanager --licenses` (`.github/workflows/build-native.yml:317`); `xcode_version` default `26.3.0` (`.github/workflows/build-native.yml:81`).
 f. Ratified by the owner 2026-10-05. Retry semantics: the publish job refuses an existing release/tag (`.github/workflows/build-native.yml:156` "reserve the release tag" step), so a run that fails after the draft release is created cannot be retried under the same `artifact_set_id` — the next attempt uses the next id (`as_4.8.0_002`). Operating rule, consistent with §4.3's immutability: a failed publish burns its set id. Run 37211800874 reached the publish job and created the draft release `native-4.8.0-001`; the burn-the-id rule now applies for real.
-g. Amended by the owner 2026-10-05: comparison 2 is opt-in (manifestBytes supplied) until T3.11's release-set work. Comparison 2 (manifest hash) does not run on the default `initialize()` path today: `packages/wallet_core_flutter/lib/src/worker/handler.dart:278` only checks when `manifestBytes` are supplied and `packages/wallet_core_flutter/lib/src/session/wallet_core.dart:44` passes none. Two options are open for the owner at D1a: (i) embed the manifest bytes as a generated Dart constant at `gen:manifest` time and check by default; (ii) amend §2.3 to say comparison 2 is opt-in until T3.11's release-set work. Neither is chosen here.
-h. Published 2026-10-05, tag `native-4.8.0-001`. Ratified by the owner 2026-10-05. The identity values (`identity.artifact_set_id`, artifact digests, toolchain) are filled on `main` since f9f3d58 from run 37211800874. The release is still a draft, and publishing (tag) is the owner's call at D1a; `manifest:validate` accepts them by design (strict mode reports 12).
+g. Amended by the owner 2026-10-05; ratified 2026-10-12: comparison 2 (the manifest hash) is **opt-in until T3.11's release-set work** — §2.3 is read that way. It does not run on the default `initialize()` path: `packages/wallet_core_flutter/lib/src/worker/handler.dart:277-278` checks only when `manifestBytes` are supplied and `packages/wallet_core_flutter/lib/src/session/wallet_core.dart:47` passes none. Comparisons 3 and 4 (the artifact-set id and the upstream commit) run by default. Embedding the manifest bytes as a generated Dart constant and checking by default is T3.11's, not chosen here.
+h. Published 2026-10-05, tag `native-4.8.0-001` (the release is published; the networked fetch from it was measured by T1.16b, DECISION-2 §2). Ratified by the owner 2026-10-05. The identity values (`identity.artifact_set_id`, artifact digests, toolchain) are filled on `main` since f9f3d58 from run 37211800874. `manifest:validate` accepts placeholders by design; at `0d7e274` strict mode reports two, `release_set` (`TBD-T3.11`) and `retention.policy` (`TBD-T3.13`).
 
 ---
 
@@ -372,7 +372,7 @@ Binding on **T1.2** (which produces every field), **T1.7** (which verifies `wcf_
 This record consumes DECISION-9, recorded the same day as **Option C**; the `provenance` field exists precisely
 because two build paths feed one manifest.
 
-Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published.
+Recorded **2026-09-07 by the orchestrator**, under the repository owner's standing authorization to keep Phase 0 moving while they were unavailable, and **subject to the owner's ratification** (`docs/plan/PROGRESS.md` -> Needs your eyes -> "Decisions recorded on your behalf"). The choice is reversible at the cost stated in the revisit trigger; nothing is published. **Ratified by the owner 2026-10-12 (D1), as built; the sentence above states the position on 2026-09-07.**
 
 Conditional, per D0: promoting the SBOM to the first alpha depends on the quality of T1.2's CycloneDX output. If it is
 not usable the SBOM slips and this record is amended, not quietly ignored.
