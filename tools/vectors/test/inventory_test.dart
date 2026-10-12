@@ -278,6 +278,29 @@ void main() {
       expect(errors.any((e) => e.contains('has no exclusions: list')), isTrue);
     });
 
+    test('A top-level results/ directory is not a coin directory', () {
+      final root = Directory.systemTemp.createTempSync('wcf_vectors_results_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      Directory('${root.path}/coin1').createSync();
+      File(
+        'test/fixtures/coin1/vectors.yaml',
+      ).copySync('${root.path}/coin1/vectors.yaml');
+      Directory('${root.path}/results').createSync();
+      File('${root.path}/results/android.json').writeAsStringSync('{}\n');
+      File('${root.path}/results/README.md').writeAsStringSync('schema\n');
+
+      final inventory = Inventory.load(root);
+      expect(inventory.loadProblems, isEmpty);
+      expect(inventory.filesCount, 1, reason: 'results/ is not an input file');
+      expect(inventory.vectors, isNotEmpty);
+
+      // Any other directory without vectors.yaml is still a problem.
+      Directory('${root.path}/results_extra').createSync();
+      expect(Inventory.load(root).loadProblems, [
+        contains('results_extra without vectors.yaml'),
+      ]);
+    });
+
     test('Closed key set and shapes', () {
       final v = _createVector(
         rawMapOverrides: {

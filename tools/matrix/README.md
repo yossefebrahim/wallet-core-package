@@ -19,7 +19,7 @@ melos run matrix:check   # PRD §13.2 (a)–(c); exit 0 / 1 / 64
 | `docs/decisions/evidence/compiler_and_message_coverage.json` | T2.9 probe rows: generic message signer, transaction compiler (written by `melos run probe:coverage -- --json-out <path>`) |
 | `docs/capability_exposed.json` | the **Exposed** column: a snapshot of the SDK's `lib/src/capabilities.dart`, kept identical to it by `packages/wallet_core_flutter/test/capabilities_test.dart` |
 | `test_vectors/**` | the **Tested** column (`platforms_verified`) and the exclusions |
-| `test_vectors/results/<platform>.json` | check (a) only (schema in [`RESULTS.md`](RESULTS.md)); no such directory exists yet, see below |
+| `test_vectors/results/<platform>.json` | check (a) only (schema in [`test_vectors/results/README.md`](../../test_vectors/results/README.md)); written by CI, absent in a local checkout |
 | `compat_manifest.json` | the upstream tag and commit stamped on the outputs |
 
 ## Generated column
@@ -65,8 +65,8 @@ violations.
 
 - **(a)** each `android` / `ios` entry of a vector's `platforms_verified` must be
   `pass` in `test_vectors/results/<platform>.json`. No file → `unconfirmed`
-  (printed, not a failure) unless `--strict`. CI passes `--strict` once T2.8b
-  produces the files.
+  (printed, not a failure) unless `--strict`. CI's `matrix` job passes `--strict` (T2.8b); the
+  `gates` job runs the plain check.
 - **(b)** the committed `docs/capability_matrix.{md,json}` equal a fresh
   regeneration (written to a temp dir and compared byte for byte).
 - **(c)** against the previous committed matrix — `git show HEAD:docs/capability_matrix.json`,
@@ -90,12 +90,18 @@ with the same cell texts shares one row. 167 coins × 5 operations as one table
 would be 835 near-identical rows and unreadable; the per-coin detail with the
 evidence behind each verdict is in `capability_matrix.json`.
 
-## Open item for T2.8b: the results directory and the vector loader
+## Results collection (T2.8b)
 
-`tools/vectors`' `Inventory.load` treats every subdirectory of `test_vectors/`
-without a `vectors.yaml` as a load problem, which `vectors:validate` and this
-tool both report. The moment CI writes `test_vectors/results/<platform>.json`,
-both fail. T2.8b must either teach the loader to skip `results/` (a change in
-`tools/vectors`, which T2.8a did not own) or move the directory and pass
-`--results-dir`. For that reason `test_vectors/results/README.md` is not created
-now; the schema lives in [`RESULTS.md`](RESULTS.md).
+```
+melos run matrix:collect -- --platform android --out test_vectors/results <log>...
+```
+
+`bin/collect_results.dart` reads device-test logs, keeps the
+`WCF_VECTOR_RESULT {"id":...,"status":...}` lines the integration tests print
+(`example/integration_test/vector_results.dart`) and writes
+`<out>/<platform>.json`. The upstream pin comes from `compat_manifest.json`;
+`repository_sha` and `run_id` from `--repository-sha` / `--run-id` or
+`GITHUB_SHA` / `GITHUB_RUN_ID`. Exit 0 written; 1 a malformed line or an id that
+is not in the inventory (nothing written); 64 usage. The vector loader skips a
+top-level `test_vectors/results/`, so the files live there; the schema is in
+[`test_vectors/results/README.md`](../../test_vectors/results/README.md).

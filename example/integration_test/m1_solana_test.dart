@@ -42,6 +42,7 @@ import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
     show WalletCoreNative;
 
 import 'm1_solana_vectors.dart' as v;
+import 'vector_results.dart';
 
 const Timeout _timeout = Timeout(Duration(minutes: 5));
 
@@ -135,6 +136,7 @@ void main() {
       );
       tracker.stop();
     }
+    recordVectorPass('solana-sign-legacy-1');
   }, timeout: _timeout);
 
   testWidgets(
@@ -183,6 +185,7 @@ void main() {
         expect(tx.sublist(65, 68), [1, 0, 1]);
         expect(tx.sublist(69, 101), _base58Decode(context, v.addressExpected));
         await wallet.close();
+        recordVectorPass('solana-address-n/a-1');
       } finally {
         await core.shutdown();
       }
