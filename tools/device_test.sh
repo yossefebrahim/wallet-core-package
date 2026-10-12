@@ -11,7 +11,9 @@
 #
 # Every argument after the platform is passed through, unchanged, to
 # `flutter test integration_test -d <device>` (for example
-# `--verbose --reporter expanded`).
+# `--verbose --reporter expanded`). A first argument ending in `_test.dart`
+# (for example `integration_test/m0_flow_test.dart`) replaces the
+# `integration_test` directory, so one file can be run alone.
 #
 # The script never starts a device and never picks one: the caller names the
 # device, so a run can never land on a device the caller did not mean. A missing
@@ -79,5 +81,15 @@ case "$platform" in
     ;;
 esac
 
+# A first argument ending in `_test.dart` names one test file (relative to
+# example/) to run instead of the whole directory.
+target=integration_test
+case "${1:-}" in
+  *_test.dart)
+    target="$1"
+    shift
+    ;;
+esac
+
 cd "$root/example"
-exec flutter test integration_test -d "$id" "$@"
+exec flutter test "$target" -d "$id" "$@"
