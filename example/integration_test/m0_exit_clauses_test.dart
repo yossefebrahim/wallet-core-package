@@ -42,6 +42,7 @@ import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
     show ManifestIdentity, WalletCoreNative;
 
 import 'm0_vectors.dart' as v;
+import 'vector_results.dart';
 
 const Timeout _timeout = Timeout(Duration(minutes: 5));
 
@@ -124,6 +125,7 @@ void main() {
       );
       tracker.stop();
     }
+    recordVectorPass('ethereum-sign-eip1559-1');
   }, timeout: _timeout);
 
   testWidgets(
@@ -176,6 +178,9 @@ void main() {
         );
         expect(account.address.value, v.addressExpected);
         await wallet.close();
+        recordVectorPass('ethereum-invalid_input-n/a-1');
+        recordVectorPass('ethereum-invalid_input-n/a-2');
+        recordVectorPass('ethereum-invalid_input-n/a-3');
       } finally {
         await core.shutdown();
       }

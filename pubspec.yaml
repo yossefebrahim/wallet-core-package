@@ -221,7 +221,13 @@ melos:
         in test_vectors/results/<platform>.json, (b) the committed matrix equals
         a fresh regeneration, (c) no level went down and no vector disappeared
         against the previous committed matrix without an exclusions.yaml entry.
-        --strict also fails a claim with no results file; CI passes it once
-        T2.8b lands. Exit 0 / 1 / 64.
+        --strict also fails a claim with no results file; the CI `matrix` job
+        passes it. Exit 0 / 1 / 64.
       run: dart run tools/matrix/bin/check.dart
+    matrix:collect:
+      description: >-
+        Turn device-test logs into test_vectors/results/<platform>.json (T2.8b):
+        --platform android|ios --out <dir> <log>...; reads the
+        WCF_VECTOR_RESULT lines, rejects an id that is not in the inventory.
+      run: dart run tools/matrix/bin/collect_results.dart
 

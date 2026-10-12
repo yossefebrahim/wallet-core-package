@@ -41,6 +41,7 @@ import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
     show WalletCoreNative;
 
 import 'm1_evm_messages_vectors.dart' as v;
+import 'vector_results.dart';
 
 const Timeout _timeout = Timeout(Duration(minutes: 5));
 
@@ -122,6 +123,7 @@ void main() {
     expect(result.signatureHex, v.personalExpectedSignature);
     expect(result.signature, hasLength(65));
     expect(result.messageType, EvmMessageType.personal);
+    recordVectorPass('ethereum-sign_message-personal-1');
   }, timeout: _timeout);
 
   testWidgets('the typed-data vector is signed byte for byte '
@@ -133,6 +135,7 @@ void main() {
     expect(result.signatureHex, v.typedDataExpectedSignature);
     expect(result.signature, hasLength(65));
     expect(result.messageType, EvmMessageType.typedData);
+    recordVectorPass('ethereum-sign_message-eip712-1');
   }, timeout: _timeout);
 
   testWidgets(

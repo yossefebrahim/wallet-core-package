@@ -34,7 +34,7 @@ This file is the single source of the rules that govern every change made in thi
 | `melos run lint:runtime-deps` | runtime dependency policy (T1.17-pre) | no |
 | `melos run vectors:validate` | inventory schema + provenance check (T0.8) | no |
 | `melos run manifest:validate` | compat manifest schema + checksum presence (T0.7) | no |
-| `melos run matrix:check` | PRD §13.2 (a) platform claims vs `test_vectors/results/`, (b) matrix equals regeneration, (c) no level or vector lost without an exclusion (T2.8); `--strict` once CI results exist (T2.8b) | no |
+| `melos run matrix:check` | PRD §13.2 (a) platform claims vs `test_vectors/results/`, (b) matrix equals regeneration, (c) no level or vector lost without an exclusion (T2.8); CI's `matrix` job runs it with `--strict --baseline-ref origin/main` over the device results (T2.8b) | no |
 | `melos run probe:sign-json` | SignJSON availability probe, T1.14; run with `--out` when used as a read-only gate because the default rewrites `docs/decisions/evidence/sign_json_coverage.md` | no |
 | `melos run test:android` | `integration_test` on the running Android emulator | yes |
 | `melos run test:ios` | `integration_test` on the running iOS simulator | yes |

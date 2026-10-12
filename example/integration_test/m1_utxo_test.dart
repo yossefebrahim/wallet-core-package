@@ -53,6 +53,7 @@ import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
     show WalletCoreNative;
 
 import 'm1_utxo_vectors.dart' as v;
+import 'vector_results.dart';
 
 const Timeout _timeout = Timeout(Duration(minutes: 5));
 
@@ -282,6 +283,9 @@ void main() {
       final again = signWithHandles(core, planned, built.keys, handleOf);
       expect(_hex(again.encoded), v.p2wpkhSignExpectedEncoded);
     });
+    // After `withCore`, which also asserts the leak report.
+    recordVectorPass('bitcoin-plan-p2wpkh-1');
+    recordVectorPass('bitcoin-sign-p2wpkh-1');
   }, timeout: _timeout);
 
   testWidgets('clause 2: two key handles under input(0) and input(1) plan and '
@@ -317,6 +321,8 @@ void main() {
       expect(_hex(result.encoded), v.multiSignExpectedEncoded);
       expect(result.usedKeys, built.request.keyLocators);
     });
+    recordVectorPass('bitcoin-plan-multi_input-1');
+    recordVectorPass('bitcoin-sign-multi_input-1');
   }, timeout: _timeout);
 
   testWidgets('clause 3: two inputs from two HD paths of one mnemonic are '
@@ -406,6 +412,8 @@ void main() {
       await wallet.close();
       final report = debugLeakReportOf(core);
       if (report != null) expect(report.live, 0, reason: '$report');
+      recordVectorPass('bitcoin-address-n/a-1');
+      recordVectorPass('bitcoin-address-n/a-2');
     } finally {
       await core.shutdown();
     }

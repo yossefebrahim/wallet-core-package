@@ -216,7 +216,7 @@ class ResultsReport {
 
 /// PRD §13.2 (a): every platform a vector claims in `platforms_verified`
 /// (`android`, `ios`) must be `pass` in `<resultsDir>/<platform>.json`, which
-/// CI writes (schema in `tools/matrix/RESULTS.md`). When the file does
+/// CI writes (schema in `test_vectors/results/README.md`). When the file does
 /// not exist the claim is reported as unconfirmed; the caller decides whether
 /// that fails (`--strict`).
 ResultsReport checkResults({

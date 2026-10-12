@@ -56,6 +56,12 @@ jobs:
       - name: melos run vectors:validate
         run: melos run vectors:validate
 
+      # Non-strict and fast: a checkout has no device results, so a claim with
+      # no results file is only reported. The `matrix` job below runs the
+      # strict check over the real device results.
+      - name: melos run matrix:check
+        run: melos run matrix:check
+
       - name: melos run lint:runtime-deps
         run: melos run lint:runtime-deps
 
@@ -314,6 +320,33 @@ jobs:
           path: ${{ runner.temp }}/android-diag
           if-no-files-found: warn
 
+      # The device test prints one WCF_VECTOR_RESULT line per proven vector;
+      # the collector turns the log into android.json. It runs after a failed
+      # test too: a partial run records what passed, and the `matrix` job then
+      # fails on every claim the file lacks.
+      - name: Collect Android vector results
+        if: always()
+        env:
+          DIAG_DIR: ${{ runner.temp }}/android-diag
+          RESULTS_DIR: ${{ runner.temp }}/vector-results
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          logs=("$DIAG_DIR"/flutter_test*.txt)
+          if [ "${#logs[@]}" -eq 0 ]; then
+            echo "::error::No flutter_test*.txt in $DIAG_DIR: the device test left no log to collect results from."
+            exit 1
+          fi
+          melos run matrix:collect -- --platform android --out "$RESULTS_DIR" "${logs[@]}"
+
+      - name: Upload Android vector results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vector-results-android
+          path: ${{ runner.temp }}/vector-results/android.json
+          if-no-files-found: error
+
   ios-simulator:
     name: iOS simulator
     runs-on: macos-26
@@ -391,3 +424,83 @@ jobs:
           name: ios-diag
           path: ${{ runner.temp }}/ios-diag
           if-no-files-found: warn
+
+      # As for Android: one ios.json from the per-file logs
+      # (flutter_test_<name>.txt and, for a retry, flutter_test_<name>.retry.txt).
+      - name: Collect iOS vector results
+        if: always()
+        env:
+          DIAG_DIR: ${{ runner.temp }}/ios-diag
+          RESULTS_DIR: ${{ runner.temp }}/vector-results
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          logs=("$DIAG_DIR"/flutter_test*.txt)
+          if [ "${#logs[@]}" -eq 0 ]; then
+            echo "::error::No flutter_test*.txt in $DIAG_DIR: the device test left no log to collect results from."
+            exit 1
+          fi
+          melos run matrix:collect -- --platform ios --out "$RESULTS_DIR" "${logs[@]}"
+
+      - name: Upload iOS vector results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vector-results-ios
+          path: ${{ runner.temp }}/vector-results/ios.json
+          if-no-files-found: error
+
+  # The strict coverage check (PRD §13.2) over the device results: every
+  # `platforms_verified` claim must be `pass` in the results the two device
+  # jobs just produced, the committed matrix must equal a regeneration, and no
+  # level may have gone down against the previous main. It runs after a failed
+  # device job too (`always()`), because a missing or partial results file is
+  # exactly what it reports. Same events as the device jobs.
+  matrix:
+    name: Capability matrix (matrix:check --strict)
+    runs-on: ubuntu-latest
+    needs: [android-emulator, ios-simulator]
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    env:
+      # Check (c) compares with the matrix before this change. On a push to
+      # main `origin/main` is already the pushed commit, so the baseline is the
+      # tip before the push; a manual run compares with `origin/main`.
+      BASELINE_REF: ${{ github.event_name == 'push' && github.event.before || 'origin/main' }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          # The baseline is a commit of main's history; a shallow clone has none.
+          fetch-depth: 0
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Put the pub global bin directory on PATH
+        run: echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Activate melos
+        run: dart pub global activate melos 8.6.0
+
+      - name: melos bootstrap
+        run: melos bootstrap
+
+      # `merge-multiple` puts android.json and ios.json side by side. A device
+      # job that produced no artifact leaves its file out, and --strict then
+      # fails on every claim for that platform.
+      - name: Download the device vector results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: vector-results-*
+          path: test_vectors/results
+          merge-multiple: true
+
+      - name: List the results
+        run: ls -l test_vectors/results
+
+      - name: melos run matrix:check (strict)
+        run: melos run matrix:check -- --strict --baseline-ref "$BASELINE_REF"

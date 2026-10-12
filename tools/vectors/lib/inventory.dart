@@ -99,6 +99,11 @@ class Exclusion {
   }
 }
 
+/// The one top-level directory of `test_vectors/` that is not a coin: CI writes
+/// `results/<platform>.json` there (T2.8b). It holds no `vectors.yaml` and is
+/// not part of the inventory.
+const String resultsDirectoryName = 'results';
+
 class Inventory {
   final List<Vector> vectors;
   final List<Exclusion> exclusions;
@@ -129,6 +134,10 @@ class Inventory {
 
     for (final entity in testVectorsDir.listSync(recursive: false)) {
       if (entity is Directory) {
+        if (entity.uri.pathSegments.where((s) => s.isNotEmpty).last ==
+            resultsDirectoryName) {
+          continue;
+        }
         final vectorsFile = File('${entity.path}/vectors.yaml');
         if (!vectorsFile.existsSync()) {
           loadProblems.add(
