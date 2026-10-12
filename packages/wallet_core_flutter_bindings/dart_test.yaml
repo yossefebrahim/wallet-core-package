@@ -8,3 +8,8 @@ tags:
   native:
     # Loads the real libTrustWalletCore built from the pinned upstream commit.
     # Needs `melos run native:host-lib` first, or WCF_NATIVE_LIB set.
+  aot:
+    # Compiles a small program with `dart compile exe` (AOT, assertions off) and
+    # runs the binary, to prove release-mode behaviour that `dart test` itself,
+    # with assertions on, cannot show. Part of the normal `dart test` run;
+    # `dart test --tags aot` runs only these.

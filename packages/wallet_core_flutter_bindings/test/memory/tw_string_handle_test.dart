@@ -52,18 +52,76 @@ void main() {
     });
 
     test('the size comes from TWStringSize, not from a terminator search', () {
-      // `TWStringCreateWithUTF8Bytes` reads a NUL-terminated buffer, so a
-      // string containing a NUL is stored as its prefix. What is asserted is
-      // that the size upstream reports and the text we decode agree: a
-      // `strlen` over the returned buffer would be a second, independent
-      // answer, and this wrapper never asks for one.
-      final value = 'before${String.fromCharCode(0)}after';
+      // What is asserted is that the size upstream reports and the text we
+      // decode agree: a `strlen` over the returned buffer would be a second,
+      // independent answer, and this wrapper never asks for one.
+      const value = 'before\u{1F512}after';
       final handle = TWStringHandle.fromString(context, value);
       addTearDown(handle.dispose);
 
-      expect(handle.toDartString(), 'before');
-      expect(handle.length, 6);
-      expect(handle.length, utf8.encode(handle.toDartString()).length);
+      expect(handle.toDartString(), value);
+      expect(handle.length, utf8.encode(value).length);
+    });
+
+    group('fromString refuses a string that would reach native code '
+        'changed', () {
+      // The same table the SDK's `isNativeSafeString` is held to in
+      // `wallet_core_flutter/test/core/native_safe_string_agreement_native_test.dart`.
+      const rejected = <String, String>{
+        'an embedded NUL': 'ab\u0000cd',
+        'a leading NUL': '\u0000abc',
+        'a trailing NUL': 'abc\u0000',
+        'only a NUL': '\u0000',
+        'a lone high surrogate': 'a\uD800b',
+        'a high surrogate at the end': 'abc\uD83D',
+        'a lone low surrogate': 'a\uDC00b',
+        'a low surrogate at the start': '\uDE00abc',
+        'two high surrogates in a row': '\uD83D😀',
+        'a reversed pair': '\uDE00\uD83D',
+      };
+      const accepted = <String, String>{
+        'the empty string': '',
+        'plain ASCII': 'abandon abandon about',
+        'a paired surrogate (U+1F512)': 'wallet \u{1F512} ok',
+        'the lowest and highest pair': '\u{10000}\u{10FFFF}',
+        'BMP text next to the surrogate range': '퟿',
+        'non-ASCII': 'café — 日本語 — Ω',
+      };
+
+      for (final entry in rejected.entries) {
+        test('rejects ${entry.key}, quoting nothing, creating nothing', () {
+          final observer = RecordingObserver();
+          final scoped = NativeContext(context.bindings, observer: observer);
+
+          expect(
+            () => TWStringHandle.fromString(scoped, entry.value),
+            throwsA(
+              isA<ArgumentError>()
+                  .having((e) => e.name, 'name', 'value')
+                  .having((e) => '$e', 'message', isNot(contains('abc'))),
+            ),
+          );
+          expect(observer.created, isEmpty, reason: 'no handle was made');
+        });
+      }
+
+      for (final entry in accepted.entries) {
+        test('accepts ${entry.key}, and it reads back unchanged', () {
+          final handle = TWStringHandle.fromString(context, entry.value);
+          addTearDown(handle.dispose);
+
+          expect(handle.toDartString(), entry.value);
+        });
+      }
+
+      test('withTWString refuses before running its body', () {
+        var ran = false;
+        expect(
+          () => withTWString<void>(context, 'a\u0000b', (_) => ran = true),
+          throwsArgumentError,
+        );
+        expect(ran, isFalse);
+      });
     });
 
     test('adopt() takes a pointer upstream returned to us', () {

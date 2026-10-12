@@ -54,6 +54,12 @@ const int maxMnemonicWordLength = 64;
 /// is replaced with U+FFFD. Either way upstream would answer for an input the
 /// caller never gave — for a mnemonic or a passphrase, a different wallet with
 /// no error at all. Such a string is rejected here, never repaired.
+///
+/// The bindings' `TWStringHandle.fromString` applies the same predicate (a
+/// private copy in `wallet_core_flutter_bindings/lib/src/memory/tw_string.dart`,
+/// since the bindings do not export it) and throws [ArgumentError]; the two are
+/// held to one table of inputs by
+/// `test/core/native_safe_string_agreement_native_test.dart`.
 bool isNativeSafeString(String value) {
   for (var i = 0; i < value.length; i++) {
     final unit = value.codeUnitAt(i);

@@ -397,6 +397,9 @@ final class OperationTimeoutError extends WalletCoreException {
 
 /// The operation was cancelled before it started. It never ran and no key was
 /// derived for it.
+///
+/// No public cancellation exists until the signing worker (T2.1), so nothing
+/// raises this error today.
 final class OperationCancelledError extends WalletCoreException {
   /// Creates an error for the cancelled request [requestId].
   const OperationCancelledError(this.requestId);

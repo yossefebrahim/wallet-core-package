@@ -11,6 +11,8 @@ import 'package:wallet_core_flutter/src/signing/key_locator.dart';
 import 'package:wallet_core_flutter/src/signing/sign_result.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart'
     show ChainFamily, Coin;
+import 'package:wallet_core_flutter_bindings/wallet_core_flutter_bindings.dart'
+    show maxNativeBufferBytes;
 
 import '../support/fake_handler.dart';
 
@@ -141,6 +143,46 @@ void main() {
       expect(request.data, [0xa9, 0x05, 0x9c, 0xbb]);
       expect(() => request.data![0] = 1, throwsUnsupportedError);
       expect(request.valueWei, BigInt.zero);
+    });
+
+    EvmTransactionRequest callWith(Uint8List data) =>
+        EvmTransactionRequest.contractCall(
+          coin: Coin.ethereum,
+          chainId: 1,
+          nonce: BigInt.one,
+          to: _to,
+          data: data,
+          maxFeePerGas: BigInt.two,
+          maxPriorityFeePerGas: BigInt.one,
+          gasLimit: BigInt.from(60000),
+        );
+
+    test('the calldata cap is the native buffer ceiling less a 1 KiB '
+        'headroom', () {
+      expect(evmCallDataHeadroomBytes, 1024);
+      expect(
+        maxEvmCallDataBytes,
+        maxNativeBufferBytes - evmCallDataHeadroomBytes,
+        reason:
+            'derived from the bindings ceiling; a change there must be '
+            'met here',
+      );
+    });
+
+    test('calldata of exactly the cap is accepted; one byte more is '
+        'InvalidInputError(data), before any copy', () {
+      expect(
+        callWith(Uint8List(maxEvmCallDataBytes)).data,
+        hasLength(maxEvmCallDataBytes),
+      );
+      expect(
+        () => callWith(Uint8List(maxEvmCallDataBytes + 1)),
+        _invalid('data'),
+      );
+      expect(
+        () => callWith(Uint8List(maxNativeBufferBytes + 1024 * 1024)),
+        _invalid('data'),
+      );
     });
 
     test('a legacy transfer carries a gas price and no EIP-1559 fees', () {

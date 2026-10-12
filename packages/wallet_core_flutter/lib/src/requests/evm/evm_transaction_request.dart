@@ -3,6 +3,27 @@ part of '../requests.dart';
 /// The largest value of upstream's `uint256` fields: 2^256 − 1.
 final BigInt _maxUint256 = (BigInt.one << 256) - BigInt.one;
 
+/// The most calldata bytes an [EvmTransactionRequest] accepts: the bindings'
+/// 64 MiB native buffer ceiling (`maxNativeBufferBytes`, `limits.dart`) less
+/// [evmCallDataHeadroomBytes].
+///
+/// The signer copies the whole keyed signing input — the key field, then every
+/// key-less field with the calldata inside — into one native buffer, and that
+/// buffer may not exceed the ceiling. A longer `data` would only fail there,
+/// deep in the signing path; checking at construction turns it into an
+/// [InvalidInputError] the caller can act on. Not exported: the default
+/// surface states the bound in the constructors' documentation, and a test
+/// pins this value to the ceiling it is derived from.
+const int maxEvmCallDataBytes = 64 * 1024 * 1024 - evmCallDataHeadroomBytes;
+
+/// What the other bytes of the keyed signing input need room for: the key
+/// field's tag, length and key (under 100 bytes for any key this SDK holds),
+/// the calldata field's own tag and length (at most 6), and every other
+/// key-less field — chain id, nonce, gas, fee and value words of at most 32
+/// bytes each, and the 42-character recipient — together well under 500 bytes.
+/// 1 KiB leaves more than double that.
+const int evmCallDataHeadroomBytes = 1024;
+
 /// `0x` and forty hexadecimal digits, in any case. Syntax only: the EIP-55
 /// checksum of a mixed-case address is upstream's to judge, at sign time.
 final RegExp _evmAddressSyntax = RegExp(r'^0x[0-9a-fA-F]{40}$');
@@ -12,7 +33,8 @@ final RegExp _evmAddressSyntax = RegExp(r'^0x[0-9a-fA-F]{40}$');
 /// **Validated at construction.** Each constructor throws [InvalidInputError]
 /// naming the offending input when an integer is negative or wider than
 /// upstream's 256 bits, [chainId] is below 1, [to] is not `0x` and forty hex
-/// digits, or [coin] is not in [ChainFamily.evm]. Whether [to] is a valid
+/// digits, [coin] is not in [ChainFamily.evm], or a contract call's `data` is
+/// longer than 64 MiB less 1 KiB (`inputName: 'data'`). Whether [to] is a valid
 /// address *for [coin]* — its EIP-55 checksum included — is upstream's
 /// answer, asked for at sign time, because a request never calls native code.
 ///
@@ -32,7 +54,7 @@ final class EvmTransactionRequest implements TransactionRequest {
     this.maxPriorityFeePerGas,
     this.gasPrice,
     Uint8List? data,
-  }) : _data = data == null ? null : Uint8List.fromList(data) {
+  }) : _data = data == null ? null : _copyCallData(data) {
     if (coin.family != ChainFamily.evm) {
       throw InvalidInputError(
         '${coin.id} is not an EVM coin; an EVM request needs one',
@@ -195,6 +217,19 @@ final class EvmTransactionRequest implements TransactionRequest {
         'nonce: $nonce, to: $to, valueWei: $valueWei, gasLimit: $gasLimit, '
         '$fees$data)';
   }
+}
+
+/// Copies [data] after checking its length, so an over-long input is rejected
+/// before anything of that size is allocated.
+Uint8List _copyCallData(Uint8List data) {
+  if (data.length > maxEvmCallDataBytes) {
+    throw const InvalidInputError(
+      'data is longer than $maxEvmCallDataBytes bytes, the most one signing '
+      'input can carry',
+      inputName: 'data',
+    );
+  }
+  return Uint8List.fromList(data);
 }
 
 void _checkUint256(BigInt value, String inputName) {
