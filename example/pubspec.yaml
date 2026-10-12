@@ -25,6 +25,9 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  # Reads test_vectors/ethereum/vectors.yaml in
+  # test/m0_vectors_consistency_test.dart.
+  yaml: ^3.1.3
 
 # wallet_core_flutter pins its two siblings by exact version (PRD §15.4).
 # Inside the pub workspace those resolve to the checkout; this app is not a
