@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
@@ -236,6 +237,64 @@ String renderCoverageMarkdown(
     );
   }
   return buffer.toString();
+}
+
+/// The same rows as [renderCoverageMarkdown], as JSON for machine readers
+/// (`tools/matrix`). Pure and deterministic: rows sorted by coin id, two-space
+/// indent, a trailing newline, no timestamps or paths.
+///
+/// Each row carries the probe's own verdicts verbatim — `static`
+/// (`supported` / `unsupported` / `unclassified`), `runtime` (the class label),
+/// `agreement` (`agree` / `conflict` / `crash` / `unclassified`) and, for a
+/// crash, `crash_detail` — so a reader never has to parse the Markdown cells.
+String renderCoverageJson(
+  List<CompilerRow> compilerRows,
+  List<MessageRow> messageRows, {
+  required String upstreamTag,
+  required String upstreamCommit,
+  required String libraryCommit,
+  required String artifactSetId,
+  required String librarySha256,
+}) {
+  Map<String, Object?> question(QuestionResult r) => {
+    'static': r.staticCell,
+    'runtime': r.runtimeClass,
+    'agreement': r.agreement.name,
+    'crash_detail': ?r.crashDetail,
+  };
+  final compiler = List<CompilerRow>.from(compilerRows)
+    ..sort((a, b) => a.coinId.compareTo(b.coinId));
+  final messages = List<MessageRow>.from(messageRows)
+    ..sort((a, b) => a.coinId.compareTo(b.coinId));
+  final document = <String, Object?>{
+    'schema': 1,
+    'upstream': {'tag': upstreamTag, 'commit': upstreamCommit},
+    'library': {
+      'artifact_set_id': artifactSetId,
+      'commit': libraryCommit,
+      'sha256': librarySha256,
+    },
+    'compiler': [
+      for (final r in compiler)
+        {
+          'coin_id': r.coinId,
+          'coin_type': r.coinName,
+          'blockchain': r.blockchain,
+          ...question(r.result),
+        },
+    ],
+    'message': [
+      for (final r in messages)
+        {
+          'coin_id': r.coinId,
+          'coin_type': r.coinName,
+          'blockchain': r.blockchain,
+          ...question(r.result),
+          'specific_signer': r.specificSigner,
+        },
+    ],
+  };
+  return '${const JsonEncoder.withIndent('  ').convert(document)}\n';
 }
 
 const _methodSection = '''

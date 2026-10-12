@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -250,6 +251,63 @@ void main() {
       final a = _render(compiler, messages);
       final b = _render(compiler.reversed.toList(), messages.reversed.toList());
       expect(a, b);
+    });
+  });
+
+  group('renderCoverageJson', () {
+    final compiler = [
+      _compiler(60, 'TWCoinTypeEthereum', 'Ethereum', _compilerReached()),
+      _compiler(
+        194,
+        'TWCoinTypeEOS',
+        'EOS',
+        ChildOutcome.crash('signal 6 in preimage_empty'),
+      ),
+      _compiler(0, 'TWCoinTypeBitcoin', 'Bitcoin', _compilerReached()),
+    ];
+    final messages = [
+      for (final c in compiler)
+        messageRow(
+          coinId: c.coinId,
+          coinName: c.coinName,
+          blockchain: c.blockchain,
+          outcome: _signed(sign: c.blockchain == 'Ethereum'),
+        ),
+    ];
+    String render(List<CompilerRow> c, List<MessageRow> m) =>
+        renderCoverageJson(
+          c,
+          m,
+          upstreamTag: '1.0.0',
+          upstreamCommit: 'abcdef',
+          libraryCommit: 'abcdef',
+          artifactSetId: 'as_1.0.0',
+          librarySha256: 'deadbeef',
+        );
+
+    test('carries the markdown rows, sorted by coin id, with verdicts', () {
+      final json =
+          jsonDecode(render(compiler, messages)) as Map<String, Object?>;
+      expect(json['schema'], 1);
+      expect((json['upstream']! as Map)['tag'], '1.0.0');
+      final rows = (json['compiler']! as List).cast<Map<String, Object?>>();
+      expect(rows.map((r) => r['coin_id']), [0, 60, 194]);
+      expect(rows.last['agreement'], 'crash');
+      expect(rows.last['crash_detail'], 'signal 6 in preimage_empty');
+      expect(rows.first.containsKey('crash_detail'), isFalse);
+      expect(rows.first['static'], 'supported');
+      expect(rows.first['runtime'], 'reached');
+      final msgs = (json['message']! as List).cast<Map<String, Object?>>();
+      expect(msgs.map((r) => r['coin_id']), [0, 60, 194]);
+      expect(msgs.first['specific_signer'], 'TWBitcoinMessageSigner');
+      expect(msgs.last['specific_signer'], isNull);
+    });
+
+    test('is deterministic regardless of row order and ends in a newline', () {
+      final a = render(compiler, messages);
+      final b = render(compiler.reversed.toList(), messages.reversed.toList());
+      expect(a, b);
+      expect(a.endsWith('}\n'), isTrue);
     });
   });
 

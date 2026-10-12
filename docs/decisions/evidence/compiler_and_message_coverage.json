@@ -1,0 +1,2857 @@
+{
+  "schema": 1,
+  "upstream": {
+    "tag": "4.8.0",
+    "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b"
+  },
+  "library": {
+    "artifact_set_id": "as_4.8.0_000",
+    "commit": "d692ac27749d0c615e17c751b70ab4f0aa75c59b",
+    "sha256": "bb9266dc15f6918c95f2117311f3d638841d15816bda57c61c37ef32db7cc9f7"
+  },
+  "compiler": [
+    {
+      "coin_id": 0,
+      "coin_type": "TWCoinTypeBitcoin",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 2,
+      "coin_type": "TWCoinTypeLitecoin",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 3,
+      "coin_type": "TWCoinTypeDogecoin",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 5,
+      "coin_type": "TWCoinTypeDash",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 14,
+      "coin_type": "TWCoinTypeViacoin",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 17,
+      "coin_type": "TWCoinTypeGroestlcoin",
+      "blockchain": "Groestlcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 20,
+      "coin_type": "TWCoinTypeDigiByte",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 22,
+      "coin_type": "TWCoinTypeMonacoin",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 42,
+      "coin_type": "TWCoinTypeDecred",
+      "blockchain": "Decred",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 57,
+      "coin_type": "TWCoinTypeSyscoin",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 60,
+      "coin_type": "TWCoinTypeEthereum",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 61,
+      "coin_type": "TWCoinTypeEthereumClassic",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 74,
+      "coin_type": "TWCoinTypeICON",
+      "blockchain": "Icon",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 77,
+      "coin_type": "TWCoinTypeVerge",
+      "blockchain": "Verge",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 118,
+      "coin_type": "TWCoinTypeCosmos",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 119,
+      "coin_type": "TWCoinTypePivx",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 121,
+      "coin_type": "TWCoinTypeZen",
+      "blockchain": "Zen",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 133,
+      "coin_type": "TWCoinTypeZcash",
+      "blockchain": "Zcash",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 136,
+      "coin_type": "TWCoinTypeFiro",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 137,
+      "coin_type": "TWCoinTypeRootstock",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 141,
+      "coin_type": "TWCoinTypeKomodo",
+      "blockchain": "Komodo",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 144,
+      "coin_type": "TWCoinTypeXRP",
+      "blockchain": "Ripple",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 145,
+      "coin_type": "TWCoinTypeBitcoinCash",
+      "blockchain": "BitcoinCash",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 146,
+      "coin_type": "TWCoinTypeNebl",
+      "blockchain": "Verge",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 148,
+      "coin_type": "TWCoinTypeStellar",
+      "blockchain": "Stellar",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 156,
+      "coin_type": "TWCoinTypeBitcoinGold",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 165,
+      "coin_type": "TWCoinTypeNano",
+      "blockchain": "Nano",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 169,
+      "coin_type": "TWCoinTypeMantaPacific",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 175,
+      "coin_type": "TWCoinTypeRavencoin",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 178,
+      "coin_type": "TWCoinTypePOANetwork",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 194,
+      "coin_type": "TWCoinTypeEOS",
+      "blockchain": "EOS",
+      "static": "supported",
+      "runtime": "crash",
+      "agreement": "crash",
+      "crash_detail": "signal 6 in preimage_empty"
+    },
+    {
+      "coin_id": 195,
+      "coin_type": "TWCoinTypeTron",
+      "blockchain": "Tron",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 204,
+      "coin_type": "TWCoinTypeOpBNB",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 223,
+      "coin_type": "TWCoinTypeInternetComputer",
+      "blockchain": "InternetComputer",
+      "static": "unsupported",
+      "runtime": "not-supported",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 235,
+      "coin_type": "TWCoinTypeFIO",
+      "blockchain": "FIO",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 242,
+      "coin_type": "TWCoinTypeNimiq",
+      "blockchain": "Nimiq",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 283,
+      "coin_type": "TWCoinTypeAlgorand",
+      "blockchain": "Algorand",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 291,
+      "coin_type": "TWCoinTypeIOST",
+      "blockchain": "IOST",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 304,
+      "coin_type": "TWCoinTypeIoTeX",
+      "blockchain": "IoTeX",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 309,
+      "coin_type": "TWCoinTypeNervos",
+      "blockchain": "Nervos",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 313,
+      "coin_type": "TWCoinTypeZilliqa",
+      "blockchain": "Zilliqa",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 330,
+      "coin_type": "TWCoinTypeTerra",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 354,
+      "coin_type": "TWCoinTypePolkadot",
+      "blockchain": "Polkadot",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 361,
+      "coin_type": "TWCoinTypeThetaFuel",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 394,
+      "coin_type": "TWCoinTypeCryptoOrg",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 396,
+      "coin_type": "TWCoinTypeEverscale",
+      "blockchain": "Everscale",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 397,
+      "coin_type": "TWCoinTypeNEAR",
+      "blockchain": "NEAR",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 425,
+      "coin_type": "TWCoinTypeAion",
+      "blockchain": "Aion",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 434,
+      "coin_type": "TWCoinTypeKusama",
+      "blockchain": "Kusama",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 457,
+      "coin_type": "TWCoinTypeAeternity",
+      "blockchain": "Aeternity",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 459,
+      "coin_type": "TWCoinTypeKava",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 461,
+      "coin_type": "TWCoinTypeFilecoin",
+      "blockchain": "Filecoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 474,
+      "coin_type": "TWCoinTypeOasis",
+      "blockchain": "OasisNetwork",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 483,
+      "coin_type": "TWCoinTypeBluzelle",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 494,
+      "coin_type": "TWCoinTypeBandChain",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 500,
+      "coin_type": "TWCoinTypeTheta",
+      "blockchain": "Theta",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 501,
+      "coin_type": "TWCoinTypeSolana",
+      "blockchain": "Solana",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 508,
+      "coin_type": "TWCoinTypeMultiversX",
+      "blockchain": "MultiversX",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 529,
+      "coin_type": "TWCoinTypeSecret",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 564,
+      "coin_type": "TWCoinTypeAgoric",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 595,
+      "coin_type": "TWCoinTypePolymesh",
+      "blockchain": "Polymesh",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 607,
+      "coin_type": "TWCoinTypeTON",
+      "blockchain": "TheOpenNetwork",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 637,
+      "coin_type": "TWCoinTypeAptos",
+      "blockchain": "Aptos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 714,
+      "coin_type": "TWCoinTypeBinance",
+      "blockchain": "Binance",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 784,
+      "coin_type": "TWCoinTypeSui",
+      "blockchain": "Sui",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 787,
+      "coin_type": "TWCoinTypeAcala",
+      "blockchain": "Polkadot",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 818,
+      "coin_type": "TWCoinTypeVeChain",
+      "blockchain": "Vechain",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 820,
+      "coin_type": "TWCoinTypeCallisto",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 888,
+      "coin_type": "TWCoinTypeNEO",
+      "blockchain": "NEO",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 889,
+      "coin_type": "TWCoinTypeViction",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 899,
+      "coin_type": "TWCoinTypeECash",
+      "blockchain": "BitcoinCash",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 931,
+      "coin_type": "TWCoinTypeTHORChain",
+      "blockchain": "Thorchain",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 966,
+      "coin_type": "TWCoinTypePolygon",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 996,
+      "coin_type": "TWCoinTypeOKXChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 999,
+      "coin_type": "TWCoinTypeBitcoinDiamond",
+      "blockchain": "BitcoinDiamond",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1001,
+      "coin_type": "TWCoinTypeThunderCore",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1023,
+      "coin_type": "TWCoinTypeHarmony",
+      "blockchain": "Harmony",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1024,
+      "coin_type": "TWCoinTypeOntology",
+      "blockchain": "Ontology",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1030,
+      "coin_type": "TWCoinTypeConfluxeSpace",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1329,
+      "coin_type": "TWCoinTypeSeiEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1729,
+      "coin_type": "TWCoinTypeTezos",
+      "blockchain": "Tezos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1815,
+      "coin_type": "TWCoinTypeCardano",
+      "blockchain": "Cardano",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1890,
+      "coin_type": "TWCoinTypeLightlink",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 2017,
+      "coin_type": "TWCoinTypeKin",
+      "blockchain": "Stellar",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 2301,
+      "coin_type": "TWCoinTypeQtum",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 2718,
+      "coin_type": "TWCoinTypeNebulas",
+      "blockchain": "Nebulas",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 3030,
+      "coin_type": "TWCoinTypeHedera",
+      "blockchain": "Hedera",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 4200,
+      "coin_type": "TWCoinTypeMerlin",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 4326,
+      "coin_type": "TWCoinTypeMegaETH",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 5000,
+      "coin_type": "TWCoinTypeMantle",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 5600,
+      "coin_type": "TWCoinTypeGreenfield",
+      "blockchain": "Greenfield",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 6001,
+      "coin_type": "TWCoinTypeBounceBit",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 6060,
+      "coin_type": "TWCoinTypeGoChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 7332,
+      "coin_type": "TWCoinTypeZenEON",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 8453,
+      "coin_type": "TWCoinTypeBase",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 8964,
+      "coin_type": "TWCoinTypeNULS",
+      "blockchain": "NULS",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 9745,
+      "coin_type": "TWCoinTypePlasma",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10143,
+      "coin_type": "TWCoinTypeMonad",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 14001,
+      "coin_type": "TWCoinTypeWAX",
+      "blockchain": "EOS",
+      "static": "supported",
+      "runtime": "crash",
+      "agreement": "crash",
+      "crash_detail": "signal 6 in preimage_empty"
+    },
+    {
+      "coin_id": 18000,
+      "coin_type": "TWCoinTypeMeter",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 19167,
+      "coin_type": "TWCoinTypeZelcash",
+      "blockchain": "Zcash",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 21888,
+      "coin_type": "TWCoinTypePactus",
+      "blockchain": "Pactus",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 52752,
+      "coin_type": "TWCoinTypeCelo",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 59144,
+      "coin_type": "TWCoinTypeLinea",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 81457,
+      "coin_type": "TWCoinTypeBlast",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 105105,
+      "coin_type": "TWCoinTypeStratis",
+      "blockchain": "Bitcoin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 534352,
+      "coin_type": "TWCoinTypeScroll",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 810180,
+      "coin_type": "TWCoinTypeZkLinkNova",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 5718350,
+      "coin_type": "TWCoinTypeWanchain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 5741564,
+      "coin_type": "TWCoinTypeWaves",
+      "blockchain": "Waves",
+      "static": "unsupported",
+      "runtime": "empty",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000025,
+      "coin_type": "TWCoinTypeCronosChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000060,
+      "coin_type": "TWCoinTypeNativeInjective",
+      "blockchain": "NativeInjective",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000070,
+      "coin_type": "TWCoinTypeOptimism",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000100,
+      "coin_type": "TWCoinTypeXDai",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000118,
+      "coin_type": "TWCoinTypeOsmosis",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000145,
+      "coin_type": "TWCoinTypeSmartBitcoinCash",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000146,
+      "coin_type": "TWCoinTypeSonic",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000250,
+      "coin_type": "TWCoinTypeFantom",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000288,
+      "coin_type": "TWCoinTypeBoba",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000321,
+      "coin_type": "TWCoinTypeKuCoinCommunityChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000324,
+      "coin_type": "TWCoinTypeZksync",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000330,
+      "coin_type": "TWCoinTypeTerraV2",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000553,
+      "coin_type": "TWCoinTypeECOChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000714,
+      "coin_type": "TWCoinTypeSmartChainLegacy",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000787,
+      "coin_type": "TWCoinTypeAcalaEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000990,
+      "coin_type": "TWCoinTypeCoreum",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10000999,
+      "coin_type": "TWCoinTypeHyperEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10001088,
+      "coin_type": "TWCoinTypeMetis",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10001101,
+      "coin_type": "TWCoinTypePolygonzkEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10001284,
+      "coin_type": "TWCoinTypeMoonbeam",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10001285,
+      "coin_type": "TWCoinTypeMoonriver",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10002020,
+      "coin_type": "TWCoinTypeRonin",
+      "blockchain": "Ronin",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10002222,
+      "coin_type": "TWCoinTypeKavaEvm",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10004663,
+      "coin_type": "TWCoinTypeRobinhoodChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10004689,
+      "coin_type": "TWCoinTypeIoTeXEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10007000,
+      "coin_type": "TWCoinTypeNativeZetaChain",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10007700,
+      "coin_type": "TWCoinTypeNativeCanto",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10008217,
+      "coin_type": "TWCoinTypeKaia",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10009000,
+      "coin_type": "TWCoinTypeAvalancheCChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10009001,
+      "coin_type": "TWCoinTypeEvmos",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10042170,
+      "coin_type": "TWCoinTypeArbitrumNova",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 10042221,
+      "coin_type": "TWCoinTypeArbitrum",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 11000118,
+      "coin_type": "TWCoinTypeSommelier",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 12000118,
+      "coin_type": "TWCoinTypeFetchAI",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 13000118,
+      "coin_type": "TWCoinTypeMars",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 14000118,
+      "coin_type": "TWCoinTypeUmee",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 15000118,
+      "coin_type": "TWCoinTypeQuasar",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 16000118,
+      "coin_type": "TWCoinTypePersistence",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 17000118,
+      "coin_type": "TWCoinTypeAkash",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 18000118,
+      "coin_type": "TWCoinTypeNoble",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 19000118,
+      "coin_type": "TWCoinTypeSei",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 20000118,
+      "coin_type": "TWCoinTypeStargaze",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 20000714,
+      "coin_type": "TWCoinTypeSmartChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 20007000,
+      "coin_type": "TWCoinTypeZetaEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 20009001,
+      "coin_type": "TWCoinTypeNativeEvmos",
+      "blockchain": "NativeEvmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 21000118,
+      "coin_type": "TWCoinTypeTia",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 22000118,
+      "coin_type": "TWCoinTypeDydx",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 30000118,
+      "coin_type": "TWCoinTypeJuno",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 30000714,
+      "coin_type": "TWCoinTypeTBinance",
+      "blockchain": "Binance",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 40000118,
+      "coin_type": "TWCoinTypeStride",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 50000118,
+      "coin_type": "TWCoinTypeAxelar",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 60000118,
+      "coin_type": "TWCoinTypeCrescent",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 70000118,
+      "coin_type": "TWCoinTypeKujira",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 80000118,
+      "coin_type": "TWCoinTypeComdex",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 90000118,
+      "coin_type": "TWCoinTypeNeutron",
+      "blockchain": "Cosmos",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 245022934,
+      "coin_type": "TWCoinTypeNeon",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    },
+    {
+      "coin_id": 1323161554,
+      "coin_type": "TWCoinTypeAurora",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "reached",
+      "agreement": "agree"
+    }
+  ],
+  "message": [
+    {
+      "coin_id": 0,
+      "coin_type": "TWCoinTypeBitcoin",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 2,
+      "coin_type": "TWCoinTypeLitecoin",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 3,
+      "coin_type": "TWCoinTypeDogecoin",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 5,
+      "coin_type": "TWCoinTypeDash",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 14,
+      "coin_type": "TWCoinTypeViacoin",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 17,
+      "coin_type": "TWCoinTypeGroestlcoin",
+      "blockchain": "Groestlcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 20,
+      "coin_type": "TWCoinTypeDigiByte",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 22,
+      "coin_type": "TWCoinTypeMonacoin",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 42,
+      "coin_type": "TWCoinTypeDecred",
+      "blockchain": "Decred",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 57,
+      "coin_type": "TWCoinTypeSyscoin",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 60,
+      "coin_type": "TWCoinTypeEthereum",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 61,
+      "coin_type": "TWCoinTypeEthereumClassic",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 74,
+      "coin_type": "TWCoinTypeICON",
+      "blockchain": "Icon",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 77,
+      "coin_type": "TWCoinTypeVerge",
+      "blockchain": "Verge",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 118,
+      "coin_type": "TWCoinTypeCosmos",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 119,
+      "coin_type": "TWCoinTypePivx",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 121,
+      "coin_type": "TWCoinTypeZen",
+      "blockchain": "Zen",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 133,
+      "coin_type": "TWCoinTypeZcash",
+      "blockchain": "Zcash",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 136,
+      "coin_type": "TWCoinTypeFiro",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 137,
+      "coin_type": "TWCoinTypeRootstock",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 141,
+      "coin_type": "TWCoinTypeKomodo",
+      "blockchain": "Komodo",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 144,
+      "coin_type": "TWCoinTypeXRP",
+      "blockchain": "Ripple",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 145,
+      "coin_type": "TWCoinTypeBitcoinCash",
+      "blockchain": "BitcoinCash",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 146,
+      "coin_type": "TWCoinTypeNebl",
+      "blockchain": "Verge",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 148,
+      "coin_type": "TWCoinTypeStellar",
+      "blockchain": "Stellar",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 156,
+      "coin_type": "TWCoinTypeBitcoinGold",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 165,
+      "coin_type": "TWCoinTypeNano",
+      "blockchain": "Nano",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 169,
+      "coin_type": "TWCoinTypeMantaPacific",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 175,
+      "coin_type": "TWCoinTypeRavencoin",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 178,
+      "coin_type": "TWCoinTypePOANetwork",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 194,
+      "coin_type": "TWCoinTypeEOS",
+      "blockchain": "EOS",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 195,
+      "coin_type": "TWCoinTypeTron",
+      "blockchain": "Tron",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWTronMessageSigner"
+    },
+    {
+      "coin_id": 204,
+      "coin_type": "TWCoinTypeOpBNB",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 223,
+      "coin_type": "TWCoinTypeInternetComputer",
+      "blockchain": "InternetComputer",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 235,
+      "coin_type": "TWCoinTypeFIO",
+      "blockchain": "FIO",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 242,
+      "coin_type": "TWCoinTypeNimiq",
+      "blockchain": "Nimiq",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 283,
+      "coin_type": "TWCoinTypeAlgorand",
+      "blockchain": "Algorand",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 291,
+      "coin_type": "TWCoinTypeIOST",
+      "blockchain": "IOST",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 304,
+      "coin_type": "TWCoinTypeIoTeX",
+      "blockchain": "IoTeX",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 309,
+      "coin_type": "TWCoinTypeNervos",
+      "blockchain": "Nervos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 313,
+      "coin_type": "TWCoinTypeZilliqa",
+      "blockchain": "Zilliqa",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 330,
+      "coin_type": "TWCoinTypeTerra",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 354,
+      "coin_type": "TWCoinTypePolkadot",
+      "blockchain": "Polkadot",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 361,
+      "coin_type": "TWCoinTypeThetaFuel",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 394,
+      "coin_type": "TWCoinTypeCryptoOrg",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 396,
+      "coin_type": "TWCoinTypeEverscale",
+      "blockchain": "Everscale",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 397,
+      "coin_type": "TWCoinTypeNEAR",
+      "blockchain": "NEAR",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 425,
+      "coin_type": "TWCoinTypeAion",
+      "blockchain": "Aion",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 434,
+      "coin_type": "TWCoinTypeKusama",
+      "blockchain": "Kusama",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 457,
+      "coin_type": "TWCoinTypeAeternity",
+      "blockchain": "Aeternity",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 459,
+      "coin_type": "TWCoinTypeKava",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 461,
+      "coin_type": "TWCoinTypeFilecoin",
+      "blockchain": "Filecoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 474,
+      "coin_type": "TWCoinTypeOasis",
+      "blockchain": "OasisNetwork",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 483,
+      "coin_type": "TWCoinTypeBluzelle",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 494,
+      "coin_type": "TWCoinTypeBandChain",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 500,
+      "coin_type": "TWCoinTypeTheta",
+      "blockchain": "Theta",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 501,
+      "coin_type": "TWCoinTypeSolana",
+      "blockchain": "Solana",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 508,
+      "coin_type": "TWCoinTypeMultiversX",
+      "blockchain": "MultiversX",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 529,
+      "coin_type": "TWCoinTypeSecret",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 564,
+      "coin_type": "TWCoinTypeAgoric",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 595,
+      "coin_type": "TWCoinTypePolymesh",
+      "blockchain": "Polymesh",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 607,
+      "coin_type": "TWCoinTypeTON",
+      "blockchain": "TheOpenNetwork",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWTONMessageSigner"
+    },
+    {
+      "coin_id": 637,
+      "coin_type": "TWCoinTypeAptos",
+      "blockchain": "Aptos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 714,
+      "coin_type": "TWCoinTypeBinance",
+      "blockchain": "Binance",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 784,
+      "coin_type": "TWCoinTypeSui",
+      "blockchain": "Sui",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 787,
+      "coin_type": "TWCoinTypeAcala",
+      "blockchain": "Polkadot",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 818,
+      "coin_type": "TWCoinTypeVeChain",
+      "blockchain": "Vechain",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 820,
+      "coin_type": "TWCoinTypeCallisto",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 888,
+      "coin_type": "TWCoinTypeNEO",
+      "blockchain": "NEO",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 889,
+      "coin_type": "TWCoinTypeViction",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 899,
+      "coin_type": "TWCoinTypeECash",
+      "blockchain": "BitcoinCash",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 931,
+      "coin_type": "TWCoinTypeTHORChain",
+      "blockchain": "Thorchain",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 966,
+      "coin_type": "TWCoinTypePolygon",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 996,
+      "coin_type": "TWCoinTypeOKXChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 999,
+      "coin_type": "TWCoinTypeBitcoinDiamond",
+      "blockchain": "BitcoinDiamond",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 1001,
+      "coin_type": "TWCoinTypeThunderCore",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 1023,
+      "coin_type": "TWCoinTypeHarmony",
+      "blockchain": "Harmony",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 1024,
+      "coin_type": "TWCoinTypeOntology",
+      "blockchain": "Ontology",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 1030,
+      "coin_type": "TWCoinTypeConfluxeSpace",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 1329,
+      "coin_type": "TWCoinTypeSeiEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 1729,
+      "coin_type": "TWCoinTypeTezos",
+      "blockchain": "Tezos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWTezosMessageSigner"
+    },
+    {
+      "coin_id": 1815,
+      "coin_type": "TWCoinTypeCardano",
+      "blockchain": "Cardano",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 1890,
+      "coin_type": "TWCoinTypeLightlink",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 2017,
+      "coin_type": "TWCoinTypeKin",
+      "blockchain": "Stellar",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 2301,
+      "coin_type": "TWCoinTypeQtum",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 2718,
+      "coin_type": "TWCoinTypeNebulas",
+      "blockchain": "Nebulas",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 3030,
+      "coin_type": "TWCoinTypeHedera",
+      "blockchain": "Hedera",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 4200,
+      "coin_type": "TWCoinTypeMerlin",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 4326,
+      "coin_type": "TWCoinTypeMegaETH",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 5000,
+      "coin_type": "TWCoinTypeMantle",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 5600,
+      "coin_type": "TWCoinTypeGreenfield",
+      "blockchain": "Greenfield",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 6001,
+      "coin_type": "TWCoinTypeBounceBit",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 6060,
+      "coin_type": "TWCoinTypeGoChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 7332,
+      "coin_type": "TWCoinTypeZenEON",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 8453,
+      "coin_type": "TWCoinTypeBase",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 8964,
+      "coin_type": "TWCoinTypeNULS",
+      "blockchain": "NULS",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 9745,
+      "coin_type": "TWCoinTypePlasma",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10143,
+      "coin_type": "TWCoinTypeMonad",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 14001,
+      "coin_type": "TWCoinTypeWAX",
+      "blockchain": "EOS",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 18000,
+      "coin_type": "TWCoinTypeMeter",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 19167,
+      "coin_type": "TWCoinTypeZelcash",
+      "blockchain": "Zcash",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 21888,
+      "coin_type": "TWCoinTypePactus",
+      "blockchain": "Pactus",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 52752,
+      "coin_type": "TWCoinTypeCelo",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 59144,
+      "coin_type": "TWCoinTypeLinea",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 81457,
+      "coin_type": "TWCoinTypeBlast",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 105105,
+      "coin_type": "TWCoinTypeStratis",
+      "blockchain": "Bitcoin",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": "TWBitcoinMessageSigner"
+    },
+    {
+      "coin_id": 534352,
+      "coin_type": "TWCoinTypeScroll",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 810180,
+      "coin_type": "TWCoinTypeZkLinkNova",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 5718350,
+      "coin_type": "TWCoinTypeWanchain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 5741564,
+      "coin_type": "TWCoinTypeWaves",
+      "blockchain": "Waves",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10000025,
+      "coin_type": "TWCoinTypeCronosChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000060,
+      "coin_type": "TWCoinTypeNativeInjective",
+      "blockchain": "NativeInjective",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10000070,
+      "coin_type": "TWCoinTypeOptimism",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000100,
+      "coin_type": "TWCoinTypeXDai",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000118,
+      "coin_type": "TWCoinTypeOsmosis",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10000145,
+      "coin_type": "TWCoinTypeSmartBitcoinCash",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000146,
+      "coin_type": "TWCoinTypeSonic",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000250,
+      "coin_type": "TWCoinTypeFantom",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000288,
+      "coin_type": "TWCoinTypeBoba",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000321,
+      "coin_type": "TWCoinTypeKuCoinCommunityChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000324,
+      "coin_type": "TWCoinTypeZksync",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000330,
+      "coin_type": "TWCoinTypeTerraV2",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10000553,
+      "coin_type": "TWCoinTypeECOChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000714,
+      "coin_type": "TWCoinTypeSmartChainLegacy",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000787,
+      "coin_type": "TWCoinTypeAcalaEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10000990,
+      "coin_type": "TWCoinTypeCoreum",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10000999,
+      "coin_type": "TWCoinTypeHyperEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10001088,
+      "coin_type": "TWCoinTypeMetis",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10001101,
+      "coin_type": "TWCoinTypePolygonzkEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10001284,
+      "coin_type": "TWCoinTypeMoonbeam",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10001285,
+      "coin_type": "TWCoinTypeMoonriver",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10002020,
+      "coin_type": "TWCoinTypeRonin",
+      "blockchain": "Ronin",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10002222,
+      "coin_type": "TWCoinTypeKavaEvm",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10004663,
+      "coin_type": "TWCoinTypeRobinhoodChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10004689,
+      "coin_type": "TWCoinTypeIoTeXEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10007000,
+      "coin_type": "TWCoinTypeNativeZetaChain",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10007700,
+      "coin_type": "TWCoinTypeNativeCanto",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 10008217,
+      "coin_type": "TWCoinTypeKaia",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10009000,
+      "coin_type": "TWCoinTypeAvalancheCChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10009001,
+      "coin_type": "TWCoinTypeEvmos",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10042170,
+      "coin_type": "TWCoinTypeArbitrumNova",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 10042221,
+      "coin_type": "TWCoinTypeArbitrum",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 11000118,
+      "coin_type": "TWCoinTypeSommelier",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 12000118,
+      "coin_type": "TWCoinTypeFetchAI",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 13000118,
+      "coin_type": "TWCoinTypeMars",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 14000118,
+      "coin_type": "TWCoinTypeUmee",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 15000118,
+      "coin_type": "TWCoinTypeQuasar",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 16000118,
+      "coin_type": "TWCoinTypePersistence",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 17000118,
+      "coin_type": "TWCoinTypeAkash",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 18000118,
+      "coin_type": "TWCoinTypeNoble",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 19000118,
+      "coin_type": "TWCoinTypeSei",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 20000118,
+      "coin_type": "TWCoinTypeStargaze",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 20000714,
+      "coin_type": "TWCoinTypeSmartChain",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 20007000,
+      "coin_type": "TWCoinTypeZetaEVM",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 20009001,
+      "coin_type": "TWCoinTypeNativeEvmos",
+      "blockchain": "NativeEvmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 21000118,
+      "coin_type": "TWCoinTypeTia",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 22000118,
+      "coin_type": "TWCoinTypeDydx",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 30000118,
+      "coin_type": "TWCoinTypeJuno",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 30000714,
+      "coin_type": "TWCoinTypeTBinance",
+      "blockchain": "Binance",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 40000118,
+      "coin_type": "TWCoinTypeStride",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 50000118,
+      "coin_type": "TWCoinTypeAxelar",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 60000118,
+      "coin_type": "TWCoinTypeCrescent",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 70000118,
+      "coin_type": "TWCoinTypeKujira",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 80000118,
+      "coin_type": "TWCoinTypeComdex",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 90000118,
+      "coin_type": "TWCoinTypeNeutron",
+      "blockchain": "Cosmos",
+      "static": "unsupported",
+      "runtime": "unsupported",
+      "agreement": "agree",
+      "specific_signer": null
+    },
+    {
+      "coin_id": 245022934,
+      "coin_type": "TWCoinTypeNeon",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    },
+    {
+      "coin_id": 1323161554,
+      "coin_type": "TWCoinTypeAurora",
+      "blockchain": "Ethereum",
+      "static": "supported",
+      "runtime": "supported",
+      "agreement": "agree",
+      "specific_signer": "TWEthereumMessageSigner"
+    }
+  ]
+}

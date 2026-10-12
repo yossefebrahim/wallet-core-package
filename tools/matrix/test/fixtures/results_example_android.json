@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "platform": "android",
+  "upstream": {
+    "tag": "9.9.9",
+    "commit": "abcdef0123456789abcdef0123456789abcdef01"
+  },
+  "repository_sha": "0123456789abcdef0123456789abcdef01234567",
+  "run_id": "1234567890",
+  "results": [
+    {
+      "id": "ethereum-address-n/a-1",
+      "status": "pass"
+    },
+    {
+      "id": "ethereum-sign-eip1559-1",
+      "status": "pass"
+    },
+    {
+      "id": "ethereum-sign-legacy-1",
+      "status": "fail"
+    }
+  ]
+}
