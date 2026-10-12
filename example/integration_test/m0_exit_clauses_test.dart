@@ -21,7 +21,14 @@ import 'package:integration_test/integration_test.dart';
 // `test/session/session_native_test.dart`).
 // ignore_for_file: implementation_imports
 import 'package:wallet_core_flutter/advanced.dart'
-    show LeakTracker, NativeContext, NoopResourceObserver, WalletCoreBindings;
+    show
+        LeakTracker,
+        NativeContext,
+        NoopResourceObserver,
+        TWDataHandle,
+        WalletCoreBindings;
+import 'package:wallet_core_flutter/src/engine/handles.dart'
+    show PrivateKeyHandle;
 import 'package:wallet_core_flutter/src/families/evm/evm_family.dart';
 import 'package:wallet_core_flutter/src/session/testing.dart'
     show debugLeakReportOf, initializeForTesting;
@@ -72,13 +79,32 @@ void main() {
       gasLimit: BigInt.parse(v.signGasLimit),
     );
     final usedKeys = {KeyLocator.imported(issueKeyRef(1))};
-    final result = core.sign(
-      evmFamily.encodeKeylessInput(request),
-      family: evmFamily,
-      coin: Coin.ethereum,
-      privateKey: _unhex(v.signPrivateKey),
-      usedKeys: usedKeys,
-    );
+    // The signing core borrows a native key handle per role (T2.0): the
+    // vector's raw key becomes one with `TWPrivateKeyCreateWithData`.
+    final keyData = TWDataHandle.fromBytes(context, _unhex(v.signPrivateKey));
+    final PrivateKeyHandle key;
+    try {
+      key = PrivateKeyHandle.adopt(
+        context,
+        bindings.TWPrivateKeyCreateWithData(keyData.pointer),
+      );
+    } finally {
+      keyData.dispose();
+    }
+    final disposedBeforeSign = tracker?.report.disposed;
+    final EvmSignResult result;
+    try {
+      result = core.sign(
+        evmFamily.encodeKeylessInput(request),
+        family: evmFamily,
+        coin: Coin.ethereum,
+        requiredRoles: const [KeyRole.primary],
+        keys: {KeyRole.primary: key},
+        usedKeys: usedKeys,
+      );
+    } finally {
+      key.dispose();
+    }
 
     expect(_hex(result.encoded), v.signExpectedEncoded);
     expect(_hex(result.v), v.signExpectedV);
@@ -87,9 +113,14 @@ void main() {
     expect(result.coin, Coin.ethereum);
     expect(result.usedKeys, usedKeys);
     if (tracker != null) {
-      // The keyed input and the output: both created, both disposed.
+      // The key's TWData copy, the keyed input and the output: all created
+      // and disposed inside the call (the borrowed key handle is the test's).
       expect(tracker.report.live, 0, reason: '${tracker.report}');
-      expect(tracker.report.disposed, 2, reason: '${tracker.report}');
+      expect(
+        tracker.report.disposed - disposedBeforeSign!,
+        3,
+        reason: '${tracker.report}',
+      );
       tracker.stop();
     }
   }, timeout: _timeout);

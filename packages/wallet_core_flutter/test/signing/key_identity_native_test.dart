@@ -1,7 +1,7 @@
 /// The key the signing path uses is the key the caller named, checked by
 /// means that share no code with that path:
 ///
-/// * `withDerivedKey` at the `ethereum-address-n/a-1` vector's path yields a
+/// * `withDerivedKeys` at the `ethereum-address-n/a-1` vector's path yields a
 ///   key whose public key and address — computed here straight through the
 ///   bindings, not through `HDWallet.deriveAccount` — are the vector's.
 /// * The public flow's signature is reproduced by the signing core with a key
@@ -29,7 +29,7 @@ import 'package:wallet_core_flutter/advanced.dart'
         TWStringHandle,
         WalletCoreBindings;
 import 'package:wallet_core_flutter/src/engine/hd_wallet.dart'
-    show withDerivedKey;
+    show KeyDerivation, withDerivedKeys;
 import 'package:wallet_core_flutter/src/families/evm/evm_family.dart';
 import 'package:wallet_core_flutter/src/session/testing.dart';
 import 'package:wallet_core_flutter/src/signing/signing_core.dart';
@@ -137,15 +137,26 @@ void main() {
       }
     }
 
-    test("withDerivedKey at the vector's path yields the vector's public key "
+    test("withDerivedKeys at the vector's path yields the vector's public key "
         'and address', () {
       final wallet = HDWallet.fromMnemonic(context, mnemonic);
       try {
-        final (publicKey, derivedAddress) = withDerivedKey(
-          wallet,
-          Coin.ethereum,
-          path,
-          (key) => publicIdentity(key),
+        final (publicKey, derivedAddress) = withDerivedKeys(
+          {'key': KeyDerivation(wallet, Coin.ethereum, path)},
+          (keys) {
+            // Test-owned copy of the borrowed key's bytes, overwritten here.
+            final data = TWDataHandle.adopt(
+              context,
+              bindings.TWPrivateKeyData(keys['key']!.pointer),
+            );
+            final bytes = data.copyBytes();
+            data.dispose();
+            try {
+              return publicIdentity(bytes);
+            } finally {
+              bytes.fillRange(0, bytes.length, 0);
+            }
+          },
         );
         expect(publicKey, publicKeyHex);
         expect(derivedAddress, address);
@@ -172,19 +183,22 @@ void main() {
         await core.shutdown();
       }
 
-      // 1. Same signature from a key that never went near withDerivedKey.
+      // 1. Same signature from a key that never went near withDerivedKeys.
       final key = independentKey();
+      final handle = privateKeyHandleOf(context, key);
       try {
         expect(publicIdentity(key).$1, publicKeyHex);
         final reference = SyncSigningCore(context).sign(
           evmFamily.encodeKeylessInput(request),
           family: evmFamily,
           coin: Coin.ethereum,
-          privateKey: key,
+          requiredRoles: const [KeyRole.primary],
+          keys: {KeyRole.primary: handle},
           usedKeys: const <KeyLocator>{},
         );
         expect(listEquals(reference.encoded, result.encoded), isTrue);
       } finally {
+        handle.dispose();
         key.fillRange(0, key.length, 0);
       }
 
