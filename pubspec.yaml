@@ -199,4 +199,9 @@ melos:
     lint:runtime-deps:
       description: runtime dependency policy, PRD §16 S4 (T1.17)
       run: dart run tools/lint/bin/runtime_deps_check.dart
+    probe:coverage:
+      description: >-
+        transaction compiler and message signing coverage probe (T2.9); rewrites
+        docs/decisions/evidence/compiler_and_message_coverage.md unless --out is given
+      run: dart run tools/probes/bin/coverage_probe.dart
 
