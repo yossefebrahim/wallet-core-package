@@ -23,8 +23,10 @@
 # is listening" line, waits ~340 s and fails with "Error waiting for a debug
 # connection" before any test ran (CI run 38283052160). A file is run a second
 # time only when its first run's output has that error AND no test result line
-# (`+N: <name>`, other than `loading`). A test failure, or a run in which tests
-# started, is never retried.
+# (`+N: <name>`, other than `loading` and the closing "Some tests failed." line,
+# which flutter prints for a load error too and which would otherwise make every
+# attach failure that ends without the watchdog look like a started run). A test
+# failure, or a run in which tests started, is never retried.
 #
 # Time budget: the whole script stays inside WCF_TOTAL_BUDGET_S (default 1920 s,
 # 32 min, so the summary is printed before the CI step's 35-minute limit). Each
@@ -156,11 +158,13 @@ collect_timeout_evidence() {
 
 # True when $1 (a flutter test log) shows the VM-service discovery failure and
 # no test ever ran: the error text is there and no `+N: <name>` result line
-# other than `loading` is.
+# other than `loading` and the closing "Some tests failed." is (flutter prints
+# that line, as `+0 -1: Some tests failed.`, after a load error too).
 is_tooling_failure() {
   local started_tests
   grep -q 'Error waiting for a debug connection' "$1" || return 1
-  started_tests="$(grep -E '[0-9]{2}:[0-9]{2} \+[0-9]+( [-~][0-9]+)*: ' "$1" | grep -vc ': loading ' || true)"
+  started_tests="$(grep -E '[0-9]{2}:[0-9]{2} \+[0-9]+( [-~][0-9]+)*: ' "$1" \
+    | grep -Evc ': loading |: Some tests failed\.' || true)"
   [ "${started_tests:-0}" -eq 0 ]
 }
 

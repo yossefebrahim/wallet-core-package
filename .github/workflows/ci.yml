@@ -287,13 +287,18 @@ jobs:
       # The first execution of the x86_64 library on a device: a failure here
       # is a finding about the artifact, not something this job works around.
       # `tools/ci/android_device_diag.sh` runs what `melos run test:android`
-      # runs (`tools/device_test.sh android`, verbose, under a 15-minute kill)
-      # while recording logcat, a heartbeat and the post-run device state into
+      # runs (`tools/device_test.sh android`, verbose), one integration-test
+      # file per `flutter test` run, each under a 10-minute kill, inside a
+      # 20-minute total budget; a file whose run failed to attach before any
+      # test ran ("Failed to start Dart Development Service") is retried once.
+      # It records logcat, a heartbeat and the post-run device state into
       # DIAG_DIR, so a hang fails with evidence instead of a silent job timeout.
+      # The step's 30 minutes are the 20-minute budget plus up to 10 minutes of
+      # post-run collection, so the script's summary always prints.
       # It is one command because the runner action executes each `script`
       # line as its own `sh -c`.
       - name: Android M0 flow (test:android under diagnostics)
-        timeout-minutes: 25
+        timeout-minutes: 30
         env:
           DIAG_DIR: ${{ runner.temp }}/android-diag
           # flutter/flutter#192736: on x86_64 Linux hosts with SwiftShader,
@@ -321,9 +326,11 @@ jobs:
           if-no-files-found: warn
 
       # The device test prints one WCF_VECTOR_RESULT line per proven vector;
-      # the collector turns the log into android.json. It runs after a failed
-      # test too: a partial run records what passed, and the `matrix` job then
-      # fails on every claim the file lacks.
+      # the collector turns the logs into android.json. The logs are one per
+      # file (flutter_test_<name>.txt and, for a retry,
+      # flutter_test_<name>.retry.txt), all matched by the glob below. It runs
+      # after a failed test too: a partial run records what passed, and the
+      # `matrix` job then fails on every claim the file lacks.
       - name: Collect Android vector results
         if: always()
         env:
