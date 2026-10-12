@@ -114,6 +114,10 @@ final class FakeHandler implements RequestHandler {
           if (word.startsWith(prefix)) word,
       ],
     ),
+    Plan(:final id, :final request) => Failed(
+      id,
+      UnsupportedOperationError(request.coin, 'plan'),
+    ),
     Sign(:final id, :final request) => Signed(
       id,
       EvmSignResult(

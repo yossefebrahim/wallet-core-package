@@ -25,9 +25,9 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 | operation | generated | exposed | tested |
 |---|---|---|---|
 | address | 167 | 167 | 0 |
-| sign | 167 | 60 | 0 |
+| sign | 167 | 61 | 0 |
 | sign_message | 63 | 0 | 0 |
-| plan | 28 | 0 | 0 |
+| plan | 28 | 1 | 0 |
 | compile | 158 | 0 | 0 |
 
 | operation | family | variant | generated | exposed | tested |
@@ -40,9 +40,9 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 | sign | evm | eip1559 | 60 | 60 | 0 |
 | sign | evm | contract_call | 60 | 60 | 0 |
 | sign | utxo | p2pkh | 14 | 0 | 0 |
-| sign | utxo | p2wpkh | 14 | 0 | 0 |
+| sign | utxo | p2wpkh | 14 | 1 | 0 |
 | sign | utxo | taproot | 14 | 0 | 0 |
-| sign | utxo | multi_input | 14 | 0 | 0 |
+| sign | utxo | multi_input | 14 | 1 | 0 |
 | sign | solana | legacy | 1 | 0 | 0 |
 | sign | solana | versioned | 1 | 0 | 0 |
 | sign | other | any | 92 | 0 | 0 |
@@ -51,9 +51,9 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 | sign_message | solana | personal | 1 | 0 | 0 |
 | sign_message | other | any | 2 | 0 | 0 |
 | plan | utxo | p2pkh | 14 | 0 | 0 |
-| plan | utxo | p2wpkh | 14 | 0 | 0 |
+| plan | utxo | p2wpkh | 14 | 1 | 0 |
 | plan | utxo | taproot | 14 | 0 | 0 |
-| plan | utxo | multi_input | 14 | 0 | 0 |
+| plan | utxo | multi_input | 14 | 1 | 0 |
 | plan | other | any | 14 | 0 | 0 |
 | compile | evm | legacy | 60 | 0 | 0 |
 | compile | evm | eip1559 | 60 | 0 | 0 |
@@ -87,7 +87,7 @@ Generated when the registry lists at least one derivation for the coin (`TWAnyAd
 
 Generated when the coin's upstream proto package defines `SigningInput`. `TWAnySignerSign` is one global symbol and is never used as evidence.
 
-167 generated, 60 exposed, 0 tested.
+167 generated, 61 exposed, 0 tested.
 
 ### sign — evm
 
@@ -99,7 +99,8 @@ Generated when the coin's upstream proto package defines `SigningInput`. `TWAnyS
 
 | family | coins | p2pkh | p2wpkh | taproot | multi_input |
 |---|---|---|---|---|---|
-| utxo | 14: bitcoin, bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | generated | generated | generated | generated |
+| utxo | 1: bitcoin | generated | exposed, unverified | generated | exposed, unverified |
+| utxo | 13: bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | generated | generated | generated | generated |
 
 ### sign — solana
 
@@ -143,7 +144,7 @@ Generated when the coin's proto package defines `MessageSigningInput` and the ge
 
 Generated when the coin's proto package defines `TransactionPlan`. Upstream documents `TWAnySignerPlan` for UTXO chains only; the proto is the per-coin evidence.
 
-28 generated, 0 exposed, 0 tested.
+28 generated, 1 exposed, 0 tested.
 
 ### plan — evm, solana, other
 
@@ -158,7 +159,8 @@ Generated when the coin's proto package defines `TransactionPlan`. Upstream docu
 
 | family | coins | p2pkh | p2wpkh | taproot | multi_input |
 |---|---|---|---|---|---|
-| utxo | 14: bitcoin, bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | generated | generated | generated | generated |
+| utxo | 1: bitcoin | generated | exposed, unverified | generated | exposed, unverified |
+| utxo | 13: bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | generated | generated | generated | generated |
 
 ## compile
 

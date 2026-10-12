@@ -2,9 +2,10 @@
 /// (`docs/architecture/lifecycle.md` §6, DECISION-12 §3.2). **Internal**:
 /// never exported from either public library.
 ///
-/// The M0 subset, with transaction signing ([Sign], [Signed]). `SignMessage`,
-/// `Plan`, `ImportKey` and their replies (`MessageSigned`, `Planned`,
-/// `KeyImported`) join these families later (T2.7, T2.5, T3.4); both families
+/// The M0 subset, with transaction signing ([Sign], [Signed]) and UTXO
+/// planning ([Plan], [Planned]). `SignMessage` and `ImportKey` and their
+/// replies (`MessageSigned`, `KeyImported`) join these families later (T2.7,
+/// T3.4); both families
 /// are `sealed`, so adding one is a compile error at every `switch` that must
 /// handle it — the handler and the session — which is the point.
 ///
@@ -406,6 +407,27 @@ final class Sign extends WorkerRequest {
   String toString() => 'Sign(#$id, $request, keys: ${keys.join(', ')})';
 }
 
+/// Plans a UTXO spend: which inputs upstream would select, and what it costs.
+/// Reply: [Planned].
+///
+/// **Takes no keys at all**, which is the point of the type: planning needs
+/// none, and no [LocatorSpec] is carried. An operation like any other:
+/// counted against the queue bound and given the `signing` deadline
+/// (DECISION-12 §3.4, §3.5).
+final class Plan extends WorkerRequest {
+  /// Creates the request.
+  const Plan(super.id, {required this.request});
+
+  /// What to plan. Validated when it was constructed.
+  final UtxoTransactionRequest request;
+
+  @override
+  String get operation => 'plan';
+
+  @override
+  String toString() => 'Plan(#$id, $request)';
+}
+
 /// How a [KeyLocator] crosses to the executor: the names it carries, as plain
 /// values, with nothing that holds a session or a proxy.
 ///
@@ -737,6 +759,19 @@ final class Signed extends WorkerReply {
 
   @override
   String toString() => 'Signed(#$id, $result)';
+}
+
+/// Upstream's plan for a [Plan], parsed. Carries no key and nothing derived
+/// from one.
+final class Planned extends WorkerReply {
+  /// Creates the reply.
+  const Planned(super.id, this.plan);
+
+  /// The inputs upstream selected and what the spend costs.
+  final UtxoPlan plan;
+
+  @override
+  String toString() => 'Planned(#$id, $plan)';
 }
 
 /// The wallet [walletRef] is released — or was never known, or was already

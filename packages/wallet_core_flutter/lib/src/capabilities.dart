@@ -154,4 +154,33 @@ const List<CapabilityGroup> capabilityGroups = <CapabilityGroup>[
     exposure: Exposure.typed,
     coins: evmCoinIds,
   ),
+  // `UtxoTransactionRequest` signed through `Signer.sign`, Bitcoin only:
+  // P2WPKH inputs (`bitcoin-sign-p2wpkh-1`) and several keys over P2WPKH and
+  // P2PK inputs (`bitcoin-sign-multi_input-1`).
+  CapabilityGroup(
+    operation: 'sign',
+    variant: 'p2wpkh',
+    exposure: Exposure.typed,
+    coins: <String>['bitcoin'],
+  ),
+  CapabilityGroup(
+    operation: 'sign',
+    variant: 'multi_input',
+    exposure: Exposure.typed,
+    coins: <String>['bitcoin'],
+  ),
+  // `Signer.plan`, Bitcoin only (`bitcoin-plan-p2wpkh-1`,
+  // `bitcoin-plan-multi_input-1`).
+  CapabilityGroup(
+    operation: 'plan',
+    variant: 'p2wpkh',
+    exposure: Exposure.typed,
+    coins: <String>['bitcoin'],
+  ),
+  CapabilityGroup(
+    operation: 'plan',
+    variant: 'multi_input',
+    exposure: Exposure.typed,
+    coins: <String>['bitcoin'],
+  ),
 ];

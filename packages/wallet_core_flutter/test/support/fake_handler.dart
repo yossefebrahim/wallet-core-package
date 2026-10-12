@@ -107,6 +107,16 @@ final class FakeHandler implements RequestHandler {
           usedKeys: const <KeyLocator>{},
         ),
       ),
+      Plan(:final id, :final request) => Planned(
+        id,
+        UtxoPlan(
+          selectedInputs: request.inputs,
+          amount: request.amount,
+          availableAmount: request.inputs.fold(0, (sum, i) => sum + i.amount),
+          fee: 0,
+          change: 0,
+        ),
+      ),
       DisposeRef(:final id, :final walletRef) => _dispose(id, walletRef),
       Cancel(:final id, :final target) => NotCancellable(id, target: target),
       Shutdown(:final id) => _shutdown(id),

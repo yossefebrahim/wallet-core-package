@@ -363,6 +363,7 @@ void main() {
       );
       final described = switch (result as SignResult) {
         EvmSignResult() => 'evm',
+        UtxoSignResult() => 'utxo',
       };
       expect(described, 'evm');
     });

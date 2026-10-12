@@ -485,6 +485,12 @@ final class M0Flow extends ChangeNotifier {
           (label: 'pre-hash', value: _hex(preHash)),
         (label: 'usedKeys', value: result.usedKeys.join(', ')),
       ],
+      UtxoSignResult() => [
+        (label: 'result', value: 'UtxoSignResult (${result.coin.id})'),
+        (label: 'transaction id', value: result.transactionId),
+        (label: 'encoded', value: '${result.encoded.length} bytes'),
+        (label: 'usedKeys', value: result.usedKeys.join(', ')),
+      ],
     };
   });
 

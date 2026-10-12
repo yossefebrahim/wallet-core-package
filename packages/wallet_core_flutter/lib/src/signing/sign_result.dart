@@ -106,4 +106,47 @@ SignResult withUsedKeys(SignResult result, Set<KeyLocator> usedKeys) =>
         preHash: result._preHash,
         usedKeys: usedKeys,
       ),
+      UtxoSignResult() => UtxoSignResult(
+        coin: result.coin,
+        encoded: result._encoded,
+        transactionId: result.transactionId,
+        usedKeys: usedKeys,
+      ),
     };
+
+/// The result of signing a UTXO transaction.
+///
+/// [encoded] is the result's own copy, exposed as a read-only view.
+final class UtxoSignResult implements SignResult {
+  /// Creates a result, copying [encoded].
+  UtxoSignResult({
+    required this.coin,
+    required Uint8List encoded,
+    required this.transactionId,
+    required Set<KeyLocator> usedKeys,
+  }) : _encoded = Uint8List.fromList(encoded),
+       usedKeys = Set<KeyLocator>.unmodifiable(usedKeys);
+
+  @override
+  final Coin coin;
+
+  @override
+  final Set<KeyLocator> usedKeys;
+
+  final Uint8List _encoded;
+
+  /// The signed, encoded transaction, ready to broadcast.
+  Uint8List get encoded => _encoded.asUnmodifiableView();
+
+  /// The transaction id, 64 lower-case hexadecimal digits, as upstream
+  /// reports it (the double SHA-256 of the transaction without its witness,
+  /// in display order).
+  final String transactionId;
+
+  /// The coin, the id, the encoded length, and how many keys signed. The
+  /// bytes are public, but a log line has no use for them.
+  @override
+  String toString() =>
+      'UtxoSignResult(${coin.id}, id: $transactionId, '
+      'encoded: ${_encoded.length} bytes, usedKeys: ${usedKeys.length})';
+}

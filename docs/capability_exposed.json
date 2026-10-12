@@ -8,6 +8,22 @@
       "coins": "all"
     },
     {
+      "operation": "plan",
+      "variant": "multi_input",
+      "exposure": "typed",
+      "coins": [
+        "bitcoin"
+      ]
+    },
+    {
+      "operation": "plan",
+      "variant": "p2wpkh",
+      "exposure": "typed",
+      "coins": [
+        "bitcoin"
+      ]
+    },
+    {
       "operation": "sign",
       "variant": "contract_call",
       "exposure": "typed",
@@ -206,6 +222,22 @@
         "zetaevm",
         "zklinknova",
         "zksync"
+      ]
+    },
+    {
+      "operation": "sign",
+      "variant": "multi_input",
+      "exposure": "typed",
+      "coins": [
+        "bitcoin"
+      ]
+    },
+    {
+      "operation": "sign",
+      "variant": "p2wpkh",
+      "exposure": "typed",
+      "coins": [
+        "bitcoin"
       ]
     }
   ]

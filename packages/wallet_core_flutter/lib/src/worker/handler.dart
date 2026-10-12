@@ -15,6 +15,8 @@ import '../engine/hd_wallet.dart';
 import '../errors/boundary.dart';
 import '../errors/errors.dart';
 import '../families/families.dart';
+import '../families/utxo/utxo_family.dart';
+import '../families/utxo/utxo_native.dart';
 import '../lifecycle/session_state.dart';
 import '../requests/requests.dart';
 import '../signing/key_field_check.dart';
@@ -35,9 +37,9 @@ typedef BindingsFactory = WalletCoreBindings Function(DynamicLibrary library);
 /// becomes (DECISION-12 §3.10, which names exactly these two types for a
 /// soft native failure):
 ///
-/// * [Sign] → [SigningError] with [SigningError.malformedOutputCode]: the
-///   signing operation failed inside upstream, as an unacceptable output
-///   does.
+/// * [Sign] and [Plan] → [SigningError] with
+///   [SigningError.malformedOutputCode]: the signing or planning operation
+///   failed inside upstream, as an unacceptable output does.
 /// * Every other operation → [InvalidInputError] naming the operation's
 ///   principal input — the type the engine already gives upstream's other
 ///   refusals (a null wallet, a null key at a path), and whose contract
@@ -52,7 +54,7 @@ WalletCoreException softNativeFailure(
 ) {
   final message = 'upstream returned an unusable result: ${error.what}';
   return switch (request) {
-    Sign() => SigningError(SigningError.malformedOutputCode, message),
+    Sign() || Plan() => SigningError(SigningError.malformedOutputCode, message),
     CreateWallet() => InvalidInputError(message, inputName: 'passphrase'),
     ImportWallet(:final mnemonic) => InvalidInputError(
       message,
@@ -254,6 +256,7 @@ final class EngineRequestHandler implements RequestHandler {
         id,
         _sign(engine, _signingCore!, request, keys),
       ),
+      Plan(:final id, :final request) => Planned(id, _plan(engine, request)),
       DisposeRef(:final id, :final walletRef) => _dispose(id, walletRef),
       Cancel(:final id, :final target) => NotCancellable(id, target: target),
       Shutdown(:final id) => _shutdown(id),
@@ -305,7 +308,9 @@ final class EngineRequestHandler implements RequestHandler {
   ///    with `checkDerivationPath`.
   /// 3. **Check the recipient** with upstream's address validation for the
   ///    request's coin, the EIP-55 checksum included
-  ///    ([WalletEngine.checkRecipient]).
+  ///    ([WalletEngine.checkRecipient]); for a UTXO request the recipient
+  ///    and change addresses and the script type of every input
+  ///    ([checkUtxoRequest]).
   /// 4. **Encode** the key-less input (`encodeKeylessInput`) and run the
   ///    key-field check on it (`checkKeylessInput`) — the decode proving the
   ///    bytes one complete, well-formed signing input, the walk proving every
@@ -345,6 +350,8 @@ final class EngineRequestHandler implements RequestHandler {
     switch (request) {
       case EvmTransactionRequest(:final to, :final coin, :final network):
         engine.checkRecipient(to, coin, network: network);
+      case UtxoTransactionRequest():
+        checkUtxoRequest(engine, request);
     }
     final keyless = family.encodeKeylessInput(request);
     checkKeylessInput(keyless, family);
@@ -360,6 +367,22 @@ final class EngineRequestHandler implements RequestHandler {
         usedKeys: const <KeyLocator>{},
       ),
     );
+  }
+
+  /// Plans [request]: no key exists, and none is asked for.
+  ///
+  /// In this order: the **pre-check** ([checkUtxoRequest]: recipient and
+  /// change address, the type of every input's script); **encode** the
+  /// key-less input and run the key-field check on it, as [_sign] does;
+  /// `TWAnySignerPlan`; **parse** the plan ([UtxoFamily.parsePlan]), which
+  /// reads upstream's error first and accepts only inputs the request
+  /// offered. Every failure is typed and nothing is retained.
+  UtxoPlan _plan(WalletEngine engine, UtxoTransactionRequest request) {
+    checkUtxoRequest(engine, request);
+    final keyless = utxoFamily.encodeKeylessInput(request);
+    checkKeylessInput(keyless, utxoFamily);
+    final bytes = UtxoNative(engine.context).plan(keyless, request.coin);
+    return utxoFamily.parsePlan(bytes, request: request);
   }
 
   /// Resolves [keys] for [request] and returns the HD locator that fills each
