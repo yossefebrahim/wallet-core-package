@@ -109,7 +109,7 @@ void main() {
     Matcher invalid(String inputName) =>
         isA<InvalidInputError>().having((e) => e.inputName, 'input', inputName);
 
-    test('a valid request derives one key, hands the core 32 bytes, and '
+    test('a valid request derives one key, hands the core one key handle, and '
         'returns the parsed result with no locators on the wire', () {
       final reply = sign({hd()});
       expect(reply, isA<Signed>());
@@ -119,7 +119,7 @@ void main() {
       expect(result.usedKeys, isEmpty);
       expect(handler.keysDerived, 1);
       expect(core.calls, 1);
-      expect(core.lastKeyLength, 32);
+      expect(core.lastRoles, [KeyRole.primary]);
       expect(core.lastCoin, Coin.ethereum);
       // Only the wallet is left: the key, its bytes, the keyed input, the
       // output and every string were released before the reply was made.

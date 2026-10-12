@@ -3,14 +3,18 @@
 /// request and locators the tests sign with.
 library;
 
+import 'dart:ffi';
 import 'dart:typed_data';
 
+import 'package:wallet_core_flutter/src/engine/handles.dart';
 import 'package:wallet_core_flutter/src/families/family.dart';
 import 'package:wallet_core_flutter/src/requests/requests.dart';
 import 'package:wallet_core_flutter/src/signing/key_locator.dart';
 import 'package:wallet_core_flutter/src/signing/sign_result.dart';
 import 'package:wallet_core_flutter/src/signing/signing_core.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart' show Coin;
+import 'package:wallet_core_flutter_bindings/wallet_core_flutter_bindings.dart'
+    show NativeContext, TWDataHandle;
 import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
     show ManifestIdentity;
 
@@ -22,7 +26,8 @@ const ManifestIdentity hostIdentity = ManifestIdentity(
 );
 
 /// A [SigningCore] that counts its calls and records what it was given —
-/// never the key itself, only its length — and signs through [delegate].
+/// never a key, only the roles it was given one for — and signs through
+/// [delegate].
 final class RecordingCore implements SigningCore {
   /// Records, then signs through [delegate].
   RecordingCore(this.delegate);
@@ -33,8 +38,9 @@ final class RecordingCore implements SigningCore {
   /// How many times [sign] was called.
   int calls = 0;
 
-  /// The length of the last key handed in.
-  int? lastKeyLength;
+  /// The roles of the last call's keys, in the order the core was told to
+  /// inject them.
+  List<KeyRole>? lastRoles;
 
   /// The coin of the last call.
   Coin? lastCoin;
@@ -47,20 +53,38 @@ final class RecordingCore implements SigningCore {
     Uint8List keylessInput, {
     required TransactionFamily<TransactionRequest, S> family,
     required Coin coin,
-    required Uint8List privateKey,
+    required List<KeyRole> requiredRoles,
+    required Map<KeyRole, PrivateKeyHandle> keys,
     required Set<KeyLocator> usedKeys,
   }) {
     calls++;
-    lastKeyLength = privateKey.length;
+    lastRoles = List<KeyRole>.of(requiredRoles);
     lastCoin = coin;
     lastUsedKeys = usedKeys;
     return delegate.sign(
       keylessInput,
       family: family,
       coin: coin,
-      privateKey: privateKey,
+      requiredRoles: requiredRoles,
+      keys: keys,
       usedKeys: usedKeys,
     );
+  }
+}
+
+/// A [PrivateKeyHandle] over a new upstream `TWPrivateKey` made from [raw]
+/// with `TWPrivateKeyCreateWithData`, for tests that hand the signing core a
+/// raw test key. The caller disposes it.
+PrivateKeyHandle privateKeyHandleOf(NativeContext context, Uint8List raw) {
+  final data = TWDataHandle.fromBytes(context, raw);
+  try {
+    final pointer = context.bindings.TWPrivateKeyCreateWithData(data.pointer);
+    if (pointer == nullptr) {
+      throw StateError('upstream rejected the test key');
+    }
+    return PrivateKeyHandle.adopt(context, pointer);
+  } finally {
+    data.dispose();
   }
 }
 

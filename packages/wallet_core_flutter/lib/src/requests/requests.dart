@@ -7,7 +7,8 @@
 /// [KeyLocator]s, which are names and not secrets.
 ///
 /// The bases are `sealed`, so every family's request type lives in this one
-/// library, each in its own `part` under a family directory.
+/// library, each in its own `part` under a family directory. The bases and the
+/// value types the families share (`OutPoint`, `UtxoInput`) are in `base.dart`.
 library;
 
 import 'dart:typed_data';
@@ -18,25 +19,5 @@ import '../coin/network.dart';
 import '../errors/errors.dart';
 import '../signing/key_locator.dart';
 
+part 'base.dart';
 part 'evm/evm_transaction_request.dart';
-
-/// Base of every transaction request.
-sealed class TransactionRequest {
-  /// The coin the transaction is for.
-  Coin get coin;
-
-  /// The network the transaction is for.
-  Network get network;
-
-  /// Every locator this request needs, collected from wherever they appear in
-  /// it. For most families this is empty and the caller supplies the set; for
-  /// UTXO it is the per-input locators.
-  Set<KeyLocator> get keyLocators;
-}
-
-/// Base of every message-signing request. No member exists at this version;
-/// EVM messages are T2.7's.
-sealed class MessageRequest {
-  /// The coin whose message format and key the request is for.
-  Coin get coin;
-}

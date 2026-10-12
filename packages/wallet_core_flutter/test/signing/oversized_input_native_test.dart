@@ -19,6 +19,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wallet_core_flutter/advanced.dart';
+import 'package:wallet_core_flutter/src/engine/handles.dart';
 import 'package:wallet_core_flutter/src/errors/errors.dart';
 import 'package:wallet_core_flutter/src/families/evm/evm_family.dart';
 import 'package:wallet_core_flutter/src/families/family.dart';
@@ -78,13 +79,15 @@ final class _OversizingCore implements SigningCore {
     Uint8List keylessInput, {
     required TransactionFamily<TransactionRequest, S> family,
     required Coin coin,
-    required Uint8List privateKey,
+    required List<KeyRole> requiredRoles,
+    required Map<KeyRole, PrivateKeyHandle> keys,
     required Set<KeyLocator> usedKeys,
   }) => delegate.sign(
     oversize ? oversized : keylessInput,
     family: family,
     coin: coin,
-    privateKey: privateKey,
+    requiredRoles: requiredRoles,
+    keys: keys,
     usedKeys: usedKeys,
   );
 }
@@ -121,14 +124,16 @@ void main() {
         },
       );
       final keyless = _nearCeilingKeyless(to);
-      final key = Uint8List(32)..fillRange(0, 32, 0x55);
+      final raw = Uint8List(32)..fillRange(0, 32, 0x55);
+      final key = privateKeyHandleOf(core.context, raw);
 
       expect(
         () => core.sign(
           keyless,
           family: evmFamily,
           coin: Coin.ethereum,
-          privateKey: key,
+          requiredRoles: const [KeyRole.primary],
+          keys: {KeyRole.primary: key},
           usedKeys: const <KeyLocator>{},
         ),
         throwsA(
@@ -139,13 +144,10 @@ void main() {
       );
 
       expect(nativeSignCalls, 0);
+      expect(key.isDisposed, isFalse, reason: 'the key is borrowed');
+      key.dispose();
       expect(tracker.report.live, 0, reason: '${tracker.report}');
       expect(tracker.report.finalizedWithoutDispose, 0);
-      expect(
-        key.every((b) => b == 0x55),
-        isTrue,
-        reason: "the caller's key is untouched",
-      );
       tracker.stop();
     });
 

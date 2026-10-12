@@ -1,7 +1,9 @@
 /// The Approach A signing core against the real host library: the T1.10
 /// vector byte for byte, the tamper check before any key reaches native code,
-/// upstream failures as typed errors, the caller's key left as it was, and
-/// zero undisposed resources after every call.
+/// upstream failures as typed errors, the borrowed key handle left as it was,
+/// and zero undisposed resources after every call.
+///
+/// The multi-key injection has its own file, `signing_core_multikey_native_test.dart`.
 ///
 /// Skips when the library is absent; `WCF_NATIVE_REQUIRED=1` turns that into
 /// a failure (see `../support/host_library.dart`).
@@ -15,18 +17,24 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protobuf/protobuf.dart' show CodedBufferReader;
 import 'package:wallet_core_flutter/advanced.dart';
+import 'package:wallet_core_flutter/src/engine/handles.dart';
 import 'package:wallet_core_flutter/src/engine/secret_buffers.dart'
     show secretData;
 import 'package:wallet_core_flutter/src/errors/errors.dart';
 import 'package:wallet_core_flutter/src/families/evm/evm_family.dart';
 import 'package:wallet_core_flutter/src/requests/requests.dart';
 import 'package:wallet_core_flutter/src/signing/key_locator.dart';
+import 'package:wallet_core_flutter/src/signing/sign_result.dart';
 import 'package:wallet_core_flutter/src/signing/signing_core.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart' show Coin;
+// ignore: implementation_imports
+import 'package:wallet_core_flutter_bindings/src/generated/proto/Ethereum.pb.dart'
+    as eth;
 
 import '../support/fixtures.dart';
 import '../support/host_library.dart';
 import 'evm_vector.dart';
+import 'signing_support.dart';
 
 const String _vectorId = 'ethereum-sign-eip1559-1';
 
@@ -65,6 +73,7 @@ void main() {
     late LeakTracker tracker;
     late SyncSigningCore core;
     late int nativeSignCalls;
+    final handles = <PrivateKeyHandle>[];
 
     setUpAll(() {
       bindings = openHostBindings();
@@ -87,6 +96,10 @@ void main() {
     });
 
     tearDown(() {
+      for (final handle in handles) {
+        handle.dispose();
+      }
+      handles.clear();
       final report = tracker.report;
       expect(report.live, 0, reason: '$report');
       expect(report.finalizedWithoutDispose, 0, reason: '$report');
@@ -96,15 +109,31 @@ void main() {
     /// The vector's published test key, in a fresh list per test.
     Uint8List vectorKey() => _unhex(input['private_key'] as String);
 
+    /// A handle over [raw], disposed by `tearDown`.
+    PrivateKeyHandle handleOf(Uint8List raw) {
+      final handle = privateKeyHandleOf(core.context, raw);
+      handles.add(handle);
+      return handle;
+    }
+
+    /// The vector's key as the one primary key.
+    Map<KeyRole, PrivateKeyHandle> vectorKeys() => {
+      KeyRole.primary: handleOf(vectorKey()),
+    };
+    const roles = [KeyRole.primary];
+
     final usedKeys = {KeyLocator.imported(issueKeyRef(1))};
 
     test("reproduces the vector's encoded, v, r and s byte for byte", () {
       final keyless = evmFamily.encodeKeylessInput(vectorRequest(input));
+      final keys = vectorKeys();
+      final disposedBefore = tracker.report.disposed;
       final result = core.sign(
         keyless,
         family: evmFamily,
         coin: Coin.ethereum,
-        privateKey: vectorKey(),
+        requiredRoles: roles,
+        keys: keys,
         usedKeys: usedKeys,
       );
       expect(_hex(result.encoded), expected['encoded']);
@@ -114,42 +143,29 @@ void main() {
       expect(result.coin, Coin.ethereum);
       expect(result.usedKeys, usedKeys);
       expect(nativeSignCalls, 1);
-      // The keyed input and the output: both created, both disposed.
-      expect(tracker.report.disposed, 2);
+      // The key's TWData, the keyed input and the output: all created inside
+      // the call, all disposed before it returned. The handle is borrowed and
+      // is still the test's.
+      expect(tracker.report.disposed - disposedBefore, 3);
+      expect(keys[KeyRole.primary]!.isDisposed, isFalse);
     });
 
-    test("leaves the caller's key buffer exactly as it was", () {
-      final key = vectorKey();
-      final before = Uint8List.fromList(key);
-      core.sign(
-        evmFamily.encodeKeylessInput(vectorRequest(input)),
+    test('the key handle is borrowed: still usable after the call, and '
+        'signing again with it gives the same bytes', () {
+      final keys = vectorKeys();
+      final keyless = evmFamily.encodeKeylessInput(vectorRequest(input));
+      EvmSignResult sign() => core.sign(
+        keyless,
         family: evmFamily,
         coin: Coin.ethereum,
-        privateKey: key,
+        requiredRoles: roles,
+        keys: keys,
         usedKeys: usedKeys,
       );
-      // Compared without a matcher that would print the key on failure.
-      expect(listEquals(key, before), isTrue);
-    });
-
-    test('accepts a key that is a view over native memory', () {
-      // The shape T1.12b's resolution can hand in: no Dart-heap copy.
-      final key = vectorKey();
-      final staged = TWDataHandle.fromBytes(core.context, key);
-      try {
-        final view = bindings.TWDataBytes(staged.pointer)
-            .asTypedList(staged.length);
-        final result = core.sign(
-          evmFamily.encodeKeylessInput(vectorRequest(input)),
-          family: evmFamily,
-          coin: Coin.ethereum,
-          privateKey: view,
-          usedKeys: usedKeys,
-        );
-        expect(_hex(result.encoded), expected['encoded']);
-      } finally {
-        staged.dispose();
-      }
+      final first = sign();
+      expect(keys[KeyRole.primary]!.isDisposed, isFalse);
+      expect(listEquals(sign().encoded, first.encoded), isTrue);
+      expect(_hex(first.encoded), expected['encoded']);
     });
 
     test('the keyed input upstream receives is the key field, then the '
@@ -171,7 +187,8 @@ void main() {
         keyless,
         family: evmFamily,
         coin: Coin.ethereum,
-        privateKey: key,
+        requiredRoles: roles,
+        keys: {KeyRole.primary: handleOf(Uint8List.fromList(key))},
         usedKeys: usedKeys,
       );
       expect(_hex(result.encoded), expected['encoded']);
@@ -226,12 +243,15 @@ void main() {
       });
 
       test('is rejected before the key is read or copied anywhere', () {
+        final keys = vectorKeys();
+        final disposedBefore = tracker.report.disposed;
         expect(
           () => core.sign(
             truncated,
             family: evmFamily,
             coin: Coin.ethereum,
-            privateKey: vectorKey(),
+            requiredRoles: roles,
+            keys: keys,
             usedKeys: usedKeys,
           ),
           throwsA(
@@ -243,7 +263,11 @@ void main() {
           ),
         );
         expect(nativeSignCalls, 0);
-        expect(tracker.report.disposed, 0, reason: 'no staging, no TWData');
+        expect(
+          tracker.report.disposed - disposedBefore,
+          0,
+          reason: 'no key TWData, no staging, no TWData',
+        );
       });
 
       test('even with the check bypassed, the keyed bytes put the key in its '
@@ -251,7 +275,8 @@ void main() {
         final key = vectorKey();
         final field = evmFamily.injectionField(KeyRole.primary);
         final keyed = Uint8List.fromList([
-          for (final part in keyedInputParts(truncated, field, key)) ...part,
+          for (final part in keyedInputParts(truncated, [(field, key)]))
+            ...part,
         ]);
         // The first field on the wire is private_key, holding the key.
         final reader = CodedBufferReader(keyed);
@@ -306,13 +331,16 @@ void main() {
         ...lengthDelimitedHeader(9, planted.length),
         ...planted,
       ]);
+      final keys = vectorKeys();
+      final disposedBefore = tracker.report.disposed;
       Object? caught;
       try {
         core.sign(
           tampered,
           family: evmFamily,
           coin: Coin.ethereum,
-          privateKey: vectorKey(),
+          requiredRoles: roles,
+          keys: keys,
           usedKeys: usedKeys,
         );
       } on Object catch (error) {
@@ -330,16 +358,19 @@ void main() {
       // No native sign call, and no native object created at all: the key
       // was never copied anywhere.
       expect(nativeSignCalls, 0);
-      expect(tracker.report.disposed, 0);
+      expect(tracker.report.disposed - disposedBefore, 0);
     });
 
     test('a coin outside the family is rejected before any native call', () {
+      final keys = vectorKeys();
+      final disposedBefore = tracker.report.disposed;
       expect(
         () => core.sign(
           evmFamily.encodeKeylessInput(vectorRequest(input)),
           family: evmFamily,
           coin: Coin.bitcoin,
-          privateKey: vectorKey(),
+          requiredRoles: roles,
+          keys: keys,
           usedKeys: usedKeys,
         ),
         throwsA(
@@ -351,41 +382,104 @@ void main() {
         ),
       );
       expect(nativeSignCalls, 0);
-      expect(tracker.report.disposed, 0);
+      expect(tracker.report.disposed - disposedBefore, 0);
     });
 
-    // Keys upstream rejects at the pinned tag. (A 31-byte key is not among
-    // them: upstream signs with it. The core does not judge key lengths; the
-    // keys T1.12b hands it come from upstream's own derivation.)
-    for (final (name, keyOf) in <(String, Uint8List Function(Uint8List))>[
-      ('empty', (key) => Uint8List(0)),
-      ('33-byte', (key) => Uint8List.fromList([...key, 1])),
-      ('64-byte', (key) => Uint8List.fromList([...key, ...key])),
-      ('all-zero', (key) => Uint8List(32)),
-    ]) {
-      test('an upstream failure on a $name key is a typed SigningError, with '
-          'every temporary released', () {
-        final key = keyOf(vectorKey());
-        Object? caught;
-        try {
-          core.sign(
-            evmFamily.encodeKeylessInput(vectorRequest(input)),
+    test('an upstream failure is a typed SigningError, with every temporary '
+        'released and the borrowed key still the caller\'s', () {
+      // Well-formed and key-less, but upstream cannot sign it: the recipient
+      // is not an address.
+      final keyless = eth.SigningInput(
+        chainId: <int>[1],
+        nonce: <int>[0],
+        gasLimit: <int>[0x52, 0x08],
+        toAddress: 'not an address',
+        txMode: eth.TransactionMode.Enveloped,
+        maxInclusionFeePerGas: <int>[1],
+        maxFeePerGas: <int>[2],
+        transaction: eth.Transaction(
+          transfer: eth.Transaction_Transfer(amount: <int>[1]),
+        ),
+      ).writeToBuffer();
+      final key = vectorKey();
+      final keys = {KeyRole.primary: handleOf(Uint8List.fromList(key))};
+      final disposedBefore = tracker.report.disposed;
+      Object? caught;
+      try {
+        core.sign(
+          keyless,
+          family: evmFamily,
+          coin: Coin.ethereum,
+          requiredRoles: roles,
+          keys: keys,
+          usedKeys: usedKeys,
+        );
+      } on Object catch (error) {
+        caught = error;
+      }
+      expect(caught, isA<SigningError>());
+      final error = caught! as SigningError;
+      expect(error.upstreamCode, isPositive);
+      expect(error.upstreamCode, isNot(SigningError.malformedOutputCode));
+      expectRedacted(error, [_hex(key)]);
+      expect(nativeSignCalls, 1);
+      // The key's TWData, the keyed input and the output.
+      expect(tracker.report.disposed - disposedBefore, 3);
+      expect(keys[KeyRole.primary]!.isDisposed, isFalse);
+    });
+
+    group('a role defect is a StateError, before any key is read', () {
+      Uint8List keyless() => evmFamily.encodeKeylessInput(vectorRequest(input));
+
+      void expectDefect(
+        Map<KeyRole, PrivateKeyHandle> keys, {
+        List<KeyRole> requiredRoles = roles,
+      }) {
+        final disposedBefore = tracker.report.disposed;
+        expect(
+          () => core.sign(
+            keyless(),
             family: evmFamily,
             coin: Coin.ethereum,
-            privateKey: key,
+            requiredRoles: requiredRoles,
+            keys: keys,
             usedKeys: usedKeys,
-          );
-        } on Object catch (error) {
-          caught = error;
-        }
-        expect(caught, isA<SigningError>());
-        final error = caught! as SigningError;
-        expect(error.upstreamCode, isPositive);
-        expect(error.upstreamCode, isNot(SigningError.malformedOutputCode));
-        if (key.any((b) => b != 0)) expectRedacted(error, [_hex(key)]);
-        expect(nativeSignCalls, 1);
-        expect(tracker.report.disposed, 2);
+          ),
+          throwsStateError,
+        );
+        expect(nativeSignCalls, 0);
+        expect(tracker.report.disposed - disposedBefore, 0);
+      }
+
+      test('a required role with no key', () {
+        final other = handleOf(vectorKey());
+        expectDefect({KeyRole.feePayer: other});
       });
-    }
+
+      test('a key for a role the family does not require', () {
+        expectDefect({
+          KeyRole.primary: handleOf(vectorKey()),
+          KeyRole.feePayer: handleOf(vectorKey()),
+        });
+      });
+
+      test('a listed role the family has no slot for', () {
+        expectDefect(
+          {
+            KeyRole.primary: handleOf(vectorKey()),
+            KeyRole.feePayer: handleOf(vectorKey()),
+          },
+          requiredRoles: [KeyRole.primary, KeyRole.feePayer],
+        );
+      });
+
+      test('no roles at all, and a repeated role', () {
+        expectDefect(const {}, requiredRoles: const []);
+        expectDefect(
+          vectorKeys(),
+          requiredRoles: [KeyRole.primary, KeyRole.primary],
+        );
+      });
+    });
   });
 }

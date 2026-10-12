@@ -293,77 +293,96 @@ final class HDWallet extends NativeResource {
       context.bindings.TWHDWalletDelete(pointer.cast<TWHDWallet>());
 }
 
-/// Derives the private key of [wallet] for [coin] at [derivationPath], runs
-/// [use] with a read-only **view over upstream's native bytes** of it, and
-/// releases the key before returning or throwing. **Internal**: the signing
-/// path's only door to a key; never exported, not even by `advanced.dart`.
+/// One private key to derive: the key of [wallet] for [coin] at
+/// [derivationPath]. A name for a key, not a key. **Internal**.
+final class KeyDerivation {
+  /// Names the key of [wallet] for [coin] at [derivationPath], which must
+  /// already have passed `checkDerivationPath`.
+  const KeyDerivation(this.wallet, this.coin, this.derivationPath);
+
+  /// The wallet the key is derived from.
+  final HDWallet wallet;
+
+  /// The coin whose curve and conventions the key is derived for.
+  final Coin coin;
+
+  /// The full BIP-32 derivation path.
+  final String derivationPath;
+}
+
+/// Derives one private key per entry of [derivations], runs [use] with a
+/// **borrowed** [PrivateKeyHandle] for each, and disposes every handle before
+/// returning or throwing. **Internal**: the signing path's only door to keys;
+/// never exported, not even by `advanced.dart`.
 ///
-/// [derivationPath] must already have passed `checkDerivationPath`; the
-/// caller validates before deriving, so that nothing is derived for a request
-/// that is going to be rejected anyway.
+/// [K] names a derivation for the caller — the signing path uses its
+/// `KeyRole`. The map handed to [use] has the same keys in the same
+/// iteration order, and is unmodifiable. The wallets may differ per entry (a
+/// fee payer from another wallet of the session), but all must share one
+/// native context.
+///
+/// **No key bytes leave this function.** It makes no `TWPrivateKeyData` call
+/// and no view over key bytes: what [use] receives is the native object, and
+/// whoever needs its bytes (the signing core's assembly) reads them from it
+/// for as long as it needs them. [use] must not dispose a handle, retain one,
+/// or let one outlive its call — each is disposed when this returns.
 ///
 /// In this order:
 ///
-/// 1. `TWHDWalletGetKey(wallet, coin, path)` — upstream derives the key into
-///    a new `TWPrivateKey`, owned from here by a [PrivateKeyHandle].
-/// 2. `TWPrivateKeyData(key)` — upstream copies the key's bytes into a new
-///    `TWData`, owned from here by a [TWDataHandle].
-/// 3. [use] runs with `TWDataBytes(data).asTypedList(length)`: a `Uint8List`
-///    whose storage *is* that `TWData`'s buffer. No Dart-heap copy of the key
-///    is made here, and [use] must make none and must not retain the view —
-///    it is dangling once this returns.
-/// 4. In a `finally`, on every path: the `TWData` is disposed —
-///    `TWDataDelete` overwrites its buffer with zeros before freeing it — and
-///    then the key — `TWPrivateKeyDelete`, whose `PrivateKey` destructor
-///    overwrites its bytes with zeros at the pinned commit
-///    (`src/PrivateKey.h`, `~PrivateKey() { cleanup(); }`).
+/// 1. Every wallet is checked, so that no key is derived for a call that is
+///    going to fail on a disposed wallet.
+/// 2. For each entry, in order, `TWHDWalletGetKey(wallet, coin, path)` —
+///    upstream derives the key into a new `TWPrivateKey`, owned from here by a
+///    [PrivateKeyHandle].
+/// 3. [use] runs with the handles.
+/// 4. In a `finally`, on every path — [use] returned, [use] threw, or the
+///    derivation of the *n*-th key failed after *n − 1* were derived — every
+///    handle derived so far is disposed, last first: `TWPrivateKeyDelete`,
+///    whose `PrivateKey` destructor overwrites its bytes with zeros at the
+///    pinned commit (`src/PrivateKey.h`, `~PrivateKey() { cleanup(); }`).
 ///
-/// Throws [DisposedError] after [wallet] was disposed, before any native
-/// call; [InvalidInputError] (`inputName: 'derivationPath'`) when upstream
-/// derives no key at the path; and `NativeResultError` when upstream returns
-/// no key bytes or a size out of range — a soft native failure of this one
-/// operation (DECISION-12 §3.10). The key handle is released on those paths
-/// too.
-T withDerivedKey<T>(
-  HDWallet wallet,
-  Coin coin,
-  String derivationPath,
-  T Function(Uint8List privateKey) use,
+/// Throws [ArgumentError] for an empty [derivations] and [StateError] for
+/// wallets of different contexts, both defects of the caller;
+/// [DisposedError] after a wallet was disposed, before any native call; and
+/// [InvalidInputError] (`inputName: 'derivationPath'`) when upstream derives
+/// no key at a path.
+T withDerivedKeys<K, T>(
+  Map<K, KeyDerivation> derivations,
+  T Function(Map<K, PrivateKeyHandle> keys) use,
 ) {
-  final pointer = wallet._wallet;
-  final context = wallet.context;
+  if (derivations.isEmpty) {
+    throw ArgumentError.value(derivations, 'derivations', 'must not be empty');
+  }
+  final context = derivations.values.first.wallet.context;
+  final pointers = <K, Pointer<TWHDWallet>>{};
+  for (final MapEntry(:key, :value) in derivations.entries) {
+    if (!identical(value.wallet.context, context)) {
+      throw StateError('the wallets belong to different native contexts');
+    }
+    pointers[key] = value.wallet._wallet;
+  }
   final bindings = context.bindings;
-  final coinType = twCoinTypeOf(coin);
   return runScope(context, (scope) {
-    final path = readNative(
-      'TWStringCreateWithUTF8Bytes',
-      () => scope.string(derivationPath),
-    );
-    final keyPointer = bindings.TWHDWalletGetKey(
-      pointer,
-      coinType,
-      path.pointer,
-    );
-    if (keyPointer == nullptr) {
-      throw const InvalidInputError(
-        'upstream could not derive a key at this derivation path',
-        inputName: 'derivationPath',
+    final keys = <K, PrivateKeyHandle>{};
+    for (final MapEntry(:key, :value) in derivations.entries) {
+      final coinType = twCoinTypeOf(value.coin);
+      final path = readNative(
+        'TWStringCreateWithUTF8Bytes',
+        () => scope.string(value.derivationPath),
       );
+      final keyPointer = bindings.TWHDWalletGetKey(
+        pointers[key]!,
+        coinType,
+        path.pointer,
+      );
+      if (keyPointer == nullptr) {
+        throw const InvalidInputError(
+          'upstream could not derive a key at this derivation path',
+          inputName: 'derivationPath',
+        );
+      }
+      keys[key] = scope.use(PrivateKeyHandle.adopt(context, keyPointer));
     }
-    final key = scope.use(PrivateKeyHandle.adopt(context, keyPointer));
-    final dataPointer = bindings.TWPrivateKeyData(key.pointer);
-    if (dataPointer == nullptr) {
-      throw const NativeResultError('TWPrivateKeyData returned nullptr');
-    }
-    final data = scope.use(TWDataHandle.adopt(context, dataPointer));
-    final length = readNative('TWPrivateKeyData', () => data.length);
-    if (length == 0) {
-      throw const NativeResultError('TWPrivateKeyData returned no bytes');
-    }
-    final bytes = bindings.TWDataBytes(data.pointer);
-    if (bytes == nullptr) {
-      throw const NativeResultError('TWDataBytes returned nullptr');
-    }
-    return use(bytes.asTypedList(length));
+    return use(Map<K, PrivateKeyHandle>.unmodifiable(keys));
   });
 }

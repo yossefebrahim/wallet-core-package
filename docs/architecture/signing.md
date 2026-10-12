@@ -6,7 +6,7 @@ Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library. Not a
 |---|---|
 | **Decision** | [DECISION-13](../decisions/DECISION-13.md) — signing model |
 | **Binding on** | T1.12 (EVM path), T2.0 (signing model in code), T2.5 (UTXO), T2.6 (Solana), T2.7 (EVM messages), T2.12 (hostile-input suite) |
-| **Status** | sketch: signatures and doc comments only, no bodies. Its record was **recorded 2026-09-07** (see the linked DECISION file); binding on the tasks named there. |
+| **Status** | sections 1–5 are the public sketch: signatures and doc comments only, no bodies. **Section 6 describes the internal seam as built by T2.0** (2026-10-12): `SigningCore.sign` takes a borrowed `PrivateKeyHandle` per `KeyRole`; `withDerivedKeys` derives them; `UtxoInput` and `OutPoint` exist as values. The UTXO and Solana families that use the seam are T2.5 and T2.6. The record was **recorded 2026-09-07** (see the linked DECISION file); binding on the tasks named there. |
 
 Sections 1–5 are the public surface (`package:wallet_core_flutter/wallet_core_flutter.dart`) and name no foreign-function, generated, or serialization type. Section 6 is internal to the SDK's family code and is labelled as such.
 
@@ -368,6 +368,12 @@ Family code lives under `lib/src/families/<family>/` and is not part of the publ
 /// What every chain family implements, and the only place upstream's message
 /// shapes are known.
 abstract interface class TransactionFamily {
+  /// The facade family whose coins this family signs for, and the fully
+  /// qualified name of upstream's signing-input message — the root the
+  /// key-field check walks from and the message keys are injected into.
+  ChainFamily get chainFamily;
+  String get signingInputMessage;
+
   /// Encodes [request] into upstream's serialized signing input **with no key
   /// field set**.
   ///
@@ -384,12 +390,23 @@ abstract interface class TransactionFamily {
   /// being coerced.
   SignResult parseSigningOutput(Uint8List bytes, {required Coin coin, required Set<KeyLocator> usedKeys});
 
-  /// The roles this family needs filled, in order of necessity.
+  /// The roles this family needs filled. **The order is the injection order**
+  /// (section 6.1).
   List<KeyRole> requiredRoles(TransactionRequest request);
 
   /// The reviewed list of field names that carry key material in this family's
   /// messages. See [KeyFieldList].
   KeyFieldList get keyFields;
+
+  /// The field of [signingInputMessage] the key for [role] is injected into.
+  /// Several roles may name the same `repeated` field (UTXO inputs) or
+  /// different fields (Solana's `primary` and `feePayer`). Throws
+  /// [ArgumentError] for a role the family has no slot for.
+  KeyFieldEntry injectionField(KeyRole role);
+
+  /// Decodes serialized signing-input bytes into the generated message, for
+  /// the key-field check only.
+  GeneratedMessage decodeSigningInput(Uint8List bytes);
 }
 
 /// The reviewed per-family list of key-carrying field names.
@@ -412,9 +429,15 @@ final class KeyFieldList {
 }
 
 final class KeyFieldEntry {
-  const KeyFieldEntry({required this.messagePath, required this.fieldName, required this.repeated});
+  const KeyFieldEntry({
+    required this.messagePath,
+    required this.fieldName,
+    required this.fieldNumber, // the key-field check and the injection work on wire numbers
+    required this.repeated,
+  });
   final String messagePath;
   final String fieldName;
+  final int fieldNumber;
   final bool repeated;
 }
 ```
@@ -424,10 +447,57 @@ final class KeyFieldEntry {
 1. Resolve every locator into the roles the family requires; fail with `KeyResolutionError` if the sets do not match.
 2. Call `encodeKeylessInput(request)`.
 3. Verify, against `keyFields`, that the encoded bytes carry none of those fields. A match means the family encoder is defective; the operation fails with `InvalidInputError` before any key is derived.
-4. Derive the keys, inject them into the fields `keyFields` names, and call upstream.
+4. Derive one key per role, inject each into the field `injectionField(role)` names, and call upstream. Section 6.1 is the exact mechanism.
 5. **Still inside the `try`, and before anything is released:** `parseSigningOutput` upstream's output into a `SignResult`. Upstream's output lives in an allocation that step 6 frees, so it must be read while it is alive; parsing produces Dart-owned copies of the signed bytes, the signature components, and the transaction id.
-6. **In a `finally`:** release every derived key, the injected input buffer, and every other temporary allocation, and overwrite the SDK's own key-bearing byte buffers. This block runs before the result is returned or the reply is posted — on the success, error, deadline, and cancellation paths alike, and also when step 5 throws.
+6. **In a `finally`:** release every derived key handle, the injected input buffer, and every other temporary allocation, and overwrite the SDK's own key-bearing byte buffers. This block runs before the result is returned or the reply is posted — on the success, error, deadline, and cancellation paths alike, and also when step 5 throws.
 
 The rule in one line: **parse before releasing, release before replying** (DECISION-12 §3.9). The two categories must not be confused. The `SignResult` retained from step 5 is *not* key-bearing — a signed transaction carries signatures and public data, never the private key that produced them — so keeping it is not a secret held past the `finally`. What the `finally` releases is the key-bearing set: derived key handles, the serialized input after injection, and the temporaries around them. On a discarded path (a deadline that has already elapsed, a cancellation) the parsed result is dropped rather than posted, and the release happens exactly as it would have.
 
 Steps 2 and 5 are the family's; steps 1, 3, 4, and 6 are the signer's; no other component sees a key. `RawSigningInput`, which takes caller-supplied serialized bytes, exists only under `advanced.dart` — arbitrary bytes can contain key fields and this SDK cannot prove otherwise, so the caller accepts that responsibility explicitly (PRD §10.2).
+
+### 6.1 The signing seam, as built (T2.0)
+
+Steps 3, 4 and 6 of the injection rule are one function, `SigningCore.sign` (`lib/src/signing/signing_core.dart`). DECISION-1 (owner, 2026-10-12) is *Approach A now, Approach B later behind the same `Signer`*; this is the seam that makes the later move local.
+
+```dart
+abstract interface class SigningCore {
+  S sign<S extends SignResult>(
+    Uint8List keylessInput, {
+    required TransactionFamily<TransactionRequest, S> family,
+    required Coin coin,
+    required List<KeyRole> requiredRoles,
+    required Map<KeyRole, PrivateKeyHandle> keys,
+    required Set<KeyLocator> usedKeys,
+  });
+}
+```
+
+`SyncSigningCore` is Approach A: it runs in the isolate that owns the native context, synchronously.
+
+**Ownership: borrowed.** Each `PrivateKeyHandle` (the internal handle of `engine/handles.dart`, one upstream `TWPrivateKey`) is read during the call only; the core never disposes, retains, or modifies one. The handler derives them in one scope (`withDerivedKeys`, `engine/hd_wallet.dart`: one handle per `KeyRole` → (wallet, coin, path), all disposed when the scope closes — on return, on a throw from the callback, and when a later derivation fails) and so owns every handle for the whole of the operation. No key bytes cross the seam in either direction: not as an argument, not in a result, not in an error.
+
+**Injection order.** Keys are injected in the order of `requiredRoles`, which is `TransactionFamily.requiredRoles(request)` as the handler passes it. The map's iteration order has no effect. Two roles that name one `repeated` field become consecutive elements of it in that order (UTXO: `input(0)`, `input(1)`, … give `repeated bytes private_key` in input order — upstream matches keys to inputs by script, so the order carries no meaning for Bitcoin and is fixed only so that a test can state it). Roles on different fields land in `requiredRoles` order on the wire.
+
+**What the core does, in order.**
+
+1. `coin` must belong to `family.chainFamily` (`InvalidInputError`, `inputName: 'coin'`).
+2. **Key-field check, before any key is read:** `keylessInput` must decode as one complete `signingInputMessage` and carry no field of `keyFields` at any depth and no group or unknown field (`InvalidInputError`, `inputName: 'signingInput'`).
+3. **Role checks** — a defect of the caller inside the SDK, so `StateError`, still before any key is read: `requiredRoles` is non-empty and repeats no role; `keys` has exactly the roles in `requiredRoles`; `family.injectionField(role)` exists for each, is a field of `signingInputMessage` itself, and no two roles share one *singular* field. (User mistakes — a missing, unused, foreign, or imported locator — were already turned into `KeyResolutionError` by the handler's `_resolveKeys`; no new reason was needed.)
+4. **Assembly.** For each role in order, `TWPrivateKeyData(handle)` gives a `TWData` copy of the key; the field header (`varint(number << 3 | 2)`, `varint(length)`), a **view** over that `TWData`'s native buffer, and finally the key-less bytes are copied straight into **one** `calloc` staging buffer, which becomes the keyed-input `TWData`. The key `TWData`s are disposed immediately after the assembly, before upstream is called. Keys are **prepended** as complete fields, never appended (an appended key lands inside whatever field the key-less bytes end in).
+5. `TWAnySignerSign(keyedInput, coinType)`; then `parseSigningOutput` on a copy of the output — parse before releasing.
+6. **`finally`:** the output `TWData` and the keyed-input `TWData` are disposed (upstream's `TWDataDelete` overwrites them). The staging buffer was overwritten with zeros and freed inside the assembly's own `finally`, whether or not the `TWData` was created.
+
+**Where the key bytes are, and for how long** (one sign, `n` keys):
+
+| # | What | Memory | Lives from → until | Ends by |
+|---|---|---|---|---|
+| 1 | `TWPrivateKey` per role (upstream's C++ `PrivateKey`) | upstream heap | `withDerivedKeys` → scope close, after the core returned | the handler's scope disposes it; upstream's `~PrivateKey` overwrites it |
+| 2 | `TWData` copy of each key (`TWPrivateKeyData`) | upstream heap | start of assembly → end of assembly | the core disposes it; upstream's `TWDataDelete` overwrites it |
+| 3 | `Uint8List` view over #2 | none — aliases #2's buffer | during assembly | dropped with #2; never a copy |
+| 4 | staging buffer: `n` × (header, key), then the key-less input | `calloc`, outside the Dart heap | during assembly | overwritten with zeros, then freed, in `secretDataFromParts`' `finally` |
+| 5 | keyed-input `TWData` | upstream heap | end of assembly → end of the call | the core disposes it; `TWDataDelete` overwrites it |
+| 6 | upstream's own copies while it signs (C++ `Data`, the Rust copy, the decoded Rust `SigningInput`, its private-key objects) | upstream heap | inside `TWAnySignerSign` | upstream's; see `docs/security/memory_contract.md` for what was and was not verified |
+
+**No Dart-heap copy of any key exists.** There is no `Uint8List.fromList`, no `List<int>` of key bytes, and no protobuf message holding a key: the message decoded by the key-field check is the key-less input, and the key fields are written as bytes, so no `CodedBufferWriter` chunk contains one. What the SDK returns (the result), throws (typed errors, which name a field or a role, never a value) and holds (nothing between calls) contains no key.
+
+**Why Approach B can go behind this seam without touching the handler.** The seam already takes the native object, not bytes. A B adapter (a C function taking a key-less input, a coin, and `TWPrivateKey*`s in injection order and doing steps 4–5 natively) implements `SigningCore` with the same parameters: locator resolution, derivation, the key-field check, the family's encoder and parser, and the handler's ownership of the handles are unchanged; only #2–#5 of the table move into C, where DECISION-13 §7 item 5 requires the key-field check to be re-established on the adapter's side as well.

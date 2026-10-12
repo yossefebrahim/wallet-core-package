@@ -15,7 +15,6 @@ import '../engine/hd_wallet.dart';
 import '../errors/boundary.dart';
 import '../errors/errors.dart';
 import '../families/families.dart';
-import '../families/family.dart';
 import '../lifecycle/session_state.dart';
 import '../requests/requests.dart';
 import '../signing/key_field_check.dart';
@@ -300,8 +299,10 @@ final class EngineRequestHandler implements RequestHandler {
   /// **Everything before step 5 runs before any key exists.** In this order:
   ///
   /// 1. **Resolve** [keys] against `familyFor(request).requiredRoles(request)`
-  ///    ([_resolveKeys]), in pure Dart — no native call.
-  /// 2. **Check the path** of the one HD locator with `checkDerivationPath`.
+  ///    ([_resolveKeys]), in pure Dart — no native call. The answer is one HD
+  ///    locator per role the family requires, in the family's order.
+  /// 2. **Resolve the wallet and check the path** of each of those locators
+  ///    with `checkDerivationPath`.
   /// 3. **Check the recipient** with upstream's address validation for the
   ///    request's coin, the EIP-55 checksum included
   ///    ([WalletEngine.checkRecipient]).
@@ -311,15 +312,13 @@ final class EngineRequestHandler implements RequestHandler {
   ///    key field absent, which is the precondition of the core's injection —
   ///    so that a defective encoder fails before a key is derived. The core
   ///    runs the check again; the core does not rely on its caller either.
-  /// 5. **Derive** the key ([withDerivedKey]): `TWHDWalletGetKey` into a
-  ///    `TWPrivateKey`, `TWPrivateKeyData` into a `TWData`, and a
-  ///    `Uint8List` *view* over that `TWData`'s native buffer handed on —
-  ///    **no Dart-heap copy of the key is made on this path**.
-  /// 6. **Sign** with [core] ([SigningCore.sign]), which borrows the view,
-  ///    injects it, calls upstream, and parses the output — parse before
-  ///    release.
-  /// 7. **Release**, in `withDerivedKey`'s `finally`, on every path: the key's
-  ///    `TWData` (`TWDataDelete`, which overwrites it with zeros) and the
+  /// 5. **Derive** one key per role in one scope ([withDerivedKeys]):
+  ///    `TWHDWalletGetKey` into a `TWPrivateKey` each. The handles are lent to
+  ///    the core; **no key bytes exist yet**, and none are made here.
+  /// 6. **Sign** with [core] ([SigningCore.sign]), which borrows the handles,
+  ///    reads each key only while it assembles the keyed input, calls
+  ///    upstream, and parses the output — parse before release.
+  /// 7. **Release**, in `withDerivedKeys`' scope, on every path: every
   ///    `TWPrivateKey` (`TWPrivateKeyDelete`, whose destructor overwrites its
   ///    bytes). Only after that does this return, and only after this
   ///    returns is the reply posted — release before reply (DECISION-12
@@ -335,33 +334,38 @@ final class EngineRequestHandler implements RequestHandler {
     Set<LocatorSpec> keys,
   ) {
     final family = familyFor(request);
-    final locator = _resolveKeys(request, family, keys);
-    final wallet = _resolve(locator.walletRef);
-    final path = checkDerivationPath(locator.derivationPath);
+    final roles = family.requiredRoles(request);
+    final locators = _resolveKeys(request, roles, keys);
+    final derivations = <KeyRole, KeyDerivation>{};
+    for (final MapEntry(key: role, value: locator) in locators.entries) {
+      final wallet = _resolve(locator.walletRef);
+      final path = checkDerivationPath(locator.derivationPath);
+      derivations[role] = KeyDerivation(wallet, locator.coin, path);
+    }
     switch (request) {
       case EvmTransactionRequest(:final to, :final coin, :final network):
         engine.checkRecipient(to, coin, network: network);
     }
     final keyless = family.encodeKeylessInput(request);
     checkKeylessInput(keyless, family);
-    _keysDerived++;
-    return withDerivedKey(
-      wallet,
-      locator.coin,
-      path,
-      (privateKey) => core.sign(
+    _keysDerived += derivations.length;
+    return withDerivedKeys(
+      derivations,
+      (handles) => core.sign(
         keyless,
         family: family,
         coin: request.coin,
-        privateKey: privateKey,
+        requiredRoles: roles,
+        keys: handles,
         usedKeys: const <KeyLocator>{},
       ),
     );
   }
 
-  /// Resolves [keys] for [request] and returns the HD locator that fills
-  /// [KeyRole.primary], or throws — in this order, so that the answer does not
-  /// depend on the set's iteration order:
+  /// Resolves [keys] for [request] and returns the HD locator that fills each
+  /// of [required] — the family's roles for [request], in the family's order,
+  /// which the result keeps — or throws, in this order, so that the answer
+  /// does not depend on the set's iteration order:
   ///
   /// 1. An [ExternalLocatorSpec] anywhere: [UnsupportedOperationError] for
   ///    capability `'external-signer'`.
@@ -382,9 +386,9 @@ final class EngineRequestHandler implements RequestHandler {
   ///
   /// The wallet reference itself is resolved by the caller, through the same
   /// table lookup every other operation uses.
-  HdLocatorSpec _resolveKeys(
+  Map<KeyRole, HdLocatorSpec> _resolveKeys(
     TransactionRequest request,
-    TransactionFamily<TransactionRequest, SignResult> family,
+    List<KeyRole> required,
     Set<LocatorSpec> keys,
   ) {
     final unique = keys.toSet();
@@ -406,7 +410,6 @@ final class EngineRequestHandler implements RequestHandler {
       );
     }
 
-    final required = family.requiredRoles(request);
     final filled = <KeyRole, HdLocatorSpec>{};
     for (final key in unique.whereType<HdLocatorSpec>()) {
       final role = key.role ?? (required.length == 1 ? required.single : null);
@@ -447,12 +450,9 @@ final class EngineRequestHandler implements RequestHandler {
         );
       }
     }
-    // The signing core injects one key, for the primary role; every family
-    // of this version requires exactly that one.
-    if (required.length != 1 || required.single != KeyRole.primary) {
-      throw StateError('the signing path injects a primary key only');
-    }
-    return filled[KeyRole.primary]!;
+    return <KeyRole, HdLocatorSpec>{
+      for (final role in required) role: filled[role]!,
+    };
   }
 
   WalletCreated _adopt(int id, HDWallet wallet) {

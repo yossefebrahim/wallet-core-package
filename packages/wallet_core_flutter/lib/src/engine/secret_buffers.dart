@@ -100,8 +100,8 @@ TWDataHandle secretData(NativeContext context, Uint8List secret) {
 /// Copies the concatenation of [parts] into a new native `TWData` and returns
 /// its handle.
 ///
-/// For a secret assembled from pieces — the signing core's key field's tag
-/// and length, the key, and the key-less input, in the order
+/// For a secret assembled from pieces — the signing core's key fields (each a
+/// tag and length, then a key) and the key-less input, in the order
 /// `keyedInputParts` gives — without ever joining them in a Dart list: each
 /// part is copied straight into one `calloc` buffer, which is zero-filled
 /// before it is released, on the success path and when
@@ -110,7 +110,14 @@ TWDataHandle secretData(NativeContext context, Uint8List secret) {
 ///
 /// [parts] belong to the caller and are read, never modified or retained; a
 /// part may be a view over native memory, read only during this call.
-TWDataHandle secretDataFromParts(NativeContext context, List<Uint8List> parts) {
+///
+/// The staging buffer comes from [allocator] — `calloc`, unless a test passes
+/// one that records what the buffer holds when it is released.
+TWDataHandle secretDataFromParts(
+  NativeContext context,
+  List<Uint8List> parts, {
+  Allocator allocator = calloc,
+}) {
   var total = 0;
   for (final part in parts) {
     total += part.length;
@@ -121,7 +128,7 @@ TWDataHandle secretDataFromParts(NativeContext context, List<Uint8List> parts) {
     what: 'the length of secret bytes',
   );
   final allocated = size == 0 ? 1 : size;
-  final buffer = calloc<Uint8>(allocated);
+  final buffer = allocator<Uint8>(allocated);
   try {
     final view = buffer.asTypedList(allocated);
     var offset = 0;
@@ -136,7 +143,7 @@ TWDataHandle secretDataFromParts(NativeContext context, List<Uint8List> parts) {
     return TWDataHandle.adopt(context, pointer);
   } finally {
     buffer.asTypedList(allocated).fillRange(0, allocated, 0);
-    calloc.free(buffer);
+    allocator.free(buffer);
   }
 }
 

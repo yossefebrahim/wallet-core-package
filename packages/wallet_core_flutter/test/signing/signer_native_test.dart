@@ -17,7 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wallet_core_flutter/advanced.dart'
     show HDWallet, LeakTracker, NativeContext;
 import 'package:wallet_core_flutter/src/engine/hd_wallet.dart'
-    show withDerivedKey;
+    show KeyDerivation, withDerivedKeys;
 import 'package:wallet_core_flutter/src/families/evm/evm_family.dart';
 import 'package:wallet_core_flutter/src/session/testing.dart';
 import 'package:wallet_core_flutter/src/signing/signing_core.dart';
@@ -85,15 +85,14 @@ void main() {
       final context = NativeContext(openHostBindings(), observer: tracker);
       final wallet = HDWallet.fromMnemonic(context, mnemonic);
       try {
-        return withDerivedKey(
-          wallet,
-          Coin.ethereum,
-          path,
-          (key) => SyncSigningCore(context).sign(
+        return withDerivedKeys(
+          {KeyRole.primary: KeyDerivation(wallet, Coin.ethereum, path)},
+          (keys) => SyncSigningCore(context).sign(
             evmFamily.encodeKeylessInput(request),
             family: evmFamily,
             coin: Coin.ethereum,
-            privateKey: key,
+            requiredRoles: const [KeyRole.primary],
+            keys: keys,
             usedKeys: const <KeyLocator>{},
           ),
         );
