@@ -24,36 +24,36 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 
 | operation | generated | exposed | tested |
 |---|---|---|---|
-| address | 167 | 167 | 0 |
-| sign | 167 | 62 | 0 |
-| sign_message | 63 | 60 | 0 |
-| plan | 28 | 1 | 0 |
+| address | 167 | 167 | 2 |
+| sign | 167 | 62 | 3 |
+| sign_message | 63 | 60 | 1 |
+| plan | 28 | 1 | 1 |
 | compile | 158 | 0 | 0 |
 
 | operation | family | variant | generated | exposed | tested |
 |---|---|---|---|---|---|
 | address | evm | n/a | 60 | 60 | 0 |
-| address | utxo | n/a | 14 | 14 | 0 |
-| address | solana | n/a | 1 | 1 | 0 |
+| address | utxo | n/a | 14 | 14 | 1 |
+| address | solana | n/a | 1 | 1 | 1 |
 | address | other | n/a | 92 | 92 | 0 |
 | sign | evm | legacy | 60 | 60 | 0 |
-| sign | evm | eip1559 | 60 | 60 | 0 |
+| sign | evm | eip1559 | 60 | 60 | 1 |
 | sign | evm | contract_call | 60 | 60 | 0 |
 | sign | utxo | p2pkh | 14 | 0 | 0 |
-| sign | utxo | p2wpkh | 14 | 1 | 0 |
+| sign | utxo | p2wpkh | 14 | 1 | 1 |
 | sign | utxo | taproot | 14 | 0 | 0 |
-| sign | utxo | multi_input | 14 | 1 | 0 |
-| sign | solana | legacy | 1 | 1 | 0 |
+| sign | utxo | multi_input | 14 | 1 | 1 |
+| sign | solana | legacy | 1 | 1 | 1 |
 | sign | solana | versioned | 1 | 0 | 0 |
 | sign | other | any | 92 | 0 | 0 |
-| sign_message | evm | personal | 60 | 60 | 0 |
-| sign_message | evm | eip712 | 60 | 60 | 0 |
+| sign_message | evm | personal | 60 | 60 | 1 |
+| sign_message | evm | eip712 | 60 | 60 | 1 |
 | sign_message | solana | personal | 1 | 0 | 0 |
 | sign_message | other | any | 2 | 0 | 0 |
 | plan | utxo | p2pkh | 14 | 0 | 0 |
-| plan | utxo | p2wpkh | 14 | 1 | 0 |
+| plan | utxo | p2wpkh | 14 | 1 | 1 |
 | plan | utxo | taproot | 14 | 0 | 0 |
-| plan | utxo | multi_input | 14 | 1 | 0 |
+| plan | utxo | multi_input | 14 | 1 | 1 |
 | plan | other | any | 14 | 0 | 0 |
 | compile | evm | legacy | 60 | 0 | 0 |
 | compile | evm | eip1559 | 60 | 0 | 0 |
@@ -74,39 +74,41 @@ None.
 
 Generated when the registry lists at least one derivation for the coin (`TWAnyAddress`, `TWHDWallet` are per-coin through the registry).
 
-167 generated, 167 exposed, 0 tested.
+167 generated, 167 exposed, 2 tested.
 
 | family | coins | address |
 |---|---|---|
 | evm | 60: acalaevm, arbitrum, arbitrumnova, aurora, avalanchec, base, blast, boba, bouncebit, bsc, callisto, celo, cfxevm, classic, cronos, ethereum, evmos, fantom, gochain, heco, hyperevm, iotexevm, kaia, kavaevm, kcc, lightlink, linea, manta, mantle, megaeth, merlin, meter, metis, monad, moonbeam, moonriver, neon, okc, opbnb, optimism, plasma, poa, polygon, polygonzkevm, robinhoodchain, rootstock, scroll, seievm, smartbch, smartchain, sonic, tfuelevm, thundertoken, viction, wanchain, xdai, zeneon, zetaevm, zklinknova, zksync | exposed, unverified |
-| utxo | 14: bitcoin, bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | exposed, unverified |
-| solana | 1: solana | exposed, unverified |
+| utxo | 1: bitcoin | tested |
+| utxo | 13: bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | exposed, unverified |
+| solana | 1: solana | tested |
 | other | 92: Nebl, acala, aeternity, agoric, aion, akash, algorand, aptos, axelar, band, binance, bitcoincash, bitcoindiamond, bluzelle, cardano, comdex, coreum, cosmos, crescent, cryptoorg, decred, dydx, ecash, elrond, eos, everscale, fetchai, filecoin, fio, greenfield, groestlcoin, harmony, hedera, icon, internet_computer, iost, iotex, juno, kava, kin, komodo, kujira, kusama, mars, nano, nativecanto, nativeevmos, nativeinjective, near, nebulas, neo, nervos, neutron, nimiq, noble, nuls, oasis, ontology, osmosis, pactus, persistence, polkadot, polymesh, quasar, ripple, ronin, secret, sei, sommelier, stargaze, stellar, stride, sui, tbinance, terra, terrav2, tezos, theta, thorchain, tia, ton, tron, umee, vechain, verge, waves, wax, zcash, zelcash, zen, zetachain, zilliqa | exposed, unverified |
 
 ## sign
 
 Generated when the coin's upstream proto package defines `SigningInput`. `TWAnySignerSign` is one global symbol and is never used as evidence.
 
-167 generated, 62 exposed, 0 tested.
+167 generated, 62 exposed, 3 tested.
 
 ### sign — evm
 
 | family | coins | legacy | eip1559 | contract_call |
 |---|---|---|---|---|
-| evm | 60: acalaevm, arbitrum, arbitrumnova, aurora, avalanchec, base, blast, boba, bouncebit, bsc, callisto, celo, cfxevm, classic, cronos, ethereum, evmos, fantom, gochain, heco, hyperevm, iotexevm, kaia, kavaevm, kcc, lightlink, linea, manta, mantle, megaeth, merlin, meter, metis, monad, moonbeam, moonriver, neon, okc, opbnb, optimism, plasma, poa, polygon, polygonzkevm, robinhoodchain, rootstock, scroll, seievm, smartbch, smartchain, sonic, tfuelevm, thundertoken, viction, wanchain, xdai, zeneon, zetaevm, zklinknova, zksync | exposed, unverified | exposed, unverified | exposed, unverified |
+| evm | 59: acalaevm, arbitrum, arbitrumnova, aurora, avalanchec, base, blast, boba, bouncebit, bsc, callisto, celo, cfxevm, classic, cronos, evmos, fantom, gochain, heco, hyperevm, iotexevm, kaia, kavaevm, kcc, lightlink, linea, manta, mantle, megaeth, merlin, meter, metis, monad, moonbeam, moonriver, neon, okc, opbnb, optimism, plasma, poa, polygon, polygonzkevm, robinhoodchain, rootstock, scroll, seievm, smartbch, smartchain, sonic, tfuelevm, thundertoken, viction, wanchain, xdai, zeneon, zetaevm, zklinknova, zksync | exposed, unverified | exposed, unverified | exposed, unverified |
+| evm | 1: ethereum | exposed, unverified | tested | exposed, unverified |
 
 ### sign — utxo
 
 | family | coins | p2pkh | p2wpkh | taproot | multi_input |
 |---|---|---|---|---|---|
-| utxo | 1: bitcoin | generated | exposed, unverified | generated | exposed, unverified |
+| utxo | 1: bitcoin | generated | tested | generated | tested |
 | utxo | 13: bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | generated | generated | generated | generated |
 
 ### sign — solana
 
 | family | coins | legacy | versioned |
 |---|---|---|---|
-| solana | 1: solana | exposed, unverified | generated |
+| solana | 1: solana | tested | generated |
 
 ### sign — other
 
@@ -118,13 +120,14 @@ Generated when the coin's upstream proto package defines `SigningInput`. `TWAnyS
 
 Generated when the coin's proto package defines `MessageSigningInput` and the generic message-signer probe (T2.9) agrees; a disagreement is a conflict.
 
-63 generated, 60 exposed, 0 tested.
+63 generated, 60 exposed, 1 tested.
 
 ### sign_message — evm
 
 | family | coins | personal | eip712 |
 |---|---|---|---|
-| evm | 60: acalaevm, arbitrum, arbitrumnova, aurora, avalanchec, base, blast, boba, bouncebit, bsc, callisto, celo, cfxevm, classic, cronos, ethereum, evmos, fantom, gochain, heco, hyperevm, iotexevm, kaia, kavaevm, kcc, lightlink, linea, manta, mantle, megaeth, merlin, meter, metis, monad, moonbeam, moonriver, neon, okc, opbnb, optimism, plasma, poa, polygon, polygonzkevm, robinhoodchain, rootstock, scroll, seievm, smartbch, smartchain, sonic, tfuelevm, thundertoken, viction, wanchain, xdai, zeneon, zetaevm, zklinknova, zksync | exposed, unverified | exposed, unverified |
+| evm | 59: acalaevm, arbitrum, arbitrumnova, aurora, avalanchec, base, blast, boba, bouncebit, bsc, callisto, celo, cfxevm, classic, cronos, evmos, fantom, gochain, heco, hyperevm, iotexevm, kaia, kavaevm, kcc, lightlink, linea, manta, mantle, megaeth, merlin, meter, metis, monad, moonbeam, moonriver, neon, okc, opbnb, optimism, plasma, poa, polygon, polygonzkevm, robinhoodchain, rootstock, scroll, seievm, smartbch, smartchain, sonic, tfuelevm, thundertoken, viction, wanchain, xdai, zeneon, zetaevm, zklinknova, zksync | exposed, unverified | exposed, unverified |
+| evm | 1: ethereum | tested | tested |
 
 ### sign_message — utxo, other
 
@@ -144,7 +147,7 @@ Generated when the coin's proto package defines `MessageSigningInput` and the ge
 
 Generated when the coin's proto package defines `TransactionPlan`. Upstream documents `TWAnySignerPlan` for UTXO chains only; the proto is the per-coin evidence.
 
-28 generated, 1 exposed, 0 tested.
+28 generated, 1 exposed, 1 tested.
 
 ### plan — evm, solana, other
 
@@ -159,7 +162,7 @@ Generated when the coin's proto package defines `TransactionPlan`. Upstream docu
 
 | family | coins | p2pkh | p2wpkh | taproot | multi_input |
 |---|---|---|---|---|---|
-| utxo | 1: bitcoin | generated | exposed, unverified | generated | exposed, unverified |
+| utxo | 1: bitcoin | generated | tested | generated | tested |
 | utxo | 13: bitcoingold, dash, digibyte, doge, firo, litecoin, monacoin, pivx, qtum, ravencoin, stratis, syscoin, viacoin | generated | generated | generated | generated |
 
 ## compile

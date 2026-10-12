@@ -19,7 +19,7 @@ vectors:
     expected:
       address: "bc1qpsp72plnsqe6e2dvtsetxtww2cz36ztmfxghpd"
       public_key: "02df9ef2a7a5552765178b181e1e1afdefc7849985c7dfe9647706dd4fa40df6ac"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: bitcoin-address-n/a-2
     coin: bitcoin
@@ -39,7 +39,7 @@ vectors:
     expected:
       address: "bc1q7zddsunzaftf4zlsg9exhzlkvc5374a6v32jf6"
       public_key: "031e1f64d2f6768dccb6814545b2e2d58e26ad5f91b7cbaffe881ed572c65060db"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: bitcoin-plan-p2wpkh-1
     coin: bitcoin
@@ -109,7 +109,7 @@ vectors:
       # must be no change output here.
       available_amount: "35132"
       change: "0"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: bitcoin-sign-p2wpkh-1
     coin: bitcoin
@@ -159,7 +159,7 @@ vectors:
       # txid (line 82) for a byte-identical `encoded` value (line 81) built from
       # the same key, outpoints and amounts.
       txid: "5d6bf53576a54be4d92cd8abf58d28ecc9ea7956eaf970d24d6bfcb9fcfe9855"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: bitcoin-plan-multi_input-1
     coin: bitcoin
@@ -217,7 +217,7 @@ vectors:
       # sum(utxoAmounts) - outputAmount - fee.
       available_amount: "1225000000"
       change: "0"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: bitcoin-sign-multi_input-1
     coin: bitcoin
@@ -258,4 +258,4 @@ vectors:
           script_type: "p2pkh" # built by Script::buildPayToPublicKeyHash (lines 946-947)
     expected:
       encoded: "01000000000102fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f0000000049483045022100a8b3c1619e985923994e80efdc0be0eac12f2419e11ce5e4286a0a5ac27c775d02205d6feee85ffe19ae0835cba1562beb3beb172107cd02ac4caf24a8be3749811f01ffffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff015d030449000000001976a914769bdff96a02f9135a1d19b749db6a78fe07dc9088ac0002483045022100db1199de92f6fb638a0ba706d13ec686bb01138a254dec2c397616cd74bad30e02200d7286d6d2d4e00d145955bf3d3b848b03c0d1eef8899e4645687a3035d7def40121025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee635700000000"
-    platforms_verified: []
+    platforms_verified: [android, ios]
