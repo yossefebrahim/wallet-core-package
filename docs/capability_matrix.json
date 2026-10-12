@@ -20,7 +20,7 @@
       },
       "sign": {
         "generated": 167,
-        "exposed": 60,
+        "exposed": 61,
         "tested": 0
       },
       "sign_message": {
@@ -133,7 +133,7 @@
         "family": "solana",
         "variant": "legacy",
         "generated": 1,
-        "exposed": 0,
+        "exposed": 1,
         "tested": 0
       },
       {
@@ -16473,10 +16473,10 @@
           },
           "variants": {
             "legacy": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": [

@@ -25,7 +25,7 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 | operation | generated | exposed | tested |
 |---|---|---|---|
 | address | 167 | 167 | 0 |
-| sign | 167 | 60 | 0 |
+| sign | 167 | 61 | 0 |
 | sign_message | 63 | 0 | 0 |
 | plan | 28 | 0 | 0 |
 | compile | 158 | 0 | 0 |
@@ -43,7 +43,7 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 | sign | utxo | p2wpkh | 14 | 0 | 0 |
 | sign | utxo | taproot | 14 | 0 | 0 |
 | sign | utxo | multi_input | 14 | 0 | 0 |
-| sign | solana | legacy | 1 | 0 | 0 |
+| sign | solana | legacy | 1 | 1 | 0 |
 | sign | solana | versioned | 1 | 0 | 0 |
 | sign | other | any | 92 | 0 | 0 |
 | sign_message | evm | personal | 60 | 0 | 0 |
@@ -87,7 +87,7 @@ Generated when the registry lists at least one derivation for the coin (`TWAnyAd
 
 Generated when the coin's upstream proto package defines `SigningInput`. `TWAnySignerSign` is one global symbol and is never used as evidence.
 
-167 generated, 60 exposed, 0 tested.
+167 generated, 61 exposed, 0 tested.
 
 ### sign — evm
 
@@ -105,7 +105,7 @@ Generated when the coin's upstream proto package defines `SigningInput`. `TWAnyS
 
 | family | coins | legacy | versioned |
 |---|---|---|---|
-| solana | 1: solana | generated | generated |
+| solana | 1: solana | exposed, unverified | generated |
 
 ### sign — other
 
