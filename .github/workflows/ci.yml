@@ -493,7 +493,7 @@ jobs:
       # job that produced no artifact leaves its file out, and --strict then
       # fails on every claim for that platform.
       - name: Download the device vector results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: vector-results-*
           path: test_vectors/results
