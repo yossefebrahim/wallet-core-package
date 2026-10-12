@@ -379,7 +379,9 @@ void main() {
       expect(
         released,
         isTrue,
-        reason: 'the proxy finalizer did not release the wallet in time',
+        reason:
+            'the proxy finalizer did not release the wallet in time '
+            '($lastPumpSummary)',
       );
 
       final report = debugLeakReportOf(core)!;
@@ -390,6 +392,8 @@ void main() {
         reason: 'the proxy finalizer disposed it; nothing was leaked',
       );
       await core.shutdown();
-    });
+      // Above `gcBudget`, so a collection that never comes fails on its
+      // assertion with its diagnostics, not on the runner's default 30 s clock.
+    }, timeout: const Timeout(Duration(minutes: 3)));
   });
 }

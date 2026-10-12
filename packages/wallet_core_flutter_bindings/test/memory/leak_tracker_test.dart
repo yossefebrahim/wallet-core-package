@@ -186,7 +186,7 @@ void main() {
           isTrue,
           reason:
               'no handle was reported as finalized without dispose within the '
-              'budget: ${tracker.report}',
+              'budget ($lastPumpSummary): ${tracker.report}',
         );
         final report = tracker.report;
 
@@ -213,6 +213,9 @@ void main() {
         expect(rendered, isNot(contains(utf8.decode(_secretBytes))));
         expect(rendered, isNot(contains(_secretHex)));
       },
+      // Above `gcBudget`, so a collection that never comes fails on its
+      // assertion with its diagnostics, not on the runner's default 30 s clock.
+      timeout: const Timeout(Duration(minutes: 3)),
     );
   });
 
