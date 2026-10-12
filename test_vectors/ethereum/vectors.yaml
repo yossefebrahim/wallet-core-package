@@ -10,7 +10,7 @@ vectors:
       mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon"
     expected:
       error: "invalid_mnemonic"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: ethereum-invalid_input-n/a-2
     coin: ethereum
@@ -23,7 +23,7 @@ vectors:
       address: "0xZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
     expected:
       error: "invalid_address"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: ethereum-invalid_input-n/a-3
     coin: ethereum
@@ -36,7 +36,7 @@ vectors:
       derivation_path: "m/44/60/invalid"
     expected:
       error: "invalid_derivation_path"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: ethereum-address-n/a-1
     coin: ethereum
@@ -90,7 +90,7 @@ vectors:
       v: "00"
       r: "92c336138f7d0231fe9422bb30ee9ef10bf222761fe9e04442e3a11e88880c64"
       s: "6487026011dae03dc281bc21c7d7ede5c2226d197befb813a4ecad686b559e58"
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: ethereum-sign_message-personal-1
     coin: ethereum
@@ -126,7 +126,7 @@ vectors:
       # EXPECT_TRUE(TWEthereumMessageSignerVerifyMessage(pubKey, message, signature)),
       # with pubKey derived by the test from the key above.
       verify_message: true
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: ethereum-sign_message-eip712-1
     coin: ethereum
@@ -187,4 +187,4 @@ vectors:
       # EXPECT_TRUE(TWEthereumMessageSignerVerifyMessage(pubKey, msg, signature)),
       # with pubKey derived by the test from the key above.
       verify_message: true
-    platforms_verified: []
+    platforms_verified: [android, ios]

@@ -20,7 +20,7 @@ vectors:
       derivation_path: "m/44'/501'/0'" # Resolved from registry.json, not literal in the test; see source.
     expected:
       address: "2bUBiBNZyD29gP1oV6de7nxowMLoDBtopMMTGgMvjG5m" # base58
-    platforms_verified: []
+    platforms_verified: [android, ios]
 
   - id: solana-sign-legacy-1
     coin: solana
@@ -57,4 +57,4 @@ vectors:
       # (`output.unsigned_tx()`).
       unsigned_tx: "87PYsiS4MUU1UqXrsDoCBmD5FcKsXhwEBD8hc4zbq78yePu7bLENmbnmjmVbsj4VvaxnZhy4bERndPFzjSRH5WpwKwMLSCKvn9eSDmPESNcdkqne2UdMfWiFoq8ZeQBnF9h98dP8GM9kfzWPjvLmhjwuwA1E2k5WCtfii7LKQ34v6AtmFQGZqgdKiNqygP7ZKusHWGT8ZkTZ"
       # No signature field: the test asserts none separately.
-    platforms_verified: []
+    platforms_verified: [android, ios]
