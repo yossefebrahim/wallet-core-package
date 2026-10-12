@@ -52,6 +52,13 @@ final Map<String, EvmTransactionRequest Function(Coin)> _builders = {
   ),
 };
 
+/// The EVM message request builders, by the matrix variant each one is.
+final Map<String, EvmMessageRequest Function(Coin)> _messageBuilders = {
+  'personal': (coin) =>
+      EvmMessageRequest.personal(Uint8List.fromList(const [0x46]), coin: coin),
+  'eip712': (coin) => EvmMessageRequest.typedData('{}', coin: coin),
+};
+
 /// The snapshot document for [groups]: sorted, two-space indent, trailing
 /// newline. `coins` is the string `"all"` for a group that covers the whole
 /// pinned registry.
@@ -100,7 +107,11 @@ void main() {
     test('operations and variants are the matrix vocabulary, once each', () {
       final keys = <String>{};
       for (final group in capabilityGroups) {
-        expect(const {'address', 'sign'}, contains(group.operation));
+        expect(const {
+          'address',
+          'sign',
+          'sign_message',
+        }, contains(group.operation));
         expect(
           keys.add('${group.operation}/${group.variant}'),
           isTrue,
@@ -122,6 +133,35 @@ void main() {
         (g) => g.operation == 'sign',
       )) {
         final build = _builders[group.variant]!;
+        for (final coin in Coin.all) {
+          if (group.coins!.contains(coin.id)) {
+            expect(
+              () => build(coin),
+              returnsNormally,
+              reason: '${coin.id} ${group.variant}',
+            );
+          } else {
+            expect(
+              () => build(coin),
+              throwsA(isA<InvalidInputError>()),
+              reason: '${coin.id} ${group.variant}',
+            );
+          }
+        }
+      }
+    });
+
+    test('every sign_message variant has a builder the listed coins accept and '
+        'every other coin rejects', () {
+      final groups = capabilityGroups.where(
+        (g) => g.operation == 'sign_message',
+      );
+      expect(
+        groups.map((g) => g.variant).toSet(),
+        _messageBuilders.keys.toSet(),
+      );
+      for (final group in groups) {
+        final build = _messageBuilders[group.variant]!;
         for (final coin in Coin.all) {
           if (group.coins!.contains(coin.id)) {
             expect(

@@ -58,7 +58,12 @@ export 'src/errors/errors.dart'
 export 'src/lifecycle/session_state.dart' show SessionState;
 export 'src/mnemonic/mnemonic_facade.dart' show MnemonicFacade;
 export 'src/requests/requests.dart'
-    show EvmTransactionRequest, MessageRequest, TransactionRequest;
+    show
+        EvmMessageRequest,
+        EvmMessageType,
+        EvmTransactionRequest,
+        MessageRequest,
+        TransactionRequest;
 export 'src/session/wallet_core.dart'
     show OperationTimeouts, SessionScope, WalletCore;
 export 'src/signing/key_locator.dart'
@@ -69,7 +74,8 @@ export 'src/signing/key_locator.dart'
         KeyLocator,
         KeyRef,
         KeyRole;
-export 'src/signing/sign_result.dart' show EvmSignResult, SignResult;
+export 'src/signing/sign_result.dart'
+    show EvmMessageSignResult, EvmSignResult, SignResult;
 export 'src/signing/signer.dart' show LocalSigner, Signer;
 export 'src/wallet/wallet.dart' show Wallet, WalletFacade, WalletRef;
 

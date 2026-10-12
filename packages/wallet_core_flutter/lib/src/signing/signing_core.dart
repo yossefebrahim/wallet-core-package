@@ -86,6 +86,31 @@ abstract interface class SigningCore {
   });
 }
 
+/// Signs serialized key-less *message* input: the message path of the same
+/// core (T2.7). All of [SigningCore.sign]'s contract holds unchanged — the
+/// key-field check before any key is read, the keys borrowed and injected in
+/// `requiredRoles` order by prepending, the checks and the errors, the parse
+/// before the release — except the native call, which is upstream's message
+/// signer, `TWMessageSignerSign(coin, input)`, in place of `TWAnySignerSign`,
+/// and the family, which is a [MessageFamily].
+///
+/// A separate interface and not a second method of [SigningCore]: a core that
+/// signs transactions only (a test double, say) stays a valid [SigningCore],
+/// and the handler asks for the message capability where it needs it. Approach
+/// B (T1.13) implements both, with one adapter taking the native function.
+abstract interface class MessageSigningCore {
+  /// Signs [keylessInput] for [coin] as [SigningCore.sign] does, through
+  /// `TWMessageSignerSign`. Throws what [SigningCore.sign] throws.
+  S signMessage<S extends SignResult>(
+    Uint8List keylessInput, {
+    required MessageFamily<MessageRequest, S> family,
+    required Coin coin,
+    required List<KeyRole> requiredRoles,
+    required Map<KeyRole, PrivateKeyHandle> keys,
+    required Set<KeyLocator> usedKeys,
+  });
+}
+
 /// The shape of `TWAnySignerSign`: a serialized signing input and a coin in,
 /// a new `TWData` holding the serialized output back.
 typedef AnySignerSign = Pointer<Void> Function(
@@ -93,28 +118,41 @@ typedef AnySignerSign = Pointer<Void> Function(
   TWCoinType coin,
 );
 
+/// The shape of `TWMessageSignerSign`: a coin and a serialized message-signing
+/// input in, a new `TWData` holding the serialized output back — the
+/// arguments in the other order from [AnySignerSign].
+typedef MessageSignerSign = Pointer<Void> Function(
+  TWCoinType coin,
+  Pointer<Void> input,
+);
+
 /// Approach A of DECISION-1, in the isolate that owns [context].
 ///
 /// Synchronous and stateless between calls: it holds the context and the
 /// native entry point, and nothing of any call it made.
-final class SyncSigningCore implements SigningCore {
+final class SyncSigningCore implements SigningCore, MessageSigningCore {
   /// Creates a core over [context].
   ///
-  /// [anySignerSign] replaces the call to `TWAnySignerSign`, for tests that
-  /// must observe whether, and with what, the native signer was called. It
-  /// defaults to the bindings' own. [stagingAllocator] replaces the allocator
+  /// [anySignerSign] replaces the call to `TWAnySignerSign`, and
+  /// [messageSignerSign] the call to `TWMessageSignerSign`, for tests that
+  /// must observe whether, and with what, the native signer was called. They
+  /// default to the bindings' own. [stagingAllocator] replaces the allocator
   /// of the one staging buffer the keyed input is assembled in, for tests that
   /// must observe what it holds when it is released. It defaults to `calloc`.
   SyncSigningCore(
     this.context, {
     AnySignerSign? anySignerSign,
+    MessageSignerSign? messageSignerSign,
     this._stagingAllocator = calloc,
-  }) : _anySignerSign = anySignerSign ?? context.bindings.TWAnySignerSign;
+  }) : _anySignerSign = anySignerSign ?? context.bindings.TWAnySignerSign,
+       _messageSignerSign =
+           messageSignerSign ?? context.bindings.TWMessageSignerSign;
 
   /// The loaded library and its bindings.
   final NativeContext context;
 
   final AnySignerSign _anySignerSign;
+  final MessageSignerSign _messageSignerSign;
   final Allocator _stagingAllocator;
 
   /// Signs, in this order:
@@ -203,6 +241,53 @@ final class SyncSigningCore implements SigningCore {
     required List<KeyRole> requiredRoles,
     required Map<KeyRole, PrivateKeyHandle> keys,
     required Set<KeyLocator> usedKeys,
+  }) => _signKeyed(
+    keylessInput,
+    family: family,
+    coin: coin,
+    requiredRoles: requiredRoles,
+    keys: keys,
+    usedKeys: usedKeys,
+    nativeName: 'TWAnySignerSign',
+    nativeSign: _anySignerSign,
+  );
+
+  /// Signs a message, in the same order as [sign] with one difference: step 5
+  /// calls `TWMessageSignerSign(coin, input)`. Everything else — the checks,
+  /// the injection, the staging buffer and its zeroing, the `RangeError`
+  /// mapping, the parse before the release, the disposal — is [_signKeyed],
+  /// which [sign] shares, so there is one copy of the key handling.
+  @override
+  S signMessage<S extends SignResult>(
+    Uint8List keylessInput, {
+    required MessageFamily<MessageRequest, S> family,
+    required Coin coin,
+    required List<KeyRole> requiredRoles,
+    required Map<KeyRole, PrivateKeyHandle> keys,
+    required Set<KeyLocator> usedKeys,
+  }) => _signKeyed(
+    keylessInput,
+    family: family,
+    coin: coin,
+    requiredRoles: requiredRoles,
+    keys: keys,
+    usedKeys: usedKeys,
+    nativeName: 'TWMessageSignerSign',
+    nativeSign: (input, coinType) => _messageSignerSign(coinType, input),
+  );
+
+  /// The body of [sign] and [signMessage]: everything that handles a key, and
+  /// the native call as [nativeSign], named [nativeName] in the errors that
+  /// report its result.
+  S _signKeyed<S extends SignResult>(
+    Uint8List keylessInput, {
+    required SigningInputFamily<S> family,
+    required Coin coin,
+    required List<KeyRole> requiredRoles,
+    required Map<KeyRole, PrivateKeyHandle> keys,
+    required Set<KeyLocator> usedKeys,
+    required String nativeName,
+    required AnySignerSign nativeSign,
   }) {
     if (coin.family != family.chainFamily) {
       throw InvalidInputError(
@@ -217,11 +302,11 @@ final class SyncSigningCore implements SigningCore {
     TWDataHandle? output;
     try {
       input = _stage(keylessInput, slots);
-      final pointer = _anySignerSign(input.pointer, coinType);
+      final pointer = nativeSign(input.pointer, coinType);
       if (pointer == nullptr) {
-        throw const SigningError(
+        throw SigningError(
           SigningError.malformedOutputCode,
-          'TWAnySignerSign returned no output',
+          '$nativeName returned no output',
         );
       }
       output = TWDataHandle.adopt(context, pointer);
@@ -229,14 +314,14 @@ final class SyncSigningCore implements SigningCore {
       try {
         bytes = output.copyBytes();
       } on RangeError {
-        throw const SigningError(
+        throw SigningError(
           SigningError.malformedOutputCode,
-          'TWAnySignerSign reported an output length out of range',
+          '$nativeName reported an output length out of range',
         );
       } on StateError {
-        throw const SigningError(
+        throw SigningError(
           SigningError.malformedOutputCode,
-          'TWAnySignerSign reported output bytes but returned no buffer',
+          '$nativeName reported output bytes but returned no buffer',
         );
       }
       return family.parseSigningOutput(bytes, coin: coin, usedKeys: usedKeys);
@@ -300,7 +385,7 @@ final class SyncSigningCore implements SigningCore {
 /// The injection field and handle of every role of [requiredRoles], in that
 /// order, after the role checks of [SigningCore.sign]. Reads no key.
 List<(KeyFieldEntry, PrivateKeyHandle)> _injectionSlots(
-  TransactionFamily<TransactionRequest, SignResult> family,
+  SigningInputFamily<SignResult> family,
   List<KeyRole> requiredRoles,
   Map<KeyRole, PrivateKeyHandle> keys,
 ) {

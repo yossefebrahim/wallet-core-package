@@ -10,6 +10,7 @@ import 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
     show WalletCoreNative, identitySymbol, verifyIdentity, verifyManifestHash;
 
 import '../account/derivation_path.dart';
+import '../coin/coin.dart';
 import '../engine/engine.dart';
 import '../engine/hd_wallet.dart';
 import '../errors/boundary.dart';
@@ -35,7 +36,7 @@ typedef BindingsFactory = WalletCoreBindings Function(DynamicLibrary library);
 /// becomes (DECISION-12 §3.10, which names exactly these two types for a
 /// soft native failure):
 ///
-/// * [Sign] → [SigningError] with [SigningError.malformedOutputCode]: the
+/// * [Sign] and [SignMessage] → [SigningError] with [SigningError.malformedOutputCode]: the
 ///   signing operation failed inside upstream, as an unacceptable output
 ///   does.
 /// * Every other operation → [InvalidInputError] naming the operation's
@@ -52,7 +53,8 @@ WalletCoreException softNativeFailure(
 ) {
   final message = 'upstream returned an unusable result: ${error.what}';
   return switch (request) {
-    Sign() => SigningError(SigningError.malformedOutputCode, message),
+    Sign() ||
+    SignMessage() => SigningError(SigningError.malformedOutputCode, message),
     CreateWallet() => InvalidInputError(message, inputName: 'passphrase'),
     ImportWallet(:final mnemonic) => InvalidInputError(
       message,
@@ -254,6 +256,10 @@ final class EngineRequestHandler implements RequestHandler {
         id,
         _sign(engine, _signingCore!, request, keys),
       ),
+      SignMessage(:final id, :final request, :final keys) => MessageSigned(
+        id,
+        _signMessage(_signingCore!, request, keys),
+      ),
       DisposeRef(:final id, :final walletRef) => _dispose(id, walletRef),
       Cancel(:final id, :final target) => NotCancellable(id, target: target),
       Shutdown(:final id) => _shutdown(id),
@@ -335,7 +341,7 @@ final class EngineRequestHandler implements RequestHandler {
   ) {
     final family = familyFor(request);
     final roles = family.requiredRoles(request);
-    final locators = _resolveKeys(request, roles, keys);
+    final locators = _resolveKeys(request.coin, roles, keys);
     final derivations = <KeyRole, KeyDerivation>{};
     for (final MapEntry(key: role, value: locator) in locators.entries) {
       final wallet = _resolve(locator.walletRef);
@@ -362,9 +368,64 @@ final class EngineRequestHandler implements RequestHandler {
     );
   }
 
-  /// Resolves [keys] for [request] and returns the HD locator that fills each
-  /// of [required] — the family's roles for [request], in the family's order,
-  /// which the result keeps — or throws, in this order, so that the answer
+  /// Signs the message [request] with the keys [keys] name, and returns the
+  /// parsed signature with empty `usedKeys` (see [MessageSigned]).
+  ///
+  /// [_sign]'s order with the recipient check replaced by the shape check,
+  /// and every property of it: nothing before step 5 of [_sign] runs after a
+  /// key exists, the keys are derived in one scope, lent to the core, and
+  /// released before the reply. In this order:
+  ///
+  /// 1. **Encode** the key-less input ([MessageFamily.encodeKeylessInput]),
+  ///    which also refuses a shape this SDK does not sign — an EIP-155
+  ///    variant — with [UnsupportedOperationError], first, so that the answer
+  ///    does not depend on the keys.
+  /// 2. **Resolve** [keys] against the family's roles ([_resolveKeys], shared
+  ///    with [_sign]), then the wallet and path of each locator.
+  /// 3. **Check** the key-less bytes ([checkKeylessInput]).
+  /// 4. **Derive**, **sign** through the core's message path
+  ///    ([MessageSigningCore.signMessage]), and **release**.
+  ///
+  /// A failure at steps 1–3 derives nothing and does not reach the core.
+  SignResult _signMessage(
+    SigningCore core,
+    MessageRequest request,
+    Set<LocatorSpec> keys,
+  ) {
+    // A defect, not an input's fault: a core handed to the handler that signs
+    // transactions only cannot be asked for a message.
+    final messageCore = core is MessageSigningCore
+        ? core as MessageSigningCore
+        : throw StateError('the signing core cannot sign messages');
+    final family = familyForMessage(request);
+    final keyless = family.encodeKeylessInput(request);
+    final roles = family.requiredRoles(request);
+    final locators = _resolveKeys(request.coin, roles, keys);
+    final derivations = <KeyRole, KeyDerivation>{};
+    for (final MapEntry(key: role, value: locator) in locators.entries) {
+      final wallet = _resolve(locator.walletRef);
+      final path = checkDerivationPath(locator.derivationPath);
+      derivations[role] = KeyDerivation(wallet, locator.coin, path);
+    }
+    checkKeylessInput(keyless, family);
+    _keysDerived += derivations.length;
+    return withDerivedKeys(
+      derivations,
+      (handles) => messageCore.signMessage(
+        keyless,
+        family: family,
+        coin: request.coin,
+        requiredRoles: roles,
+        keys: handles,
+        usedKeys: const <KeyLocator>{},
+      ),
+    );
+  }
+
+  /// Resolves [keys] for a request on [coin] and returns the HD locator that
+  /// fills each of [required] — the family's roles for the request, in the
+  /// family's order, which the result keeps — or throws, in this order, so
+  /// that the answer
   /// does not depend on the set's iteration order:
   ///
   /// 1. An [ExternalLocatorSpec] anywhere: [UnsupportedOperationError] for
@@ -387,13 +448,13 @@ final class EngineRequestHandler implements RequestHandler {
   /// The wallet reference itself is resolved by the caller, through the same
   /// table lookup every other operation uses.
   Map<KeyRole, HdLocatorSpec> _resolveKeys(
-    TransactionRequest request,
+    Coin coin,
     List<KeyRole> required,
     Set<LocatorSpec> keys,
   ) {
     final unique = keys.toSet();
     if (unique.any((key) => key is ExternalLocatorSpec)) {
-      throw UnsupportedOperationError(request.coin, 'external-signer');
+      throw UnsupportedOperationError(coin, 'external-signer');
     }
     for (final key in unique) {
       if (key is HdLocatorSpec && key.sessionToken != _sessionToken) {
@@ -442,10 +503,10 @@ final class EngineRequestHandler implements RequestHandler {
       }
     }
     for (final key in filled.values) {
-      if (key.coin != request.coin) {
+      if (key.coin != coin) {
         throw InvalidInputError(
           'a key locator is for ${key.coin.id} and the transaction for '
-          '${request.coin.id}',
+          '${coin.id}',
           inputName: 'keys',
         );
       }
