@@ -1,0 +1,60 @@
+vectors:
+  - id: solana-address-n/a-1
+    coin: solana
+    operation: address
+    variant: n/a
+    source:
+      kind: upstream_test
+      path: tests/chains/Solana/TWSolanaAddressTests.cpp
+      commit: d692ac27749d0c615e17c751b70ab4f0aa75c59b
+      # TEST(TWSolanaAddress, HDWallet), lines 13-26. The test derives the key
+      # with TWCoinTypeDerivationPath(TWCoinTypeSolana), i.e. the coin's default
+      # derivation, and does not spell the path out. That default is the first
+      # entry of the "solana" derivation list in registry.json (lines 2392-2395,
+      # path "m/44'/501'/0'"), and Coin.h:165-167 defines the default as
+      # derivation[0]. The same mnemonic and address are asserted in
+      # swift/Tests/CoinAddressDerivationTests.swift (lines 11 and 223).
+    input:
+      # Upstream's published test mnemonic for this vector; passphrase is "".
+      mnemonic: "shoot island position soft burden budget tooth cruel issue economy destroy above"
+      derivation_path: "m/44'/501'/0'" # Resolved from registry.json, not literal in the test; see source.
+    expected:
+      address: "2bUBiBNZyD29gP1oV6de7nxowMLoDBtopMMTGgMvjG5m" # base58
+    platforms_verified: []
+
+  - id: solana-sign-legacy-1
+    coin: solana
+    operation: sign
+    variant: legacy
+    source:
+      kind: upstream_test
+      path: tests/chains/Solana/TWAnySignerTests.cpp
+      commit: d692ac27749d0c615e17c751b70ab4f0aa75c59b
+      # TEST(TWAnySignerSolana, SignTransfer), lines 22-37, with the expected
+      # string `expectedString1` at lines 16-20. The same request and the same
+      # expected values are asserted by test_solana_sign_transfer in
+      # rust/tw_tests/tests/chains/solana/solana_sign.rs, lines 19-40.
+      # The request sets only transfer_transaction (recipient, value),
+      # private_key and recent_blockhash. No memo, no durable nonce, no priority
+      # fee, no references, no v0 message, no fee_payer_private_key: the signing
+      # key is the only signer and therefore the fee payer.
+    input:
+      # Upstream's published test key for this vector, read from the same test
+      # (`Base58::decode("A7psj2GW7ZMdY4E5hJq14KMeYg7HFjULSsWSrTXZLvYr")`).
+      # Kept in upstream's form: it is a base58 string, not hex, and is not
+      # converted here.
+      private_key_base58: "A7psj2GW7ZMdY4E5hJq14KMeYg7HFjULSsWSrTXZLvYr"
+      to_address: "EN2sCsJ1WDV8UFqsiTXHcUPUxQ4juE71eCknHYYMifkd" # base58
+      lamports: "42" # Converted from (uint64_t)42L
+      recent_blockhash: "11111111111111111111111111111111" # base58, as set by the test
+      memo: null # Not set by the test.
+    expected:
+      # Base58 of the signed transaction, as asserted by
+      # ASSERT_EQ(output.encoded(), expectedString1). The test source splits the
+      # string over four literals; they are concatenated here without change.
+      encoded: "3p2kzZ1DvquqC6LApPuxpTg5CCDVPqJFokGSnGhnBHrta4uq7S2EyehV1XNUVXp51D69GxGzQZUjikfDzbWBG2aFtG3gHT1QfLzyFKHM4HQtMQMNXqay1NAeiiYZjNhx9UvMX4uAQZ4Q6rx6m2AYfQ7aoMUrejq298q1wBFdtS9XVB5QTiStnzC7zs97FUEK2T4XapjF1519EyFBViTfHpGpnf5bfizDzsW9kYUtRDW1UC2LgHr7npgq5W9TBmHf9hSmRgM9XXucjXLqubNWE7HUMhbKjuBqkirRM"
+      # Base58 of the unsigned transaction, asserted by the same test
+      # (`output.unsigned_tx()`).
+      unsigned_tx: "87PYsiS4MUU1UqXrsDoCBmD5FcKsXhwEBD8hc4zbq78yePu7bLENmbnmjmVbsj4VvaxnZhy4bERndPFzjSRH5WpwKwMLSCKvn9eSDmPESNcdkqne2UdMfWiFoq8ZeQBnF9h98dP8GM9kfzWPjvLmhjwuwA1E2k5WCtfii7LKQ34v6AtmFQGZqgdKiNqygP7ZKusHWGT8ZkTZ"
+      # No signature field: the test asserts none separately.
+    platforms_verified: []
