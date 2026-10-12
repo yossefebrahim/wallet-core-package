@@ -1,9 +1,7 @@
 /// [Signer] and [LocalSigner]: the interfaces a caller signs through
 /// (`docs/architecture/signing.md` §1, DECISION-13 §4.1).
 ///
-/// The session's [LocalSigner] is `WalletCore.signer`. `plan` — UTXO
-/// planning in the design sketch — is not declared at this version: there is
-/// no UTXO request to plan yet.
+/// The session's [LocalSigner] is `WalletCore.signer`.
 library;
 
 import '../errors/errors.dart';
@@ -46,6 +44,20 @@ abstract interface class Signer {
   /// this with; the session's signer fails it with
   /// [UnsupportedOperationError].
   Future<SignResult> signMessage(MessageRequest request, Set<KeyLocator> keys);
+
+  /// Plans a UTXO spend: which of [request]'s inputs upstream would select,
+  /// and the fee and change.
+  ///
+  /// Takes **no keys at all** — planning needs no secret, and the signature
+  /// says so. Sign the plan with `request.withPlan(plan)`: the signature then
+  /// spends exactly the selected inputs and needs only their keys.
+  ///
+  /// Throws [InvalidInputError] (`inputName: 'toAddress'`,
+  /// `'changeAddress'`, or `'inputs'`) for an address or script type upstream
+  /// rejects, [UnsupportedOperationError] for a script type this SDK does
+  /// not sign, and [SigningError] with upstream's own code when it cannot
+  /// plan — not enough funds among the inputs, for one.
+  Future<UtxoPlan> plan(UtxoTransactionRequest request);
 }
 
 /// The 1.0 signer: keys live in the session's owning isolate, are derived for

@@ -22,8 +22,9 @@
 /// [SignResult]s (`docs/architecture/signing.md`) — and the sealed
 /// [WalletCoreException] hierarchy.
 ///
-/// Transaction signing covers the EVM family at this version. Message
-/// signing and UTXO planning are not part of it.
+/// Transaction signing covers the EVM family and, for Bitcoin, the UTXO
+/// family ([UtxoTransactionRequest], [LocalSigner.plan]) at this version.
+/// Message signing is not part of it.
 library;
 
 export 'package:wallet_core_flutter_native/wallet_core_flutter_native.dart'
@@ -63,8 +64,12 @@ export 'src/requests/requests.dart'
         EvmMessageType,
         EvmTransactionRequest,
         MessageRequest,
+        OutPoint,
         SolanaTransactionRequest,
-        TransactionRequest;
+        TransactionRequest,
+        UtxoInput,
+        UtxoPlan,
+        UtxoTransactionRequest;
 export 'src/session/wallet_core.dart'
     show OperationTimeouts, SessionScope, WalletCore;
 export 'src/signing/key_locator.dart'
@@ -81,7 +86,8 @@ export 'src/signing/sign_result.dart'
         EvmSignResult,
         SignResult,
         SolanaEncoding,
-        SolanaSignResult;
+        SolanaSignResult,
+        UtxoSignResult;
 export 'src/signing/signer.dart' show LocalSigner, Signer;
 export 'src/wallet/wallet.dart' show Wallet, WalletFacade, WalletRef;
 

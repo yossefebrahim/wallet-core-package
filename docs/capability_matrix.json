@@ -20,7 +20,7 @@
       },
       "sign": {
         "generated": 167,
-        "exposed": 61,
+        "exposed": 62,
         "tested": 0
       },
       "sign_message": {
@@ -30,7 +30,7 @@
       },
       "plan": {
         "generated": 28,
-        "exposed": 0,
+        "exposed": 1,
         "tested": 0
       },
       "compile": {
@@ -109,7 +109,7 @@
         "family": "utxo",
         "variant": "p2wpkh",
         "generated": 14,
-        "exposed": 0,
+        "exposed": 1,
         "tested": 0
       },
       {
@@ -125,7 +125,7 @@
         "family": "utxo",
         "variant": "multi_input",
         "generated": 14,
-        "exposed": 0,
+        "exposed": 1,
         "tested": 0
       },
       {
@@ -197,7 +197,7 @@
         "family": "utxo",
         "variant": "p2wpkh",
         "generated": 14,
-        "exposed": 0,
+        "exposed": 1,
         "tested": 0
       },
       {
@@ -213,7 +213,7 @@
         "family": "utxo",
         "variant": "multi_input",
         "generated": 14,
-        "exposed": 0,
+        "exposed": 1,
         "tested": 0
       },
       {
@@ -2306,10 +2306,10 @@
               "vectors": []
             },
             "p2wpkh": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": [
@@ -2326,10 +2326,10 @@
               "vectors": []
             },
             "multi_input": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": [
@@ -2375,10 +2375,10 @@
               "vectors": []
             },
             "p2wpkh": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": [
@@ -2395,10 +2395,10 @@
               "vectors": []
             },
             "multi_input": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": [

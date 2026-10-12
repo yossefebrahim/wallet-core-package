@@ -53,8 +53,12 @@ abstract interface class Signer {
   /// Plans a UTXO transaction: input selection, fee, and change.
   ///
   /// Takes **no keys at all** — planning needs no secret, and the signature says
-  /// so. Available for UTXO chains only; anything else throws
-  /// [UnsupportedOperationError].
+  /// so. The parameter type is the UTXO request, so no other family can be
+  /// passed. Sign the plan with `request.withPlan(plan)` (section 3.2.1).
+  ///
+  /// Throws [InvalidInputError] for an address or script type upstream rejects,
+  /// [UnsupportedOperationError] for a script type the SDK does not sign, and
+  /// [SigningError] with upstream's code when it cannot plan.
   Future<UtxoPlan> plan(UtxoTransactionRequest request);
 }
 
@@ -253,6 +257,17 @@ final class UtxoPlan {
   final int change;
 }
 ```
+
+#### 3.2.1 UTXO, as built (T2.5)
+
+What differs from the sketch above, and why:
+
+* **Bitcoin mainnet only.** `network` and `lockTime` are not parameters: no vector exists for a testnet, and upstream's output-script builder takes a testnet bech32 address for Bitcoin but not a testnet base58 one (`Script::lockScriptForAddress`, `Script.cpp:436-473`), so a testnet request would be half supported; every input is final (`sequence = 0xFFFFFFFF`), which makes a lock time inert. Any other UTXO coin is `UnsupportedOperationError('utxo-transaction')`.
+* **Inputs.** A P2WPKH input (`standard` or `segwit` style) or a compressed pay-to-public-key input (`standard` or `legacy`); every other script type is `UnsupportedOperationError('script:<type>')` — `p2pkh`, `p2sh`, `p2wsh`, `witness-program`, `p2pk-uncompressed`, `other` — named by upstream's own `TWBitcoinScript` matchers, never by this SDK's. `addressStyle.taproot` is `'addressStyle:taproot'`. `OutPoint.transactionId` is in display order; the family reverses it for upstream.
+* **Keys: one role per distinct key.** `keyLocators` holds one locator per distinct input locator, in order of first use, each carrying `KeyRole.input(n)` where `n` is the position of the first input that uses it; an input's own locator names no role (the request rejects one that does). Callers pass `request.keyLocators` to `Signer.sign`; with one distinct key, `signWithKey(request, inputLocator)` works because a role-less locator fills a family's only slot. The injection order is the order of `keyLocators`, so `private_key` (field 6, repeated) carries each distinct key once. The alternative — one handle under several roles — would put the same key into the signing input once per input.
+* **Signing a plan.** `request.withPlan(plan)` is the same request carrying upstream's `TransactionPlan`: upstream signs that plan instead of planning again, and `keyLocators` shrinks to the keys of the selected inputs. Without a plan every input's key is required, because upstream, not the SDK, chooses what to spend.
+* **`UtxoSignResult`** carries `encoded` and `transactionId` (lower-case hex); `virtualSize`, `weight` and `fee` of the sketch are not in upstream's legacy output and are not computed here.
+* **Which upstream signer.** The C++ legacy signer, `Bitcoin::Signer::sign` (`Signer.cpp:25`), not the Rust BitcoinV2 signer (reached only when `signing_v2` is set, `Signer.cpp:26-28`). It finds a key by the hash of its public key; `SigningInput.scripts` is read only for P2SH and P2WSH inputs, so the family never sets it.
 
 ### 3.3 Solana
 

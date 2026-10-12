@@ -24,3 +24,4 @@ part 'base.dart';
 part 'evm/evm_transaction_request.dart';
 part 'evm/message_request.dart';
 part 'solana/solana_transaction_request.dart';
+part 'utxo/utxo_transaction_request.dart';

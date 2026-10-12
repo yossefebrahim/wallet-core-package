@@ -365,6 +365,7 @@ void main() {
         EvmSignResult() => 'evm',
         SolanaSignResult() => 'solana',
         EvmMessageSignResult() => 'evmMessage',
+        UtxoSignResult() => 'utxo',
       };
       expect(described, 'evm');
     });

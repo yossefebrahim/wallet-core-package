@@ -59,6 +59,13 @@ final Map<String, EvmMessageRequest Function(Coin)> _messageBuilders = {
   'eip712': (coin) => EvmMessageRequest.typedData('{}', coin: coin),
 };
 
+/// Whether [group] is an EVM signing group: the ones `_builders` describes.
+/// The UTXO groups are held to their facade by `families/utxo/`.
+bool _isEvmSign(CapabilityGroup group) =>
+    group.operation == 'sign' &&
+    group.coins != null &&
+    group.coins!.every(evmCoinIds.contains);
+
 /// The snapshot document for [groups]: sorted, two-space indent, trailing
 /// newline. `coins` is the string `"all"` for a group that covers the whole
 /// pinned registry.
@@ -117,6 +124,7 @@ void main() {
           'address',
           'sign',
           'sign_message',
+          'plan',
         }, contains(group.operation));
         for (final coin in group.coins ?? const <String>['*']) {
           expect(
@@ -127,19 +135,14 @@ void main() {
         }
       }
       expect(
-        capabilityGroups
-            .where((g) => g.operation == 'sign')
-            .map((g) => g.variant)
-            .toSet(),
+        capabilityGroups.where(_isEvmSign).map((g) => g.variant).toSet(),
         _builders.keys.toSet(),
       );
     });
 
     test('every EVM sign variant has a builder the listed coins accept and '
         'every other coin rejects', () {
-      for (final group in capabilityGroups.where(
-        (g) => g.operation == 'sign' && !solanaCoinIds.contains(g.coins!.first),
-      )) {
+      for (final group in capabilityGroups.where(_isEvmSign)) {
         final build = _builders[group.variant]!;
         for (final coin in Coin.all) {
           if (group.coins!.contains(coin.id)) {

@@ -53,6 +53,22 @@ final class SessionSigner implements LocalSigner {
   Future<SignResult> signWithKey(TransactionRequest request, KeyLocator key) =>
       sign(request, <KeyLocator>{key});
 
+  /// Sends one [Plan]: the request, and no key of any kind. The owning
+  /// isolate checks the addresses and the script types, has upstream plan,
+  /// and parses its answer.
+  @override
+  Future<UtxoPlan> plan(UtxoTransactionRequest request) async {
+    _session.checkReady('plan');
+    return _session.submit(
+      (id) => Plan(id, request: request),
+      timeout: _session.timeouts.signing,
+      parse: (reply) => switch (reply) {
+        Planned(:final plan) => plan,
+        _ => throw StateError('unexpected reply ${reply.runtimeType}'),
+      },
+    );
+  }
+
   /// [sign]'s counterpart for a message: one [SignMessage] carrying the
   /// request and the names of the keys, with the same session check, the same
   /// locator snapshot and checks, and the same `signing` deadline. The owning

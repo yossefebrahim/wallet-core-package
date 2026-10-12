@@ -7,6 +7,7 @@ import 'evm/evm_family.dart';
 import 'evm/message_family.dart';
 import 'family.dart';
 import 'solana/solana_family.dart';
+import 'utxo/utxo_family.dart';
 
 /// The family that encodes [request] and parses its output.
 ///
@@ -17,6 +18,7 @@ TransactionFamily<TransactionRequest, SignResult> familyFor(
 ) => switch (request) {
   EvmTransactionRequest() => evmFamily,
   SolanaTransactionRequest() => solanaFamily,
+  UtxoTransactionRequest() => utxoFamily,
 };
 
 /// The family that encodes the message [request] and parses its output.
