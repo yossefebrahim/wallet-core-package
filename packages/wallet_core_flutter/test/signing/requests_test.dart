@@ -364,6 +364,7 @@ void main() {
       final described = switch (result as SignResult) {
         EvmSignResult() => 'evm',
         SolanaSignResult() => 'solana',
+        EvmMessageSignResult() => 'evmMessage',
       };
       expect(described, 'evm');
     });

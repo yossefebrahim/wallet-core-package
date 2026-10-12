@@ -2,9 +2,10 @@
 /// (`docs/architecture/lifecycle.md` §6, DECISION-12 §3.2). **Internal**:
 /// never exported from either public library.
 ///
-/// The M0 subset, with transaction signing ([Sign], [Signed]). `SignMessage`,
-/// `Plan`, `ImportKey` and their replies (`MessageSigned`, `Planned`,
-/// `KeyImported`) join these families later (T2.7, T2.5, T3.4); both families
+/// The M0 subset, with transaction signing ([Sign], [Signed]) and message
+/// signing ([SignMessage], [MessageSigned]). `Plan` and `ImportKey` and their
+/// replies (`Planned`, `KeyImported`) join these families later (T2.5, T3.4);
+/// both families
 /// are `sealed`, so adding one is a compile error at every `switch` that must
 /// handle it — the handler and the session — which is the point.
 ///
@@ -406,6 +407,34 @@ final class Sign extends WorkerRequest {
   String toString() => 'Sign(#$id, $request, keys: ${keys.join(', ')})';
 }
 
+/// Signs a message with the keys [keys] name. Reply: [MessageSigned].
+///
+/// [Sign]'s counterpart for a [MessageRequest], with every property of it:
+/// **key-less** (AGENTS.md rule 6), the keys named and never carried, resolved
+/// by the executor itself, one operation counted against the queue bound and
+/// given the `signing` deadline (DECISION-12 §3.4, §3.5). A message is not a
+/// secret, but its content is not printed either: [toString] shows its length.
+final class SignMessage extends WorkerRequest {
+  /// Creates the request; [keys] is copied into an unmodifiable set.
+  SignMessage(super.id, {required this.request, required Set<LocatorSpec> keys})
+    : keys = Set<LocatorSpec>.unmodifiable(keys);
+
+  /// What to sign. Validated when it was constructed.
+  final MessageRequest request;
+
+  /// The names of the keys to sign with. The executor resolves them itself
+  /// and does not rely on any check the session made first.
+  final Set<LocatorSpec> keys;
+
+  @override
+  String get operation => 'signMessage';
+
+  /// The request (which shows its length, not its content) and every
+  /// locator's names. Nothing here is a secret.
+  @override
+  String toString() => 'SignMessage(#$id, $request, keys: ${keys.join(', ')})';
+}
+
 /// How a [KeyLocator] crosses to the executor: the names it carries, as plain
 /// values, with nothing that holds a session or a proxy.
 ///
@@ -737,6 +766,21 @@ final class Signed extends WorkerReply {
 
   @override
   String toString() => 'Signed(#$id, $result)';
+}
+
+/// A message was signed: [Signed]'s counterpart for [SignMessage].
+///
+/// **Not key-bearing**: a signature is public data. [result]'s `usedKeys` is
+/// empty on the wire, for [Signed]'s reason, and the session puts them back.
+final class MessageSigned extends WorkerReply {
+  /// Creates the reply.
+  const MessageSigned(super.id, this.result);
+
+  /// The signature.
+  final SignResult result;
+
+  @override
+  String toString() => 'MessageSigned(#$id, $result)';
 }
 
 /// The wallet [walletRef] is released — or was never known, or was already

@@ -3,7 +3,6 @@
 library;
 
 import '../coin/coin.dart';
-import '../errors/errors.dart';
 import '../requests/requests.dart';
 import '../session/session.dart';
 import '../wallet/wallet.dart';
@@ -54,13 +53,30 @@ final class SessionSigner implements LocalSigner {
   Future<SignResult> signWithKey(TransactionRequest request, KeyLocator key) =>
       sign(request, <KeyLocator>{key});
 
-  /// Not at this version: no [MessageRequest] exists yet. EVM message signing
-  /// is T2.7's.
+  /// [sign]'s counterpart for a message: one [SignMessage] carrying the
+  /// request and the names of the keys, with the same session check, the same
+  /// locator snapshot and checks, and the same `signing` deadline. The owning
+  /// isolate resolves, derives, signs and releases exactly as it does for a
+  /// transaction.
   @override
   Future<SignResult> signMessage(
     MessageRequest request,
     Set<KeyLocator> keys,
-  ) async => throw UnsupportedOperationError(request.coin, 'signMessage');
+  ) async {
+    _session.checkReady('signMessage');
+    final locators = Set<KeyLocator>.of(keys);
+    final specs = <LocatorSpec>{
+      for (final locator in locators) _specOf(locator),
+    };
+    return _session.submit(
+      (id) => SignMessage(id, request: request, keys: specs),
+      timeout: _session.timeouts.signing,
+      parse: (reply) => switch (reply) {
+        MessageSigned(:final result) => withUsedKeys(result, locators),
+        _ => throw StateError('unexpected reply ${reply.runtimeType}'),
+      },
+    );
+  }
 
   LocatorSpec _specOf(KeyLocator locator) => switch (locator) {
     HdKeyLocator(

@@ -492,6 +492,11 @@ final class M0Flow extends ChangeNotifier {
         (label: 'encoded (${result.encoding.name})', value: result.encoded),
         (label: 'usedKeys', value: result.usedKeys.join(', ')),
       ],
+      EvmMessageSignResult() => [
+        (label: 'result', value: 'EvmMessageSignResult (${result.coin.id})'),
+        (label: 'signature', value: result.signatureHex),
+        (label: 'usedKeys', value: result.usedKeys.join(', ')),
+      ],
     };
   });
 

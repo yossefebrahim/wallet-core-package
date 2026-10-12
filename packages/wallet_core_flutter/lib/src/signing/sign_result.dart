@@ -8,6 +8,7 @@ library;
 import 'dart:typed_data';
 
 import '../coin/coin.dart';
+import '../requests/requests.dart' show EvmMessageType;
 import 'key_locator.dart';
 
 /// What a signer produced. Sealed and per-family, because upstream's outputs
@@ -112,6 +113,12 @@ SignResult withUsedKeys(SignResult result, Set<KeyLocator> usedKeys) =>
         unsignedTransaction: result.unsignedTransaction,
         usedKeys: usedKeys,
       ),
+      EvmMessageSignResult() => EvmMessageSignResult(
+        coin: result.coin,
+        messageType: result.messageType,
+        signature: result._signature,
+        usedKeys: usedKeys,
+      ),
     };
 
 /// The encoding of the transaction strings a [SolanaSignResult] carries.
@@ -164,4 +171,48 @@ final class SolanaSignResult implements SignResult {
   String toString() =>
       'SolanaSignResult(${coin.id}, encoded: ${encoded.length} characters, '
       'usedKeys: ${usedKeys.length})';
+}
+
+/// The result of signing an EVM message.
+///
+/// The signature is upstream's, exactly as it returns it: for the personal and
+/// typed-data kinds this SDK signs, 65 bytes — `r` (32), `s` (32), `v` (1),
+/// with `v` as upstream's legacy message signature has it (27 or 28). The
+/// bytes are the result's own copy, exposed as a read-only view.
+final class EvmMessageSignResult implements SignResult {
+  /// Creates a result, copying [signature].
+  EvmMessageSignResult({
+    required this.coin,
+    required this.messageType,
+    required Uint8List signature,
+    required Set<KeyLocator> usedKeys,
+  }) : _signature = Uint8List.fromList(signature),
+       usedKeys = Set<KeyLocator>.unmodifiable(usedKeys);
+
+  @override
+  final Coin coin;
+
+  @override
+  final Set<KeyLocator> usedKeys;
+
+  /// The kind of message that was signed.
+  final EvmMessageType messageType;
+
+  final Uint8List _signature;
+
+  /// The signature, `r ‖ s ‖ v`, 65 bytes.
+  Uint8List get signature => _signature.asUnmodifiableView();
+
+  /// [signature] as lowercase hexadecimal without a prefix — the string
+  /// upstream itself returns.
+  String get signatureHex => <String>[
+    for (final byte in _signature) byte.toRadixString(16).padLeft(2, '0'),
+  ].join();
+
+  /// The coin, the kind, and the signature's length. The signature is public,
+  /// but a log line has no use for it.
+  @override
+  String toString() =>
+      'EvmMessageSignResult(${coin.id}, ${messageType.name}, '
+      'signature: ${_signature.length} bytes, usedKeys: ${usedKeys.length})';
 }

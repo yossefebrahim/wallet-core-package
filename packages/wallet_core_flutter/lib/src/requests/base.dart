@@ -14,8 +14,8 @@ sealed class TransactionRequest {
   Set<KeyLocator> get keyLocators;
 }
 
-/// Base of every message-signing request. No member exists at this version;
-/// EVM messages are T2.7's.
+/// Base of every message-signing request. The one member at this version is
+/// [EvmMessageRequest].
 sealed class MessageRequest {
   /// The coin whose message format and key the request is for.
   Coin get coin;

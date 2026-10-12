@@ -26,7 +26,7 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 |---|---|---|---|
 | address | 167 | 167 | 0 |
 | sign | 167 | 61 | 0 |
-| sign_message | 63 | 0 | 0 |
+| sign_message | 63 | 60 | 0 |
 | plan | 28 | 0 | 0 |
 | compile | 158 | 0 | 0 |
 
@@ -46,8 +46,8 @@ Counted in coins. Per variant, a coin counts once for each variant cell it has.
 | sign | solana | legacy | 1 | 1 | 0 |
 | sign | solana | versioned | 1 | 0 | 0 |
 | sign | other | any | 92 | 0 | 0 |
-| sign_message | evm | personal | 60 | 0 | 0 |
-| sign_message | evm | eip712 | 60 | 0 | 0 |
+| sign_message | evm | personal | 60 | 60 | 0 |
+| sign_message | evm | eip712 | 60 | 60 | 0 |
 | sign_message | solana | personal | 1 | 0 | 0 |
 | sign_message | other | any | 2 | 0 | 0 |
 | plan | utxo | p2pkh | 14 | 0 | 0 |
@@ -117,13 +117,13 @@ Generated when the coin's upstream proto package defines `SigningInput`. `TWAnyS
 
 Generated when the coin's proto package defines `MessageSigningInput` and the generic message-signer probe (T2.9) agrees; a disagreement is a conflict.
 
-63 generated, 0 exposed, 0 tested.
+63 generated, 60 exposed, 0 tested.
 
 ### sign_message — evm
 
 | family | coins | personal | eip712 |
 |---|---|---|---|
-| evm | 60: acalaevm, arbitrum, arbitrumnova, aurora, avalanchec, base, blast, boba, bouncebit, bsc, callisto, celo, cfxevm, classic, cronos, ethereum, evmos, fantom, gochain, heco, hyperevm, iotexevm, kaia, kavaevm, kcc, lightlink, linea, manta, mantle, megaeth, merlin, meter, metis, monad, moonbeam, moonriver, neon, okc, opbnb, optimism, plasma, poa, polygon, polygonzkevm, robinhoodchain, rootstock, scroll, seievm, smartbch, smartchain, sonic, tfuelevm, thundertoken, viction, wanchain, xdai, zeneon, zetaevm, zklinknova, zksync | generated | generated |
+| evm | 60: acalaevm, arbitrum, arbitrumnova, aurora, avalanchec, base, blast, boba, bouncebit, bsc, callisto, celo, cfxevm, classic, cronos, ethereum, evmos, fantom, gochain, heco, hyperevm, iotexevm, kaia, kavaevm, kcc, lightlink, linea, manta, mantle, megaeth, merlin, meter, metis, monad, moonbeam, moonriver, neon, okc, opbnb, optimism, plasma, poa, polygon, polygonzkevm, robinhoodchain, rootstock, scroll, seievm, smartbch, smartchain, sonic, tfuelevm, thundertoken, viction, wanchain, xdai, zeneon, zetaevm, zklinknova, zksync | exposed, unverified | exposed, unverified |
 
 ### sign_message — utxo, other
 

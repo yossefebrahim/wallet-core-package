@@ -11,6 +11,7 @@
 /// value types the families share (`OutPoint`, `UtxoInput`) are in `base.dart`.
 library;
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../coin/chain_family.dart';
@@ -21,4 +22,5 @@ import '../signing/key_locator.dart';
 
 part 'base.dart';
 part 'evm/evm_transaction_request.dart';
+part 'evm/message_request.dart';
 part 'solana/solana_transaction_request.dart';

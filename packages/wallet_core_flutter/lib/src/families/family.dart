@@ -17,13 +17,12 @@ import '../requests/requests.dart';
 import '../signing/key_locator.dart';
 import '../signing/sign_result.dart';
 
-/// What every chain family implements.
-///
-/// [R] is the family's request type and [S] its result type.
-abstract interface class TransactionFamily<
-  R extends TransactionRequest,
-  S extends SignResult
-> {
+/// What the signing core needs of any family, whether it signs transactions
+/// ([TransactionFamily]) or messages ([MessageFamily]): which coins, which
+/// upstream message the keys are injected into and where, how the key-less
+/// bytes are checked, and how the output is parsed. The core signs through
+/// this and nothing narrower, so one copy of the key handling serves both.
+abstract interface class SigningInputFamily<S extends SignResult> {
   /// The facade family whose coins this family signs for.
   ChainFamily get chainFamily;
 
@@ -31,17 +30,6 @@ abstract interface class TransactionFamily<
   /// `'TW.Ethereum.Proto.SigningInput'` — the root the key-field check walks
   /// from and the message the signing core injects into.
   String get signingInputMessage;
-
-  /// Encodes [request] into upstream's serialized signing input **with no key
-  /// field set**.
-  ///
-  /// This function never receives key bytes and has no parameter that could
-  /// carry them. That is the whole point of the signature.
-  ///
-  /// The result must be one complete, well-formed [signingInputMessage] with
-  /// every key field absent: the signing core prepends the key field to
-  /// exactly these bytes, after `checkKeylessInput` has decoded them.
-  Uint8List encodeKeylessInput(R request);
 
   /// Decodes serialized signing-input bytes into the generated message, for
   /// the key-field check only. Throws the protobuf runtime's
@@ -61,15 +49,97 @@ abstract interface class TransactionFamily<
     required Set<KeyLocator> usedKeys,
   });
 
-  /// The roles this family needs filled, in order of necessity.
-  List<KeyRole> requiredRoles(R request);
-
   /// The reviewed list of fields that carry key material in this family's
   /// messages. See [KeyFieldList].
   KeyFieldList get keyFields;
 
   /// The field of [signingInputMessage] the key for [role] is injected into.
   /// Throws [ArgumentError] for a role this family has no slot for.
+  KeyFieldEntry injectionField(KeyRole role);
+}
+
+/// What every chain family implements for message signing (T2.7): the contract
+/// of [TransactionFamily] over a [MessageRequest], signed through upstream's
+/// message signer. [signingInputMessage] names the *message*-signing input
+/// (`TW.Ethereum.Proto.MessageSigningInput`), not the transaction's.
+///
+/// [R] is the family's request type and [S] its result type.
+abstract interface class MessageFamily<
+  R extends MessageRequest,
+  S extends SignResult
+>
+    implements SigningInputFamily<S> {
+  /// Encodes [request] into upstream's serialized message-signing input
+  /// **with no key field set** — the same rule, and the same precondition for
+  /// the core, as [TransactionFamily.encodeKeylessInput]. Throws
+  /// `UnsupportedOperationError` for a request shape this family does not
+  /// sign; pure otherwise.
+  Uint8List encodeKeylessInput(R request);
+
+  /// The roles this family needs filled, in order of necessity.
+  List<KeyRole> requiredRoles(R request);
+}
+
+/// What every chain family implements.
+///
+/// [R] is the family's request type and [S] its result type.
+abstract interface class TransactionFamily<
+  R extends TransactionRequest,
+  S extends SignResult
+>
+    implements SigningInputFamily<S> {
+  /// The facade family whose coins this family signs for.
+  @override
+  ChainFamily get chainFamily;
+
+  /// The fully-qualified name of upstream's signing-input message, e.g.
+  /// `'TW.Ethereum.Proto.SigningInput'` — the root the key-field check walks
+  /// from and the message the signing core injects into.
+  @override
+  String get signingInputMessage;
+
+  /// Encodes [request] into upstream's serialized signing input **with no key
+  /// field set**.
+  ///
+  /// This function never receives key bytes and has no parameter that could
+  /// carry them. That is the whole point of the signature.
+  ///
+  /// The result must be one complete, well-formed [signingInputMessage] with
+  /// every key field absent: the signing core prepends the key field to
+  /// exactly these bytes, after `checkKeylessInput` has decoded them.
+  Uint8List encodeKeylessInput(R request);
+
+  /// Decodes serialized signing-input bytes into the generated message, for
+  /// the key-field check only. Throws the protobuf runtime's
+  /// `InvalidProtocolBufferException` on bytes that do not decode.
+  @override
+  GeneratedMessage decodeSigningInput(Uint8List bytes);
+
+  /// Parses upstream's serialized output into a typed result.
+  ///
+  /// The bytes are treated as untrusted, whatever produced them: the error
+  /// code and message are read **first** and mapped to `SigningError` without
+  /// interpreting the rest; field sizes are bounded before any copy; and an
+  /// output whose shape does not match the family fails rather than being
+  /// coerced.
+  @override
+  S parseSigningOutput(
+    Uint8List bytes, {
+    required Coin coin,
+    required Set<KeyLocator> usedKeys,
+  });
+
+  /// The roles this family needs filled, in order of necessity.
+  List<KeyRole> requiredRoles(R request);
+
+  /// The reviewed list of fields that carry key material in this family's
+  /// messages. See [KeyFieldList].
+  @override
+  KeyFieldList get keyFields;
+
+  /// The field of [signingInputMessage] the key for [role] is injected into.
+  /// Throws [ArgumentError] for a role this family has no slot for.
+  @override
   KeyFieldEntry injectionField(KeyRole role);
 }
 

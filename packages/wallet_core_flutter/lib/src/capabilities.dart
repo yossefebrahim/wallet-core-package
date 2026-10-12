@@ -14,10 +14,9 @@
 /// `flutter test --dart-define=WCF_UPDATE_CAPABILITY_SNAPSHOT=true test/capabilities_test.dart`
 /// in `packages/wallet_core_flutter`, then `melos run gen:matrix`.
 ///
-/// An operation that is absent here is not exposed. Message signing
-/// (`LocalSigner.signMessage` throws `UnsupportedOperationError`), UTXO
-/// planning, and external-signature compilation have no entry because the SDK
-/// has no path to them at this version.
+/// An operation that is absent here is not exposed. UTXO planning and
+/// external-signature compilation have no entry because the SDK has no path to
+/// them at this version.
 ///
 /// Unofficial Dart/Flutter SDK for the open-source Trust Wallet Core library.
 /// Not affiliated with or endorsed by Trust Wallet.
@@ -166,5 +165,19 @@ const List<CapabilityGroup> capabilityGroups = <CapabilityGroup>[
     variant: 'legacy',
     exposure: Exposure.typed,
     coins: solanaCoinIds,
+  ),
+  // `EvmMessageRequest.typedData`, through upstream's `MessageType_typed`.
+  CapabilityGroup(
+    operation: 'sign_message',
+    variant: 'eip712',
+    exposure: Exposure.typed,
+    coins: evmCoinIds,
+  ),
+  // `EvmMessageRequest.personal`, through upstream's `MessageType_legacy`.
+  CapabilityGroup(
+    operation: 'sign_message',
+    variant: 'personal',
+    exposure: Exposure.typed,
+    coins: evmCoinIds,
   ),
 ];

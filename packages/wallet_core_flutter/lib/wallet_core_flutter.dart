@@ -59,6 +59,8 @@ export 'src/lifecycle/session_state.dart' show SessionState;
 export 'src/mnemonic/mnemonic_facade.dart' show MnemonicFacade;
 export 'src/requests/requests.dart'
     show
+        EvmMessageRequest,
+        EvmMessageType,
         EvmTransactionRequest,
         MessageRequest,
         SolanaTransactionRequest,
@@ -74,7 +76,12 @@ export 'src/signing/key_locator.dart'
         KeyRef,
         KeyRole;
 export 'src/signing/sign_result.dart'
-    show EvmSignResult, SignResult, SolanaEncoding, SolanaSignResult;
+    show
+        EvmMessageSignResult,
+        EvmSignResult,
+        SignResult,
+        SolanaEncoding,
+        SolanaSignResult;
 export 'src/signing/signer.dart' show LocalSigner, Signer;
 export 'src/wallet/wallet.dart' show Wallet, WalletFacade, WalletRef;
 

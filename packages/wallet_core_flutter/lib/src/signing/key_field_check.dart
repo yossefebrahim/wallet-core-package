@@ -13,7 +13,6 @@ import 'package:protobuf/protobuf.dart' show GeneratedMessage, PbFieldType;
 
 import '../errors/errors.dart';
 import '../families/family.dart';
-import '../requests/requests.dart';
 import 'sign_result.dart';
 
 /// Throws [InvalidInputError] (`inputName: 'signingInput'`) when
@@ -45,7 +44,7 @@ import 'sign_result.dart';
 /// message names; both are defects of this build, not of the input.
 void checkKeylessInput(
   Uint8List keylessInput,
-  TransactionFamily<TransactionRequest, SignResult> family,
+  SigningInputFamily<SignResult> family,
 ) {
   if (keylessInput.isEmpty) {
     // Zero bytes decode as a valid, empty message, but injection needs one

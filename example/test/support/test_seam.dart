@@ -125,6 +125,15 @@ final class FakeHandler implements RequestHandler {
         usedKeys: const <KeyLocator>{},
       ),
     ),
+    SignMessage(:final id, :final request) => MessageSigned(
+      id,
+      EvmMessageSignResult(
+        coin: request.coin,
+        messageType: EvmMessageType.personal,
+        signature: Uint8List(65)..fillRange(0, 65, 0x33),
+        usedKeys: const <KeyLocator>{},
+      ),
+    ),
     DisposeRef(:final id, :final walletRef) => _dispose(id, walletRef),
     Cancel(:final id, :final target) => NotCancellable(id, target: target),
     Shutdown(:final id) => _shutdown(id),

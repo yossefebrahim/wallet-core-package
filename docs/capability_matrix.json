@@ -25,7 +25,7 @@
       },
       "sign_message": {
         "generated": 63,
-        "exposed": 0,
+        "exposed": 60,
         "tested": 0
       },
       "plan": {
@@ -157,7 +157,7 @@
         "family": "evm",
         "variant": "personal",
         "generated": 60,
-        "exposed": 0,
+        "exposed": 60,
         "tested": 0
       },
       {
@@ -165,7 +165,7 @@
         "family": "evm",
         "variant": "eip712",
         "generated": 60,
-        "exposed": 0,
+        "exposed": 60,
         "tested": 0
       },
       {
@@ -588,19 +588,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -1299,19 +1299,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -1450,19 +1450,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -1601,19 +1601,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -1752,19 +1752,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -2093,19 +2093,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -2934,19 +2934,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -3180,19 +3180,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -3331,19 +3331,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -3482,19 +3482,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -3633,19 +3633,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -3889,19 +3889,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -4040,19 +4040,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -4191,19 +4191,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -4722,19 +4722,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -6030,10 +6030,10 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": [
@@ -6041,10 +6041,10 @@
               ]
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": [
@@ -6270,19 +6270,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -6421,19 +6421,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -7044,19 +7044,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -7490,19 +7490,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -7726,19 +7726,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -8247,19 +8247,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -8493,19 +8493,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -8739,19 +8739,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -8890,19 +8890,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -9431,19 +9431,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -9582,19 +9582,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -9920,19 +9920,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -10071,19 +10071,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -10317,19 +10317,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -10468,19 +10468,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -10619,19 +10619,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -10770,19 +10770,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -11108,19 +11108,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -11259,19 +11259,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -11410,19 +11410,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -12226,19 +12226,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -12937,19 +12937,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -13183,19 +13183,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -13334,19 +13334,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -13957,19 +13957,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -14108,19 +14108,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -14354,19 +14354,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -14505,19 +14505,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -15315,19 +15315,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -15571,19 +15571,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -15722,19 +15722,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -16063,19 +16063,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -16214,19 +16214,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -16365,19 +16365,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -16738,19 +16738,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -18034,19 +18034,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -18375,19 +18375,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -19295,19 +19295,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -19446,19 +19446,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -19779,19 +19779,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -20245,19 +20245,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -20491,19 +20491,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -20727,19 +20727,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
@@ -20878,19 +20878,19 @@
           },
           "variants": {
             "personal": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
             },
             "eip712": {
-              "exposed": null,
+              "exposed": "typed",
               "levels": {
-                "android": 1,
-                "ios": 1
+                "android": 2,
+                "ios": 2
               },
               "tested": false,
               "vectors": []
