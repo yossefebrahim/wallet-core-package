@@ -8,6 +8,7 @@ import 'package:wallet_core_flutter/src/worker/protocol.dart';
 import 'package:wallet_core_flutter/src/worker/worker_loop.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart';
 
+import '../support/eventually.dart';
 import '../support/fake_handler.dart';
 import '../support/fixtures.dart';
 
@@ -87,7 +88,7 @@ void main() {
         ..receive(Init(1, queueLimit: 4))
         ..receive(const CreateWallet(2, strength: 128))
         ..receive(const ExportMnemonic(3, walletRef: 1));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await eventually(() => loop.isFinished);
       expect(loop.isFinished, isTrue);
       final error = faults.single;
       expect(

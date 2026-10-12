@@ -34,10 +34,8 @@ Future<void> main() async {
     _makeAndFreeByHand(finalizer);
   }
   // Running the finalizers is what aborts: a second `free` of each block.
-  final stop = DateTime.now().add(const Duration(seconds: 30));
-  while (DateTime.now().isBefore(stop)) {
-    applyGcPressure();
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
+  // `pumpUntil(() => false)` applies escalating pressure for the whole budget;
+  // an abort ends the process long before it returns.
+  await pumpUntil(() => false);
   stdout.writeln('control: SURVIVED (the harness has no power)');
 }

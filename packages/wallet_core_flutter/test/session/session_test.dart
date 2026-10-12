@@ -13,6 +13,7 @@ import 'package:wallet_core_flutter/src/worker/protocol.dart';
 import 'package:wallet_core_flutter/src/worker/transport.dart';
 import 'package:wallet_core_flutter/wallet_core_flutter.dart';
 
+import '../support/eventually.dart';
 import '../support/fake_handler.dart';
 import '../support/fixtures.dart';
 import '../support/recording_transport.dart';
@@ -444,7 +445,7 @@ void main() {
       );
       transport.send(request);
       expect(request.entropy, everyElement(0));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await eventually(() => fake.entropySeen.isNotEmpty);
       expect(fake.entropySeen.single, List<int>.filled(16, 7));
       final delivered = fake.handled.whereType<ImportWallet>().single;
       expect(delivered, isNot(same(request)));
@@ -778,7 +779,7 @@ void main() {
       final (core, fake) = await _start();
       await core.wallets.create();
       core.postFinalizerDispose(1);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await eventually(() => fake.disposedRefs.isNotEmpty);
       expect(fake.disposedRefs, [1]);
 
       final shutdown = core.shutdown();

@@ -8,7 +8,9 @@
 /// `free`, and the "native object" is a `malloc` block. Two things then become
 /// observable from Dart:
 ///
-/// * a block is freed: `malloc_zone_from_ptr` returns null for it;
+/// * a block is freed: `malloc_zone_from_ptr` returns null for it, or its
+///   content marker is gone because the address was reallocated (see
+///   [_isFreed]);
 /// * a block is freed twice: libmalloc aborts the process.
 ///
 /// So a forgotten handle must be *seen* freed by the finalizer, a disposed
@@ -45,8 +47,41 @@ final int Function(Pointer<Void>) _zoneOf = _process
       int Function(Pointer<Void>)
     >('malloc_zone_from_ptr');
 
+/// What bytes 16–63 of every test block hold while it is alive.
+///
+/// `free` can leave those bytes alone (a free-list link takes the first 16),
+/// and whoever is handed the address next normally overwrites them, so the
+/// marker tells a block that is still ours from one that was freed and then
+/// reallocated by someone else — see [_isFreed].
+const int _marker = 0xA5;
+
 /// Whether [block], once malloc'd, has been freed.
-bool _isFreed(Pointer<Void> block) => _zoneOf(block) == 0;
+///
+/// A freed block is no longer "in use", so `malloc_zone_from_ptr` returns null
+/// for it — *until* another allocation in this busy process is handed the same
+/// address, after which the zone answers again and a plain null check reports
+/// "never freed" for good. On a machine loaded with other suites that happened
+/// to 2 of 50 blocks in a run that had applied 5700 rounds of collector
+/// pressure. So a block that is in use is read, and one whose marker is gone is
+/// not ours any more: it was freed. (Reading is safe only because the zone says
+/// the block is in use; a freed block is never dereferenced.)
+bool _isFreed(Pointer<Void> block) {
+  if (_zoneOf(block) == 0) return true;
+  return !_markerIntact(block);
+}
+
+bool _markerIntact(Pointer<Void> block) {
+  final bytes = block.cast<Uint8>().asTypedList(64);
+  for (var i = 16; i < 64; i++) {
+    if (bytes[i] != _marker) return false;
+  }
+  return true;
+}
+
+/// How many of [blocks] are still allocated *and* still hold their marker:
+/// blocks that were certainly never freed. For a failure message.
+int _neverFreed(List<Pointer<Void>> blocks) =>
+    blocks.where((b) => _zoneOf(b) != 0 && _markerIntact(b)).length;
 
 /// A symbol lookup that resolves the two delete functions to `free` and
 /// refuses everything else: nothing else may be reached by these tests.
@@ -60,7 +95,11 @@ Pointer<T> _lookup<T extends NativeType>(String name) {
 NativeContext _freshContext() =>
     NativeContext(WalletCoreBindings.fromLookup(_lookup));
 
-Pointer<Void> _block() => malloc<Uint8>(64).cast<Void>();
+Pointer<Void> _block() {
+  final block = malloc<Uint8>(64);
+  block.asTypedList(64).fillRange(16, 64, _marker);
+  return block.cast<Void>();
+}
 
 /// Each of these is its own frame so that nothing in the caller keeps the
 /// wrapper reachable (a `Finalizable` local lives to the end of its scope).
@@ -90,6 +129,12 @@ Pointer<Void> _disposedString(NativeContext context) {
   return block;
 }
 
+/// Above [gcBudget], so a collection that never comes fails on the assertion
+/// with its diagnostics rather than on the runner's default 30 s clock, which a
+/// loaded machine can reach with the collector merely slow. The control gets the
+/// same: it runs the whole budget when the harness has no power.
+const Timeout _gcTestTimeout = Timeout(Duration(minutes: 3));
+
 void main() {
   const count = 50;
 
@@ -108,9 +153,10 @@ void main() {
       reason:
           'the finalizer did not free '
           '${blocks.where((b) => !_isFreed(b)).length}/$count forgotten '
-          'blocks within the budget',
+          'blocks within the budget, ${_neverFreed(blocks)} certainly never '
+          'freed ($lastPumpSummary)',
     );
-  });
+  }, timeout: _gcTestTimeout);
 
   test('a forgotten TWString is freed by its NativeFinalizer', () async {
     final context = _freshContext();
@@ -124,9 +170,10 @@ void main() {
       reason:
           'the finalizer did not free '
           '${blocks.where((b) => !_isFreed(b)).length}/$count forgotten '
-          'blocks within the budget',
+          'blocks within the budget, ${_neverFreed(blocks)} certainly never '
+          'freed ($lastPumpSummary)',
     );
-  });
+  }, timeout: _gcTestTimeout);
 
   test('a disposed handle is freed once by dispose() and never again by its '
       'finalizer', () async {
@@ -151,8 +198,33 @@ void main() {
     expect(
       collected,
       isTrue,
-      reason: 'no collection was observed, so the check proved nothing',
+      reason:
+          'no collection was observed, so the check proved nothing: '
+          '${sentinels.where(_isFreed).length}/$count sentinels freed, '
+          '${_neverFreed(sentinels)} certainly never freed '
+          '($lastPumpSummary)',
     );
+  }, timeout: _gcTestTimeout);
+
+  test('the detector reads a block that is still allocated but no longer '
+      'carries its marker as freed', () {
+    // The detector's own check, with no collector and no allocator behaviour
+    // involved. When a freed address is handed out again the zone answers for
+    // it again and the new owner writes over the block; that state is
+    // reproduced directly by overwriting the marker of a live block.
+    final block = _block();
+    try {
+      expect(_zoneOf(block), isNot(0), reason: 'allocated');
+      expect(_isFreed(block), isFalse, reason: 'allocated and marked: ours');
+
+      block.cast<Uint8>().asTypedList(64).fillRange(0, 64, 0);
+
+      expect(_zoneOf(block), isNot(0), reason: 'the zone still answers');
+      expect(_isFreed(block), isTrue, reason: 'but it is not our block');
+    } finally {
+      malloc.free(block);
+    }
+    expect(_isFreed(block), isTrue, reason: 'and once freed, by the zone');
   });
 
   test('a handle that is disposed twice frees its block once', () {
@@ -192,5 +264,5 @@ void main() {
       isNot(0),
       reason: 'the control must abort on the double free',
     );
-  }, timeout: const Timeout(Duration(seconds: 90)));
+  }, timeout: _gcTestTimeout);
 }
