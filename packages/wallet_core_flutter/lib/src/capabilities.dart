@@ -124,7 +124,11 @@ const List<String> evmCoinIds = <String>[
   'zksync',
 ];
 
-/// Everything the SDK exposes, grouped by (operation, variant).
+/// The registry ids of the coins whose `Coin.family` is `ChainFamily.solana` —
+/// every coin `SolanaTransactionRequest` signs for.
+const List<String> solanaCoinIds = <String>['solana'];
+
+/// Everything the SDK exposes, grouped by (operation, variant, coins).
 const List<CapabilityGroup> capabilityGroups = <CapabilityGroup>[
   // Address derivation (`Wallet.derive`) and validation (`AddressFacade`) take
   // any coin of the pinned registry; a coin upstream removed is not in it.
@@ -153,5 +157,14 @@ const List<CapabilityGroup> capabilityGroups = <CapabilityGroup>[
     variant: 'legacy',
     exposure: Exposure.typed,
     coins: evmCoinIds,
+  ),
+  // `SolanaTransactionRequest.transfer`: a legacy-message native transfer.
+  // The matrix's Solana variant for it is `legacy` (`test_vectors/README.md`),
+  // the same name as EVM's; the groups are told apart by their coins.
+  CapabilityGroup(
+    operation: 'sign',
+    variant: 'legacy',
+    exposure: Exposure.typed,
+    coins: solanaCoinIds,
   ),
 ];

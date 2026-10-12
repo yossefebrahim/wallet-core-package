@@ -59,7 +59,11 @@ String snapshotOf(List<CapabilityGroup> groups) {
   final sorted = [...groups]
     ..sort((a, b) {
       final byOperation = a.operation.compareTo(b.operation);
-      return byOperation != 0 ? byOperation : a.variant.compareTo(b.variant);
+      if (byOperation != 0) return byOperation;
+      final byVariant = a.variant.compareTo(b.variant);
+      if (byVariant != 0) return byVariant;
+      // One variant name may serve several families; the coins order them.
+      return (a.coins?.first ?? '').compareTo(b.coins?.first ?? '');
     });
   final document = <String, Object?>{
     'schema': 1,
@@ -98,14 +102,18 @@ void main() {
     });
 
     test('operations and variants are the matrix vocabulary, once each', () {
+      // A variant name may serve several families (`sign/legacy` is EVM's and
+      // Solana's); what may not repeat is a coin within one.
       final keys = <String>{};
       for (final group in capabilityGroups) {
         expect(const {'address', 'sign'}, contains(group.operation));
-        expect(
-          keys.add('${group.operation}/${group.variant}'),
-          isTrue,
-          reason: 'duplicate ${group.operation}/${group.variant}',
-        );
+        for (final coin in group.coins ?? const <String>['*']) {
+          expect(
+            keys.add('${group.operation}/${group.variant}/$coin'),
+            isTrue,
+            reason: 'duplicate ${group.operation}/${group.variant}/$coin',
+          );
+        }
       }
       expect(
         capabilityGroups
@@ -116,10 +124,10 @@ void main() {
       );
     });
 
-    test('every sign variant has a builder the listed coins accept and every '
-        'other coin rejects', () {
+    test('every EVM sign variant has a builder the listed coins accept and '
+        'every other coin rejects', () {
       for (final group in capabilityGroups.where(
-        (g) => g.operation == 'sign',
+        (g) => g.operation == 'sign' && !solanaCoinIds.contains(g.coins!.first),
       )) {
         final build = _builders[group.variant]!;
         for (final coin in Coin.all) {

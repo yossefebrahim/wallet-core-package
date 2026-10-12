@@ -345,6 +345,8 @@ final class EngineRequestHandler implements RequestHandler {
     switch (request) {
       case EvmTransactionRequest(:final to, :final coin, :final network):
         engine.checkRecipient(to, coin, network: network);
+      case SolanaTransactionRequest(:final to, :final coin, :final network):
+        engine.checkRecipient(to, coin, network: network);
     }
     final keyless = family.encodeKeylessInput(request);
     checkKeylessInput(keyless, family);

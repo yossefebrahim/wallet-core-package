@@ -106,4 +106,62 @@ SignResult withUsedKeys(SignResult result, Set<KeyLocator> usedKeys) =>
         preHash: result._preHash,
         usedKeys: usedKeys,
       ),
+      SolanaSignResult() => SolanaSignResult(
+        coin: result.coin,
+        encoded: result.encoded,
+        unsignedTransaction: result.unsignedTransaction,
+        usedKeys: usedKeys,
+      ),
     };
+
+/// The encoding of the transaction strings a [SolanaSignResult] carries.
+///
+/// Upstream can produce base58 (its default) or base64; this version asks for
+/// and accepts base58 only, the one encoding a vector covers
+/// (`solana-sign-legacy-1`). An enum, so that base64 can join in a later
+/// version without changing the result's shape.
+enum SolanaEncoding {
+  /// Base58 over the Bitcoin alphabet: upstream's default `tx_encoding`.
+  base58,
+}
+
+/// The result of signing a Solana transaction.
+///
+/// Carries exactly what upstream returns, as strings in [encoding]: the
+/// signed transaction and the unsigned message it signed.
+final class SolanaSignResult implements SignResult {
+  /// Creates a result.
+  SolanaSignResult({
+    required this.coin,
+    required this.encoded,
+    this.unsignedTransaction,
+    required Set<KeyLocator> usedKeys,
+  }) : usedKeys = Set<KeyLocator>.unmodifiable(usedKeys);
+
+  @override
+  final Coin coin;
+
+  @override
+  final Set<KeyLocator> usedKeys;
+
+  /// The signed transaction, ready to broadcast, as a base58 string
+  /// ([encoding]): upstream's `SigningOutput.encoded` under its default
+  /// `tx_encoding`.
+  final String encoded;
+
+  /// The encoding of [encoded] and [unsignedTransaction]: always
+  /// [SolanaEncoding.base58] at this version.
+  SolanaEncoding get encoding => SolanaEncoding.base58;
+
+  /// The unsigned message that was signed, also base58
+  /// (`SigningOutput.unsigned_tx`); a fee can be estimated from it. `null`
+  /// when upstream reports none.
+  final String? unsignedTransaction;
+
+  /// The coin, the encoded length, and how many keys signed. The strings are
+  /// public, but a log line has no use for them.
+  @override
+  String toString() =>
+      'SolanaSignResult(${coin.id}, encoded: ${encoded.length} characters, '
+      'usedKeys: ${usedKeys.length})';
+}

@@ -207,6 +207,14 @@
         "zklinknova",
         "zksync"
       ]
+    },
+    {
+      "operation": "sign",
+      "variant": "legacy",
+      "exposure": "typed",
+      "coins": [
+        "solana"
+      ]
     }
   ]
 }

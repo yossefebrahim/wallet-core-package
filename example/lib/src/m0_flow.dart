@@ -485,6 +485,13 @@ final class M0Flow extends ChangeNotifier {
           (label: 'pre-hash', value: _hex(preHash)),
         (label: 'usedKeys', value: result.usedKeys.join(', ')),
       ],
+      // This screen builds EVM requests only; the arm keeps the switch
+      // exhaustive over the sealed result.
+      SolanaSignResult() => [
+        (label: 'result', value: 'SolanaSignResult (${result.coin.id})'),
+        (label: 'encoded (${result.encoding.name})', value: result.encoded),
+        (label: 'usedKeys', value: result.usedKeys.join(', ')),
+      ],
     };
   });
 
