@@ -25,7 +25,7 @@ dependencies:
   # a range: those classes were emitted by protoc_plugin
   # compat_manifest.json:generators.protoc_gen_dart and are a matched pair with
   # the runtime that shipped alongside it. A range lets the two drift.
-  protobuf: 6.0.0
+  protobuf: 6.1.0
   # Imported directly by the generated code (Int64 fields), so it is pinned
   # here rather than inherited transitively through protobuf.
   fixnum: 1.1.1
@@ -34,6 +34,6 @@ dev_dependencies:
   # Exactly pinned, and the same version is recorded in compat_manifest.json
   # `generators.ffigen` (PRD §15.3): the generated bindings are committed, so
   # the generator that produced them is part of the pin, not a floating range.
-  ffigen: 21.0.0
+  ffigen: 23.0.0
   lints: ^6.0.0
   test: ^1.25.0
