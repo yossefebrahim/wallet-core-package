@@ -256,14 +256,14 @@ jobs:
         run: melos bootstrap
 
       - name: Cache the verified native artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: example/.dart_tool/hooks_runner/shared/wallet_core_flutter_native/build/artifacts
           key: wcf-artifacts-android-${{ hashFiles('compat_manifest.json') }}
 
       - name: Cache the AVD snapshot
         id: avd-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.android/avd/*
@@ -380,7 +380,7 @@ jobs:
         run: melos bootstrap
 
       - name: Cache the verified native artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: example/.dart_tool/hooks_runner/shared/wallet_core_flutter_native/build/artifacts
           key: wcf-artifacts-ios-${{ hashFiles('compat_manifest.json') }}
