@@ -15,7 +15,7 @@ dependencies:
   # sha256 of the shipped manifest's bytes — DECISION-14 §2.3 comparison 2,
   # PRD §12.3 integrity verification. Pure Dart, no network, no wallet
   # cryptography (AGENTS.md rule 2).
-  crypto: ^3.0.0
+  crypto: ^3.0.8
   flutter:
     sdk: flutter
   # DECISION-2 Option 1 (build hooks). `hook/build.dart` imports these two and
@@ -30,8 +30,8 @@ dependencies:
   # Flutter 3.47.5's own tool pins. No libc++_shared.so package: the shipped
   # Android library links the C++ runtime statically (DT_NEEDED is liblog,
   # libm, libdl and libc only), so nothing of ours loads one.
-  hooks: ">=1.0.2 <3.0.0"
-  code_assets: ^1.0.0
+  hooks: ^2.2.0
+  code_assets: ^2.1.0
 
 dev_dependencies:
   flutter_test:

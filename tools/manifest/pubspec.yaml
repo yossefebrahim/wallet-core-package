@@ -8,7 +8,7 @@ environment:
 dependencies:
   # sha256 of the manifest file's bytes (PRD §12.3 integrity verification,
   # DECISION-14 §2.3 comparison 2). Nothing else in this package hashes.
-  crypto: ^3.0.0
+  crypto: ^3.0.8
 
 dev_dependencies:
   test: ^1.24.0
