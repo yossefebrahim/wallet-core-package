@@ -7,7 +7,7 @@ environment:
 
 dependencies:
   archive: ^4.0.0
-  crypto: ^3.0.0
+  crypto: ^3.0.8
   path: ^1.9.0
 
 dev_dependencies:
